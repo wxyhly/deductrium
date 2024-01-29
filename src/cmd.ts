@@ -273,12 +273,12 @@ export class FSCmd {
         if (!cmdBuffer.length) {
             if (idx[0] === "d") {
                 // click to start a deduction
-                cmdBuffer.push("d", idx.slice(1));
+                cmdBuffer.push("d", Number(idx.slice(1)));
                 this.execCmdBuffer();
             }
             if (idx[0] === "m") {
                 // click to start a meta rule
-                cmdBuffer.push("meta", idx.slice(1));
+                cmdBuffer.push("meta", Number(idx.slice(1)));
                 this.execCmdBuffer();
             }
             return;
@@ -295,7 +295,7 @@ export class FSCmd {
                 this.replaceActionInputFromClick(inserted);
             } else if (idx[0] === "p" && replVarsLength + conditionIdxsLength + 4 > cmdBuffer.length) {
                 //wait for conditionIdx input
-                cmdBuffer.push(idx.slice(1));
+                cmdBuffer.push(Number(idx.slice(1)));
                 this.execCmdBuffer();
             }
         } else if (cmdBuffer[0] === "hyp") {
@@ -303,9 +303,9 @@ export class FSCmd {
             this.replaceActionInputFromClick(inserted);
         } else if (cmdBuffer[0] === "meta") {
             switch (cmdBuffer[1]) {
-                case "0":
+                case 0:
                     // wait for deduct idx input, user can click d terms
-                    cmdBuffer.push(idx.slice(1));
+                    cmdBuffer.push(Number(idx.slice(1)));
                     this.execCmdBuffer();
             }
         }

@@ -342,42 +342,6 @@ export class FormalSystem {
                             conditionIdxs: [s0, s0_s1],
                             deductionIdx: 9, replaceValues: []
                         }));
-                        {
-                            // // |- ($0>$1) > (CND > ($0>$1))  (d1)
-                            // const _p2 = this.deduct({
-                            //     deductionIdx: 1, replaceValues: [
-                            //         s0_s1Ast,
-                            //         cndAst
-                            //     ], conditionIdxs: []
-                            // });
-                            // // _p2, s0_s1 |- (CND > ($0>$1)) (d0)
-                            // const _p3 = this.deduct({
-                            //     deductionIdx: 0,
-                            //     conditionIdxs: [_p2, s0_s1],
-                            //     replaceValues: []
-                            // });
-                            // // |- (CND > ($0>$1)) > ( (CND>$0) > (CND>$1) )  (d2)
-                            // const _p4 = this.deduct({
-                            //     deductionIdx: 2, replaceValues: [
-                            //         cndAst,
-                            //         s0_s1Ast.nodes[0],
-                            //         s0_s1Ast.nodes[1],
-                            //     ], conditionIdxs: [],
-                            // });
-                            // // _p4, _p3 |- ((CND>$0) > (CND>$1)) (d0)
-                            // const _p5 = this.deduct({
-                            //     deductionIdx: 0,
-                            //     conditionIdxs: [_p4, _p3],
-                            //     replaceValues: []
-                            // });
-                            // // _p5, CND>$0 |- CND>$1 (d0)
-                            // const _p6 = this.deduct({
-                            //     deductionIdx: 0,
-                            //     conditionIdxs: [_p5, s0],
-                            //     replaceValues: []
-                            // });
-                            // offsetTable.push(_p6);
-                        }
                         continue;
                     }
                     if (s0_s1Info === CND && s0IsTrue) {
@@ -428,6 +392,40 @@ export class FormalSystem {
                             deductionIdx: 14, replaceValues: []
                         }));
                         continue;
+                    }
+                }
+                if (step.deductionIdx === 7) {
+                    const s0Info = infoTable[step.conditionIdxs[0]];
+                    const s0 = offsetTable[step.conditionIdxs[0]];
+                    const s1Ast = p.value.nodes[0];
+                    const s0IsTrue = (s0Info & 1) === 0;
+                    if (s0IsTrue) {
+                        infoTable.push(AXM);
+                        offsetTable.push(this.propositions.length);
+                        this.deduct({
+                            deductionIdx: 7, conditionIdxs: [s0],
+                            replaceValues: [s1Ast]
+                        }); // axiom, copy it
+                        continue;
+                    } else {
+                        const s0Ast = p.value.nodes[1];
+                        // |- $0 > V$1:$0
+                        const p1 = this.deduct({
+                            deductionIdx: 15, conditionIdxs: [],
+                            replaceValues: [s0Ast, s1Ast]
+                        });
+                        if (s0Info === CND) {
+                            // |- CND > V$1:CND, only mark it
+                            offsetTable.push(p1);
+                            infoTable.push(DDT); continue;
+                        } else {
+                            //  CND >  $0 , $0 > V$1:$0 |- CND > V$1:$0
+                            offsetTable.push(this.deduct({
+                                deductionIdx: 9, conditionIdxs: [s0, p1],
+                                replaceValues: [s0Ast, s1Ast]
+                            }));
+                            infoTable.push(DDT); continue;
+                        }
                     }
                 }
             }
