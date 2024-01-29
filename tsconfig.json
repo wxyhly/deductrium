@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "lib": [
+            "ES2022",
+            "DOM"
+        ],
+        "target": "ES2022",
+        "sourceMap": true,
+        "outDir": "js/"
+    },
+    "include": [
+        "src/*.ts",
+    ],
+    "exclude": [
+        "old/*"
+    ]
+}

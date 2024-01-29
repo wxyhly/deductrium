@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<meta charset="UTF-8">
+<link href="fsgui.css" rel="stylesheet" type="text/css">
+<h1>Deductrium</h1>
+[M]元规则：
+<div class="list-wrapper">
+    <div class="list" id="meta-list">
+    </div>
+</div>
+[D]推理规则： &nbsp; 显示类别
+<label><input name="show-d" type="checkbox" checked/>命题逻辑</label>
+<label><input name="show-d" type="checkbox" checked/>一阶逻辑</label>
+<label><input name="show-d" type="checkbox" checked/>m0所需宏</label>
+<label><input name="show-d" type="checkbox" checked/>符号宏</label>
+<label><input name="show-d" type="checkbox" checked/>添加的推则</label>
+<div class="list-wrapper">
+    <div class="list" id="deduct-list">
+    </div>
+</div>
+[P]定理：&nbsp; &nbsp; &nbsp; 显示推理
+<select id="display-p-layer">
+    <option value="-1">所有</option>
+    <option value="0">0</option>
+    <option value="1">1</option>
+    <option value="2">2</option>
+    <option value="3">3</option>
+</select>层
+<div class="list-wrapper">
+    <div class="list" id="prop-list">
+    </div>
+</div>
+<div id="cmd-btns"><button>保存(save)</button><button>加载(load)</button><button>帮助(help)</button><button>假设(hyp)</button><button>推理(d)</button><button>回退定理表(pop)</button><button>清空定理表(clear)</button><button>记入规则表(m)</button><button>回退规则表(popd)</button></div>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<p>&nbsp;</p>
+<div class="footer">
+    <text id="hint"></text>
+    <input type="text" id="action-input" />
+</div>
+<script type="module">
+    import { FSGui } from "./js/gui.js";
+    new FSGui(
+        document.getElementById("prop-list"),
+        document.getElementById("deduct-list"),
+        document.getElementById("meta-list"),
+        document.getElementById("action-input"),
+        document.getElementById("hint"),
+        document.getElementById("display-p-layer"),
+        document.getElementById("cmd-btns"),
+    );
+</script>
+
+</html>
