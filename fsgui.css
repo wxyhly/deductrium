@@ -1,21 +1,49 @@
 .list-wrapper {
     min-height: 100px;
     max-height: 300px;
-    overflow-y: scroll;
+    overflow-y: auto;
     width: 100%;
     border: solid;
     margin-top: 0.5em;
     margin-bottom: 1em;
+    user-select: none;
 }
-h1{
+
+.list-wrapper::-webkit-scrollbar-thumb {
+    background-color: gray;
+    border-radius: 2px;
+}
+
+.list-wrapper::-webkit-scrollbar {
+    background-color: lightgray;
+    height: 8px;
+    width: 8px;
+}
+
+h1 {
     text-align: center;
 }
+
+.dlist-option label {
+    width: 120px;
+}
+
+.footer .right {
+    float: right;
+}
+
+#cmd-btns button {
+    width: 120px;
+    height: 40px;
+}
+
 .list {
     font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
 
     cursor: pointer;
     display: grid;
     width: 100%;
+    min-width: 500px;
     grid-template-columns: min-content auto repeat(6, max-content);
 
 }
@@ -30,7 +58,8 @@ h1{
     text-align: center;
     line-height: 25px;
 }
-.macro-substep{
+
+.macro-substep {
     color: #999;
 }
 
@@ -59,6 +88,7 @@ h1{
     left: 8px;
     right: 8px;
     background-color: beige;
+    padding: 5px;
 }
 
 .footer input {

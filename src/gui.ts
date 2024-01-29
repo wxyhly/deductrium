@@ -12,6 +12,7 @@ export class FSGui {
     metaRuleList: HTMLOListElement;
     displayPLayers: number = -1;
     displayDs = new Set();
+    isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
     cmd: FSCmd;
     constructor(
         propositionList: HTMLOListElement, deductionList: HTMLOListElement, metaRuleList: HTMLOListElement,
@@ -34,7 +35,7 @@ export class FSGui {
                 this.cmd.cmdBuffer.push(btn.innerText.replace(/.+\((.+)\)/g, "$1"));
                 this.cmd.execCmdBuffer();
             });
-        })
+        });
         document.querySelectorAll("input[name='show-d']").forEach((sd: HTMLInputElement) => {
             const from = (sd.parentNode as HTMLElement).innerText;
             this.displayDs.add(from);
@@ -43,7 +44,16 @@ export class FSGui {
                 this.updateDeductionList(true);
             });
         });
-        
+        document.querySelectorAll(".footer .right button").forEach((btn: HTMLElement) => {
+            btn.addEventListener("click", () => {
+                if (btn.innerText === "OK") {
+                    this.cmd.actionInputKeydown({ key: "Enter" });
+                } else if (btn.innerText === "Esc") {
+                    this.cmd.actionInputKeydown({ key: "Escape" });
+                }
+            });
+        });
+
         this.updateMetaRuleList();
         this.updateDeductionList();
     }
@@ -270,7 +280,7 @@ export class FSGui {
     }
     updateDeductionList(refresh?: boolean) {
         this.updateGuiList("d", this.formalSystem.deductions, this.deductionList,
-            (p, idx) => (this.displayDs.has(p.from) || (this.displayDs.has("添加的推则") && p.from.startsWith("*"))), (p, itInfo, it) => {
+            (p, idx) => (this.displayDs.has(p.from) || (this.displayDs.has("添加的规则") && p.from.startsWith("*"))), (p, itInfo, it) => {
                 itInfo[0].innerText = p.from;
             }, refresh
         );

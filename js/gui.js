@@ -10,6 +10,7 @@ export class FSGui {
     metaRuleList;
     displayPLayers = -1;
     displayDs = new Set();
+    isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
     cmd;
     constructor(propositionList, deductionList, metaRuleList, actionInput, hintText, displayPLayerSelect, divCmdBtns) {
         this.propositionList = propositionList;
@@ -36,6 +37,16 @@ export class FSGui {
             sd.addEventListener("change", () => {
                 sd.checked ? this.displayDs.add(from) : this.displayDs.delete(from);
                 this.updateDeductionList(true);
+            });
+        });
+        document.querySelectorAll(".footer .right button").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                if (btn.innerText === "OK") {
+                    this.cmd.actionInputKeydown({ key: "Enter" });
+                }
+                else if (btn.innerText === "Esc") {
+                    this.cmd.actionInputKeydown({ key: "Escape" });
+                }
             });
         });
         this.updateMetaRuleList();
@@ -272,7 +283,7 @@ export class FSGui {
         }, refresh);
     }
     updateDeductionList(refresh) {
-        this.updateGuiList("d", this.formalSystem.deductions, this.deductionList, (p, idx) => (this.displayDs.has(p.from) || (this.displayDs.has("添加的推则") && p.from.startsWith("*"))), (p, itInfo, it) => {
+        this.updateGuiList("d", this.formalSystem.deductions, this.deductionList, (p, idx) => (this.displayDs.has(p.from) || (this.displayDs.has("添加的规则") && p.from.startsWith("*"))), (p, itInfo, it) => {
             itInfo[0].innerText = p.from;
         }, refresh);
     }

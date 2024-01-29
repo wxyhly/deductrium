@@ -17,31 +17,33 @@ export class FSCmd {
                 return false;
             }
         });
-        actionInput.addEventListener("keydown", e => {
-            if (e.key === "Escape") {
-                this.clearCmdBuffer();
-                return false;
-            }
-            if (e.key !== "Enter") return false;
-            const cmd = actionInput.value;
-            if (!cmd.trim()) return;
-            this.cmdBuffer.push(cmd);
-            actionInput.value = "";
-            this.execCmdBuffer();
-        });
+        actionInput.addEventListener("keydown", e => this.actionInputKeydown(e));
         this.clearCmdBuffer();
     }
+    actionInputKeydown(e: { key: string }) {
+        const actionInput = this.gui.actionInput;
+        if (e.key === "Escape") {
+            this.clearCmdBuffer();
+            return false;
+        }
+        if (e.key !== "Enter") return false;
+        const cmd = actionInput.value;
+        if (!cmd.trim()) return;
+        this.cmdBuffer.push(cmd);
+        actionInput.value = "";
+        this.execCmdBuffer();
+    }
+
     clearCmdBuffer() {
         this.cmdBuffer = [];
         this.gui.actionInput.value = "";
         this.gui.hintText.innerText = "请输入命令";
-        this.gui.actionInput.focus();
+        if (!this.gui.isMobile) this.gui.actionInput.focus();
     }
     execCmdBuffer() {
         const cmdBuffer = this.cmdBuffer;
         const hintText = this.gui.hintText;
-        const formalSystem = this.gui.formalSystem;
-        this.gui.actionInput.focus();
+        if (!this.gui.isMobile) this.gui.actionInput.focus();
         if (!cmdBuffer.length) return;
         try {
             switch (cmdBuffer[0]) {
@@ -74,7 +76,7 @@ export class FSCmd {
     execHelp() {
         const hintText = this.gui.hintText;
         this.clearCmdBuffer();
-        hintText.innerText = "非常抱歉，作者暂时还没写帮助文档";
+        document.getElementById("github").click();
     }
     execMetaDeduct() {
         const cmdBuffer = this.cmdBuffer;
@@ -100,7 +102,7 @@ export class FSCmd {
                     this.clearCmdBuffer();
                     hintText.innerText = "元规则执行错误：" + e;
                 }
-            break;
+                break;
             default: hintText.innerText = "该元规则不存在或作者暂未实现";
         }
     }
@@ -202,10 +204,22 @@ export class FSCmd {
         if (this.cmdBuffer.length > 1) return;
         const ds = this.gui.formalSystem.deductions;
         this.gui.hintText.innerText = "正在保存";
-        navigator.clipboard.writeText(this.savesParser.serialize(JSON.stringify(ds))).then(() => {
-            this.clearCmdBuffer();
-            this.gui.hintText.innerText = "进度成功保存至剪贴板";
-        });
+        const data = this.savesParser.serialize(JSON.stringify(ds));
+        if (!navigator.clipboard) {
+            this.gui.actionInput.value = data;
+            this.gui.actionInput.select();
+            if (document.execCommand("copy")) {
+                this.clearCmdBuffer();
+                this.gui.hintText.innerText = "进度成功保存至剪贴板";
+            } else {
+                this.gui.hintText.innerText = "无法访问剪贴板，请手动复制以下内容：";
+            }
+        } else {
+            navigator.clipboard.writeText(data).then(() => {
+                this.clearCmdBuffer();
+                this.gui.hintText.innerText = "进度成功保存至剪贴板";
+            });
+        }
     }
     execLoad() {
         if (this.cmdBuffer.length > 1) {
@@ -298,7 +312,7 @@ export class FSCmd {
     }
     replaceActionInputFromClick(inserted: string) {
         const actionInput = this.gui.actionInput;
-        actionInput.focus();
+        if (!this.gui.isMobile) actionInput.focus();
         const val = actionInput.value;
         const start = actionInput.selectionStart;
         const end = actionInput.selectionEnd;
