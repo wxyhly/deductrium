@@ -46,17 +46,14 @@ export function addZFC(fs: FormalSystem) {
     addDeduction("( ⊢ ($0 > (V$1: $0)))", [[8, ["$0"], []], [7, ["$1"], [-1]], [5, ["$1", "$0", "$0"], []], [0, [], [-1, -2]]]);
     deductionFrom = "符号宏";
 
-    addDeduction("$0 ⊢#replace($0,#0|#1,~#0>#1)");
-    addDeduction("$0 ⊢#replace($0,~#0>#1,#0|#1)");
+    addDeduction("⊢($0>$1)>(($1>$0)>($0<>$1))");
+    addDeduction("⊢($0<>$1)>(~($0>$1)>($1>$0))");
+    addDeduction("⊢(~$0>$1) <> ($0|$1)");
+    addDeduction("⊢~($0>~$1) <> ($0&$1)");
+    addDeduction("⊢~($0>~$1) <> ($0&$1)");
+    addDeduction("⊢~(V$0:~$1) <> (E$0:$1)");
+    addDeduction("⊢(V$0:($0@#satisfy($1,!$0) <> $0@#satisfy($2,!$0))) <> ($1=$2)");
 
-    addDeduction("$0 ⊢#replace($0,#0&#1,~(#0>~#1))");
-    addDeduction("$0 ⊢#replace($0,~(#0>~#1),#0&#1)");
-
-    addDeduction("$0 ⊢#replace($0,(#0>#1)&(#1>#0),#0<>#1)");
-    addDeduction("$0 ⊢#replace($0,#0<>#1,(#0>#1)&(#1>#0))");
-
-    addDeduction("$0 ⊢#replace($0,~(V#0:~#1),E#0:#1)");
-    addDeduction("$0 ⊢#replace($0,E#0:#1,~(V#0:~#1))");
 
     // addDeduction("$0 ⊢#replace($0,(E#0:#1)&(Vx:(Vy:(#replace(#1,#0,x)&#replace(#1,#0,y) <> x=y))),E!#0:#1)");
     // addDeduction("$0 ⊢#replace($0,E!#0:#1,(E#0:#1)&(Vx:(Vy:(#replace(#1,#0,x)&#replace(#1,#0,y) <> x=y))))");
