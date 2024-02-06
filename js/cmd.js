@@ -50,6 +50,8 @@ export class FSCmd {
             switch (cmdBuffer[0]) {
                 case "macro":
                 case "m": return this.execMacro();
+                case "inline": return this.execInline();
+                case "expand": return this.execExpand();
                 case "save": return this.execSave();
                 case "load": return this.execLoad();
                 case "help": return this.execHelp();
@@ -74,6 +76,20 @@ export class FSCmd {
         catch (e) {
             this.clearCmdBuffer();
             hintText.innerText = `意外的错误：${e}`;
+        }
+    }
+    execExpand() {
+        const hintText = this.gui.hintText;
+        if (this.cmdBuffer[1] === "expand") {
+        }
+        else {
+            hintText.innerText = `请输入或点击使用推理宏得到的定理`;
+        }
+    }
+    execInline() {
+        const hintText = this.gui.hintText;
+        if (this.cmdBuffer[1] === "inline") {
+            hintText.innerText = `请输入或点击使用推理宏得到的定理\n再次输入该命令(expand)将应用于对定理表中所有推理宏`;
         }
     }
     execHelp() {
@@ -156,9 +172,9 @@ export class FSCmd {
             const preProps = formalSystem.propositions.length;
             try {
                 formalSystem.deduct({
-                    deductionIdx: cmdBuffer[1],
+                    deductionIdx: Number(cmdBuffer[1]),
                     replaceValues: cmdBuffer.slice(2, 2 + replVarsLength).map((it) => this.astparser.parse(it)),
-                    conditionIdxs: cmdBuffer.slice(2 + replVarsLength)
+                    conditionIdxs: cmdBuffer.slice(2 + replVarsLength).map(n => Number(n))
                 });
                 this.clearCmdBuffer();
                 this.gui.updatePropositionList();

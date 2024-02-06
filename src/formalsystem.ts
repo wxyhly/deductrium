@@ -1,6 +1,6 @@
 import { ASTMgr, AST, ASTMatchResult } from "./astmgr.js";
 export type DeductionStep = { conditionIdxs: number[], deductionIdx: number, replaceValues: AST[], isSubstep?: boolean }
-export type Deduction = { value: AST, conditions: AST[], conclusion: AST, replaceNames: string[], from: string, steps?: DeductionStep[] };
+export type Deduction = { value: AST, conditions: AST[], netConditions: AST[], conclusion: AST, replaceNames: string[], from: string, steps?: DeductionStep[] };
 export type MetaRule = { value: AST, conditions: AST[], conclusions: AST[], replaceNames: string[], from: string };
 export type Proposition = { value: AST, from: DeductionStep[] };
 
@@ -17,11 +17,19 @@ export class FormalSystem {
         if (!grammarCheck) throw "未找到推理符号";
         const [conditions, conclusions] = ast.nodes;
         if (conclusions.nodes?.length !== 1) throw "推理符号后面的结论数量必须为1";
+        const netConditions = conditions.nodes.map(c => {
+            const netC = astmgr.clone(c);
+            this.getNetCondition(netC);
+            return netC;
+        });
+        const allReplNames = this.getAllReplNames([...conditions.nodes, ...conclusions.nodes]);
+        const conditionReplNames = this.getAllReplNames(netConditions);
         return {
             value: ast,
             conclusion: conclusions.nodes[0],
             conditions: conditions.nodes,
-            replaceNames: [],
+            replaceNames: Array.from(allReplNames).filter(e => !conditionReplNames.has(e)).sort(),
+            netConditions,
             from: ""
         };
     }
@@ -38,21 +46,50 @@ export class FormalSystem {
             from: ""
         };
     }
+    private getNetCondition(condition: AST) {
+        if (condition.type === "fn" && condition.name === "#nofree") {
+            astmgr.assign(condition, condition.nodes[0]);
+            this.getNetCondition(condition);
+        } else if (condition.nodes?.length) {
+            for (const n of condition.nodes) this.getNetCondition(n);
+        }
+    }
+    private getReplNames(ast: AST): Set<string> {
+        const replNames = new Set<string>;
+        if (ast.name.match(this.deductionReplNameRule)) {
+            if (ast.type === "fn") {
+                replNames.add(ast.name + `(${ast.nodes.map((v, idx) => this.fnParamNames(idx)).join(",")})`);
+                for (const n of ast.nodes) this.getReplNames(n).forEach(v => replNames.add(v));
+                return replNames;
+            }
+            replNames.add(ast.name);
+            return replNames;
+        }
+        if (ast.nodes) for (const n of ast.nodes) this.getReplNames(n).forEach(v => replNames.add(v));
+        return replNames;
+    }
+    private getAllReplNames(asts: AST[]): Set<string> {
+        const replNames = new Set<string>;
+        for (const ast of asts) {
+            this.getReplNames(ast).forEach(str => replNames.add(str));
+        }
+        return replNames;
+    }
     addDeduction(d: AST, from: string, macro?: DeductionStep[]) {
         const deduction = this.ast2deduction(d);
         deduction.from = from;
         deduction.steps = macro;
-        this.calculateDeductionReplaceValues(deduction);
         return this.deductions.push(deduction) - 1;
     }
     addMetaRule(m: AST, from: string) {
         const metaRule = this.ast2metaRule(m);
         metaRule.from = from;
-        this.calculateMetaRuleReplaceValues(metaRule);
+        // this.calculateMetaRuleReplaceValues(metaRule);
         this.metaRules.push(metaRule);
     }
     addHypothese(m: AST) {
         if (this.hypothesisAmount !== this.propositions.length) return false;
+        if (!this.expandNofreeFn(m, this.deductionReplNameRule)) throw "假设中的附加条件自相矛盾";
         this.propositions.push({ value: m, from: [] });
         this.hypothesisAmount++;
     }
@@ -101,58 +138,54 @@ export class FormalSystem {
             this.hypothesisAmount = Math.min(this.propositions.length, this.hypothesisAmount);
         }
     }
-    deduct(step: DeductionStep) {
+    deduct(step: DeductionStep, inlineMode?: boolean) {
         const { conditionIdxs, deductionIdx, replaceValues } = step;
         const deduction = this.deductions[deductionIdx];
-        const { conditions, conclusion, replaceNames, steps } = deduction;
+        const { conditions, conclusion, replaceNames, steps, netConditions } = deduction;
         const errorMsg = `d${deductionIdx} 推理失败: `;
-
-        // find all replvars, match them
-
+        replaceValues.forEach((ast, idx) => {
+            if (!this.expandNofreeFn(ast, this.deductionReplNameRule)) {
+                throw `替代${replaceNames[idx]}的表达式中的附加条件自相矛盾`;
+            }
+        });
         // find repls provided by user, replfns must be by user
         let replsMatchTable: ASTMatchResult = Object.fromEntries(replaceNames.map((replname: string, idx: number) => [replname, replaceValues[idx]]));
 
-        // then find replvar that can be matched
+        // then match given condition props with net condition (with #nofree peeled)
         for (const [conditionIdx, condition] of conditions.entries()) {
             const condPropIdx = conditionIdxs[conditionIdx];
             const condProp = this.propositions[condPropIdx];
             if (!condProp) throw errorMsg + `第${conditionIdx + 1}个条件对应的定理p${condPropIdx}不存在`;
-            // remove built-in fn $nofree before doing match
-            const netCondition = this.getNetCondition(condition, replsMatchTable);
+            // before matching, expand user defined fns in net condition
+            const expandedNetCondition = astmgr.clone(netConditions[conditionIdx]);
+            astmgr.expandReplFn(expandedNetCondition, this.fnParamNames, replsMatchTable);
             replsMatchTable = astmgr.mergeMatchResults(
                 replsMatchTable,
-                astmgr.match(condProp.value, netCondition, this.deductionReplNameRule)
+                astmgr.match(condProp.value, expandedNetCondition, this.deductionReplNameRule)
             );
             if (!replsMatchTable) throw errorMsg + `无法匹配第${conditionIdx + 1}个条件`;
         }
 
-        // replace replvars in conditions and conclusion, and execute built-in fn $replace and $nofree
+        // replace replvars in conditions, test and expand #nofree
+
+        for (const [conditionIdx, condition] of conditions.entries()) {
+            const condPropIdx = conditionIdxs[conditionIdx];
+            const condProp = this.propositions[condPropIdx];
+            const replacedCondition = astmgr.clone(condition);
+            astmgr.expandReplFn(replacedCondition, this.fnParamNames, replsMatchTable);
+            astmgr.replaceByMatchResult(replacedCondition, replsMatchTable);
+            if (!this.expandNofreeFn(replacedCondition, this.deductionReplNameRule)) throw errorMsg + `第${conditionIdx + 1}个条件中的附加条件无法满足`;
+            if (!astmgr.equal(replacedCondition, condProp.value)) throw errorMsg + `第${conditionIdx + 1}个条件中的附加条件无法满足`;
+        }
 
         let replacedConclusion = astmgr.clone(conclusion);
         astmgr.expandReplFn(replacedConclusion, this.fnParamNames, replsMatchTable);
         astmgr.replaceByMatchResult(replacedConclusion, replsMatchTable);
-        // if (!this.executeDeductBuiltinFn(replacedConclusion)) throw errorMsg + "结论中的附加条件无法满足";
-        for (const [conditionIdx, condition] of conditions.entries()) {
-            const replacedCondition = astmgr.clone(condition);
-            astmgr.expandReplFn(replacedCondition, this.fnParamNames, replsMatchTable);
-            astmgr.replaceByMatchResult(replacedCondition, replsMatchTable);
-            if (!this.executeNofreeFn(replacedCondition)) throw errorMsg + `第${conditionIdx + 1}个条件中的附加条件无法满足`;
-
-        }
-
-        if (!this.executeNofreeFn(replacedConclusion)) throw errorMsg + "结论中的附加条件无法满足";
-        this.expandNofreeFn(replacedConclusion, this.deductionReplNameRule);
-        let grammarError: string;
-        if (grammarError = this.checkGrammarError(replacedConclusion)) throw errorMsg + grammarError;
-        for (const [conditionIdx, condition] of conditions.entries()) {
-            let replacedCondition = astmgr.clone(condition);
-            astmgr.replaceByMatchResult(replacedCondition, replsMatchTable);
-            if (!this.executeDeductBuiltinFn(replacedConclusion)) throw errorMsg + `第${conditionIdx + 1}个条件中的附加条件无法满足`;
-        }
+        if (!this.expandNofreeFn(replacedConclusion, this.deductionReplNameRule)) throw errorMsg + "结论中的附加条件无法满足";
 
         // if it isn't macro, done
 
-        if (!steps?.length) {
+        if (!steps?.length || inlineMode) {
             return this.propositions.push({ value: replacedConclusion, from: [step] }) - 1;
         }
 
@@ -192,116 +225,60 @@ export class FormalSystem {
         }
         return propLength - 1;
     }
-    private getNetCondition(condition: AST, replFnExprs: ASTMatchResult) {
-        const netCondition = astmgr.clone(condition);
-        astmgr.expandReplFn(netCondition, this.fnParamNames, replFnExprs);
-        // todo: change #satisfy to exandFn
-        astmgr.replaceDeep(
-            netCondition,
-            { type: "fn", name: "#nofree", nodes: [{ type: "replvar", name: "$1" }, { type: "replvar", name: "$2" }] },
-            { type: "replvar", name: "$1" }
-        );
-        return netCondition;
-    }
-    calculateDeductionReplaceValues(deduction: Deduction) {
-        let repls = Array.from(astmgr.getAllReplNames(deduction.conclusion, this.deductionReplNameRule));
-        let conditionRepls = new Set<string>;
-        for (const condition of deduction.conditions) {
-            astmgr.getAllReplNames(condition, this.deductionReplNameRule).forEach(v => conditionRepls.add(v));
-        }
-        deduction.replaceNames = repls.filter(n => !conditionRepls.has(n)).sort();
-    }
-
-    calculateMetaRuleReplaceValues(metaRule: MetaRule) {
-        let conditionRepls = new Set<string>;
-        for (const condition of metaRule.conditions) {
-            astmgr.getAllReplNames(condition, this.deductionReplNameRule).forEach(v => conditionRepls.add(v));
-        }
-        for (const condition of metaRule.conditions) {
-            astmgr.getAllReplNames(condition, this.deductionReplNameRule).forEach(v => conditionRepls.add(v));
-        }
-        metaRule.replaceNames = Array.from(conditionRepls).sort();
-    }
-    executeDeductBuiltinFn(ast: AST) {
-        if (ast.type === "fn") {
-            if (ast.name === "#replace") {
-                astmgr.replace(ast.nodes[0], ast.nodes[1], ast.nodes[2], false, /^#/g);
-                astmgr.assign(ast, ast.nodes[0]);
-                return this.executeDeductBuiltinFn(ast);
-            }
-        }
-        if (ast.nodes) for (const n of ast.nodes) {
-            if (!this.executeDeductBuiltinFn(n)) return false;
-        }
-        return true;
-    }
-    checkGrammarError(ast: AST) {
-        return null;
-    }
-    private isVarFreeInAST(varname: string, ast: AST) {
-        switch (ast.type) {
-            case "replvar":
-                return varname === ast.name;
-            case "sym":
-                switch (ast.name) {
-                    case "V": case "E": case "E!":
-                        if (ast.nodes[0].name === varname) return false; // not free
-                        return this.isVarFreeInAST(varname, ast.nodes[1]);
-                }
-            default:
-                for (const n of ast.nodes) if (this.isVarFreeInAST(varname, n)) { return true; }
-                return false;
+    private _reconstructNoFreeFn(ast: AST, nofreeVars: Set<string>) {
+        if (!nofreeVars.size) {
+            astmgr.assign(ast, ast.nodes[0]);
+        } else {
+            ast.nodes = [ast.nodes[0], ...Array.from(nofreeVars).map(v => ({ type: "replvar", name: v }))];
         }
     }
-    private expandNofreeFn(ast: AST, replNameRule: RegExp) {
+    private expandNofreeFn(ast: AST, replNameRule?: RegExp): boolean {
         if (ast.type === "fn" && ast.name === "#nofree") {
-            if (ast.nodes[1].type !== "replvar") {
-                this.expandNofreeFn(ast.nodes[1], /never <> matched/);
-            }
-            const nofreeVar = ast.nodes[1].name;
+            const nofreeAsts = ast.nodes.slice(1).map(n => (this.getNetCondition(n), n));
+            let nofreeVars = new Set(nofreeAsts.map(n => n.name));
             const testAst = ast.nodes[0];
             if (testAst.type === "replvar") {
-                // #nofree($0,$0) -> $0 but failed (used in expandNofreeFn)
-                // #nofree($1,$1)
-                if (testAst.name === nofreeVar) {
-                    astmgr.assign(ast, testAst);
-                    return;
+                // #nofree($0,..$0..), fail 
+                // #nofree(a,..a..), fail 
+                if (nofreeVars.has(testAst.name)) {
+                    return false;
                 }
-                // #nofree($0,a)
-                // #nofree($0,$1)
-                // #nofree(a,$1)
-                if (testAst.name.match(replNameRule)||nofreeVar.match(replNameRule)) {
-                    return;
-                } else {
-                   // #nofree(a,b) 
-                    astmgr.assign(ast, testAst);
-                    return;
+                // else a!=b:
+                // #nofree(a,..b..), delete b
+                if (!testAst.name.match(replNameRule)) {
+                    nofreeVars.forEach(b => {
+                        if (!b.match(replNameRule)) {
+                            nofreeVars.delete(b);
+                        }
+                    });
                 }
+                this._reconstructNoFreeFn(ast, nofreeVars);
+                return true;
+            }
+            if (testAst.type === "fn" && testAst.name === "#nofree") {
+                const subNofreeAsts = testAst.nodes.slice(1).map(n => (this.getNetCondition(n), n));
+                let subNofreeVars = new Set(subNofreeAsts.map(n => n.name));
+                nofreeVars.forEach(e => subNofreeVars.add(e));
+                astmgr.assign(ast, testAst);
+                this._reconstructNoFreeFn(ast, subNofreeVars);
+                return this.expandNofreeFn(ast, replNameRule);
             }
             if (testAst.type === "sym" && (testAst.name === "V" || testAst.name === "E" || testAst.name === "E!")) {
                 let localVar = testAst.nodes[0].name;
                 let subAst = testAst.nodes[1];
                 // #nofree(Va:xxx,a) -> true
-                if (localVar === nofreeVar) {
-                    astmgr.assign(ast, testAst);
-                    return;
+                if (nofreeVars.has(localVar)) {
+                    nofreeVars.delete(localVar);
                 }
-                const newSubAst = astmgr.clone(subAst);
+                const newSubAst = { type: "fn", name: "#nofree", nodes: [testAst.nodes[1]] };
+                this._reconstructNoFreeFn(newSubAst, nofreeVars);
                 astmgr.assign(ast, {
                     type: "sym", name: testAst.name, nodes: [
                         testAst.nodes[0],
-                        { type: "fn", name: "#nofree", nodes: [testAst.nodes[1], ast.nodes[1]] },
+                        newSubAst
                     ]
                 });
-                this.expandNofreeFn(ast, replNameRule);
-                return;
-            }
-            if (testAst.type === "fn" && testAst.name === "#nofree") {
-                if (testAst.nodes[1].name === nofreeVar) {
-                    astmgr.assign(ast, testAst);
-                    this.expandNofreeFn(ast, replNameRule);
-                }
-                return;
+                return this.expandNofreeFn(ast, replNameRule);
             }
             if (testAst.nodes?.length) {
                 const newTestAst = {
@@ -312,50 +289,16 @@ export class FormalSystem {
                 for (const subAst of testAst.nodes) {
                     newTestAst.nodes.push({
                         type: "fn", name: "#nofree",
-                        nodes: [astmgr.clone(subAst), ast.nodes[1]]
+                        nodes: [subAst, ...nofreeAsts.map(e => astmgr.clone(e))]
                     });
                 }
-                this.expandNofreeFn(newTestAst, replNameRule);
                 astmgr.assign(ast, newTestAst);
+                return this.expandNofreeFn(ast);
             }
-            return;
+            throw "cannot reached";
         }
         if (ast.nodes?.length) {
-            for (const n of ast.nodes) this.expandNofreeFn(n, replNameRule);
-        }
-    }
-    private executeNofreeFn(ast: AST) {
-        if (ast.type === "fn" && ast.name === "#nofree") {
-            if (ast.nodes[1].type !== "replvar") return false;
-            const nofreeVar = ast.nodes[1].name;
-            const testAst = ast.nodes[0];
-            if (testAst.type === "replvar") {
-                // #nofree(a,a) -> false
-                // #nofree(a,b) -> true
-                return (nofreeVar !== ast.name);
-            }
-            if (testAst.type === "sym" && (testAst.name === "V" || testAst.name === "E" || testAst.name === "E!")) {
-                let localVar = testAst.nodes[0].name;
-                let subAst = testAst.nodes[1];
-                // #nofree(Va:xxx,a) -> true
-                if (localVar === nofreeVar) return true;
-                // #nofree(Va:xxx,b) -> #nofree(xxx,b)
-                return this.executeNofreeFn({
-                    type: "fn", name: "#nofree",
-                    nodes: [subAst, ast.nodes[1]]
-                });
-            }
-            if (testAst.nodes?.length) {
-                for (const subAst of testAst.nodes) {
-                    if (!this.executeNofreeFn({
-                        type: "fn", name: "#nofree",
-                        nodes: [subAst, ast.nodes[1]]
-                    })) return false;
-                }
-            }
-        }
-        if (ast.nodes?.length) {
-            for (const n of ast.nodes) this.executeNofreeFn(n);
+            for (const n of ast.nodes) if (!this.expandNofreeFn(n, replNameRule)) return false;
         }
         return true;
     }
@@ -368,18 +311,26 @@ export class FormalSystem {
         const oldPropositions = this.propositions;
         const oldHypothesisAmount = this.hypothesisAmount;
         // 假设中的函数设为同名函数，会不会发生递归？？
-        const netConditions = d.conditions.map(dc => this.getNetCondition(dc, {}));
+        // const netConditions = d.conditions.map(dc => this.getNetCondition(dc, {}));
 
         try {
 
             // expand macro in propositions, store it in const refPropositions
 
             this.removePropositions();
-            netConditions.forEach(dcond => this.addHypothese(dcond));
+            d.conditions.forEach(dcond => this.addHypothese(dcond));
             this.deduct({
-                deductionIdx, conditionIdxs: d.conditions.map((v, idx) => idx), replaceValues: d.replaceNames.map(str => ({
-                    type: "replvar", name: str
-                }))
+                deductionIdx, conditionIdxs: d.conditions.map((v, idx) => idx), replaceValues: d.replaceNames.map(str => str.includes("(") ?
+                    {
+                        type: "fn", name: str.replace(/^(.+)\(.*\)$/g, "$1"),
+                        nodes: str.replace(/^.+\((.*)\)$/g, "$1").split(",").map(e => ({
+                            type: "replvar", name: e
+                        }))
+                    }
+                    :
+                    {
+                        type: "replvar", name: str
+                    })
             });
             const refPropositions = this.propositions;
 
@@ -387,8 +338,8 @@ export class FormalSystem {
 
             this.removePropositions();
             const newConditions = d.conditions.slice(0, -1);
-            const newNetCoditions = netConditions.slice(0, -1);
-            newNetCoditions.forEach(dcond => this.addHypothese(dcond));
+            // const newNetCoditions = netConditions.slice(0, -1);
+            newConditions.forEach(dcond => this.addHypothese(dcond));
             refPropositions.forEach(p => p.from ? p.from = [p.from[p.from.length - 1]] : null);
             const HYP = 0, CND = 1, AXM = 2, DDT = 3;
             const infoTable = [];

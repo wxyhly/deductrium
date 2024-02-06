@@ -19,9 +19,11 @@ export function addZFC(fs: FormalSystem) {
     deductionFrom = "演绎元定理";
     addMetaRule("(...$$0, $$1 ⊢ $$2 ) ⊢M (...$$0 ⊢ $$1 > $$2 )");
     deductionFrom = "符号定义";
-    addMetaRule("##new($$0) ⊢M (⊢ $0 > #replace($0, #0 $$0 #1, $$1)) ,( ⊢ $0 > #replace($0,$$1, #0 $$0 #1)) ");
+    addMetaRule("##new($$0) ⊢M (⊢ $0 $$0 $1 <> $$1($0,$1) ) ");
+    deductionFrom = "函数定义";
+    addMetaRule("##new(#$0) ⊢M (⊢ #$0($0, $1) <> $$1($0,$1) ) ");
     deductionFrom = "常数定义";
-    addMetaRule("(E!$$0 : $$1), ##new($$2) ⊢M ( ⊢ ##replace($$1,$$0,$$2) )");
+    addMetaRule("(E!$$0 : $$1($$0)), ##new($$2) ⊢M ( ⊢ $$1($$2) )");
 
     deductionFrom = "命题逻辑";
     addDeduction("$0> $1, $0 ⊢ $1");
@@ -30,28 +32,33 @@ export function addZFC(fs: FormalSystem) {
     addDeduction("⊢ (~$0 > ~$1) > ($1>$0)");
 
     deductionFrom = "一阶逻辑";
-    addDeduction("⊢ (V$0 $1) > #replace($1,$0,$2)");
+    addDeduction("⊢ (V$0 $1($0)) > $1($2)");
     addDeduction("⊢ (V$0 #nofree($1,$0)>$2) > (#nofree($1,$0)>(V$0 $2))");
     addDeduction("⊢ (V$0 $1>$2) > ((V$0 $1)>(V$0 $2))");
     addDeduction("$0 ⊢V$1 $0");
 
 
 
-    deductionFrom = "符号宏";
+    deductionFrom = "符号定义";
 
     addDeduction("⊢($0>$1)>(($1>$0)>($0<>$1))");
     addDeduction("⊢($0<>$1)>($0>$1)");
     addDeduction("⊢($0<>$1)>($1>$0)");
-    // addDeduction("⊢($0<>$1)>~(($0>$1)>~($1>$0))");
     addDeduction("⊢(~$0>$1) <> ($0|$1)");
     addDeduction("⊢~($0>~$1) <> ($0&$1)");
     addDeduction("⊢~(V$0:~$1) <> (E$0:$1)");
-    addDeduction("⊢(V$0:($0@#nofree($1,$0) <> $0@#nofree($2,$0))) <> ($1=$2)");
-    deductionFrom = "hide";
-    addDeduction("⊢ (#nofree($1,$0)=#nofree($2,$0)) > (V$0:x@$0<>y@$0)");
+    addDeduction("⊢ (#nofree($a,$0)=#nofree($b,$0)) <> (V$0:$0@#nofree($a,$0)<>$0@#nofree($b,$0))");
+    deductionFrom = "ZFC集合论";
+    addDeduction("⊢ (#nofree($a,$0)=#nofree($b,$0)) > (V$0:#nofree($a,$0)@$0<>#nofree($b,$0)@$0)");
+    deductionFrom = "*保存的宏";
+    addDeduction("⊢$0 <> ~~$0");
+    addDeduction(" ⊢ ($0 <> $1) > (($1 <> $2) > ($0 <> $2))");
+    addDeduction("( ⊢ ((V$a: ($0 <> $1)) > ((V$a: ($1 <> $2)) > (V$a: ($0 <> $2))))))");
 
-    deductionFrom = "m0所需宏";
+
+    deductionFrom = "paddings";
     while (fs.deductions.length < 100 - 8) addDeduction("⊢ $0>($1>$0)");
+    deductionFrom = "*m0所需宏";
     // d92-d99
     addDeduction('( ⊢ ($0 > $0))', [[1, ["$0", "($0 > $0)"], []], [1, ["$0", "$0"], []], [2, ["$0", "($0 > $0)", "$0"], []], [0, [], [-1, -3]], [0, [], [-1, -3]]]);
     addDeduction("(($0 > $1), ($1 > $2) ⊢ ($0 > $2))", [[1, ["($1 > $2)", "$0"], []], [0, [], [-1, 1]], [2, ["$0", "$1", "$2"], []], [0, [], [-1, -2]], [0, [], [-1, 0]]]);

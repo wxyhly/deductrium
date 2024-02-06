@@ -38,7 +38,7 @@ export class ASTMgr {
                 const returned = this.clone(fnExprs[key]);
                 // returned = fnExprs ./ { #0 -> xxx , #1 -> yyy }
                 for (const [paramIdx, param] of ast.nodes.entries()) {
-                    this.replace(returned, param, { type: "replvar", name: fnParamNames(paramIdx) });
+                    this.replace(returned, { type: "replvar", name: fnParamNames(paramIdx) }, param);
                 }
                 this.assign(ast, returned);
             }
@@ -51,45 +51,6 @@ export class ASTMgr {
     }
     match(ast: AST, searchValue: AST, replNameRule: RegExp): ASTMatchResult {
         let result: ASTMatchResult = {};
-        // 必须先求值，否则无解
-        // while (
-        //     searchValue.type === "fn" && searchValue.name === "#nofree" &&
-        //     !(ast.type === "replvar" && ast.name.match(replNameRule))
-        // ) {
-        //     const nofreeVars = searchValue.nodes.slice(1);
-        //     if (ast.type === "replvar") {
-        //         // #nofree(xxx,a) match a -> false
-        //         if (nofreeVars.map(a => a.name).includes(ast.name)) return false;
-        //         // #nofree(xxx,b) match a -> xxx match a
-        //         return this.match(searchValue.nodes[0], ast, replNameRule);
-        //     }
-        //     if (ast.type === "sym" && (ast.name === "V" || ast.name === "E" || ast.name === "E!")) {
-        //         let localVar = ast.nodes[0].name;
-        //         let subAst = ast.nodes[1];
-        //         // #nofree(xxx,$1) match V$1:yyyy -> xxx match V$1:yyyy
-        //         // #nofree(xxx,a) match Va:yyyy -> xxx match Va:yyyy
-        //         if (nofreeVars.map(a => a.name).includes(localVar)) {
-        //             return this.match(subAst, searchValue.nodes[0], replNameRule);
-        //         }
-        //         // #nofree(xxx,$1) match V$2:yyyy -> xxx match V$2:yyyy
-        //         // #nofree(xxx,a) match Vb:yyyy -> #nofree(xxx,a) match Vb:yyyy
-        //         break;
-
-        //     }
-
-        //     if (ast.nodes?.length) {
-        //         for (let i = 0; i < ast.nodes.length; i++) {
-        //             result = this.mergeMatchResults(result,
-        //                 this.match(ast.nodes[i], {
-        //                     type: "fn", name: "#nofree",
-        //                     nodes: [searchValue.nodes[i], ...nofreeVars]
-        //                 }, replNameRule)
-        //             );
-        //             if (!result) return false;
-        //         }
-        //     }
-        //     break;
-        // }
         if (searchValue.name.match(replNameRule)) {
             if (searchValue.type === "replvar") {
                 result[searchValue.name] = ast;
@@ -162,16 +123,23 @@ export class ASTMgr {
             }
         }
     }
-    getAllReplNames(ast: AST, replNameRule: RegExp, fnParamNames?: (idx: number) => string): Set<string> {
-        const replNames = new Set<string>;
-        if (ast.name.match(replNameRule)) {
-            if (fnParamNames && ast.type === "fn") {
-                replNames.add(ast.name + `(${ast.nodes.map((v, idx) => fnParamNames[idx]).join(",")})`);
-            }
-            replNames.add(ast.name);
-            return replNames;
-        }
-        if (ast.nodes) for (const n of ast.nodes) this.getAllReplNames(n, replNameRule).forEach(v => replNames.add(v));
-        return replNames;
-    }
+    // getAllReplNames(ast: AST, replNameRule: RegExp, fnParamNames?: (idx: number) => string): Set<string> {
+    //     const replNames = new Set<string>;
+    //     if(ast.type==="fn"&&ast.name==="#nofree"){
+    //         this.getAllReplNames(ast.nodes[0], replNameRule, fnParamNames).forEach(v => replNames.add(v));
+    //         // skip nodes[1]
+    //         return replNames;
+    //     }
+    //     if (ast.name.match(replNameRule)) {
+    //         if (fnParamNames && ast.type === "fn") {
+    //             replNames.add(ast.name + `(${ast.nodes.map((v, idx) => fnParamNames(idx)).join(",")})`);
+    //             for (const n of ast.nodes) this.getAllReplNames(n, replNameRule, fnParamNames).forEach(v => replNames.add(v));
+    //             return replNames;
+    //         }
+    //         replNames.add(ast.name);
+    //         return replNames;
+    //     }
+    //     if (ast.nodes) for (const n of ast.nodes) this.getAllReplNames(n, replNameRule, fnParamNames).forEach(v => replNames.add(v));
+    //     return replNames;
+    // }
 }
