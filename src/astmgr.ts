@@ -29,6 +29,15 @@ export class ASTMgr {
         }
         return true;
     }
+    preventCircularReplace(ast: AST, replNameRule: RegExp) {
+        if (ast.type === "replvar" && ast.name.match(replNameRule)) {
+            ast.type = "$" + ast.type;
+        } else {
+            if (ast.nodes?.length) {
+                for (const n of ast.nodes) this.preventCircularReplace(n, replNameRule);
+            }
+        }
+    }
     expandReplFn(ast: AST, fnParamNames: (idx: number) => string, fnExprs: ASTMatchResult) {
         if (!fnExprs) return;
         if (ast.type === "fn") {
@@ -99,7 +108,7 @@ export class ASTMgr {
         }
         return;
     }
-    private finishReplace(ast: AST) {
+    finishReplace(ast: AST) {
         if (ast.type.startsWith("$")) ast.type = ast.type.slice(1);
         if (ast.nodes?.length) {
             for (const n of ast.nodes) this.finishReplace(n);
@@ -123,23 +132,4 @@ export class ASTMgr {
             }
         }
     }
-    // getAllReplNames(ast: AST, replNameRule: RegExp, fnParamNames?: (idx: number) => string): Set<string> {
-    //     const replNames = new Set<string>;
-    //     if(ast.type==="fn"&&ast.name==="#nofree"){
-    //         this.getAllReplNames(ast.nodes[0], replNameRule, fnParamNames).forEach(v => replNames.add(v));
-    //         // skip nodes[1]
-    //         return replNames;
-    //     }
-    //     if (ast.name.match(replNameRule)) {
-    //         if (fnParamNames && ast.type === "fn") {
-    //             replNames.add(ast.name + `(${ast.nodes.map((v, idx) => fnParamNames(idx)).join(",")})`);
-    //             for (const n of ast.nodes) this.getAllReplNames(n, replNameRule, fnParamNames).forEach(v => replNames.add(v));
-    //             return replNames;
-    //         }
-    //         replNames.add(ast.name);
-    //         return replNames;
-    //     }
-    //     if (ast.nodes) for (const n of ast.nodes) this.getAllReplNames(n, replNameRule, fnParamNames).forEach(v => replNames.add(v));
-    //     return replNames;
-    // }
 }

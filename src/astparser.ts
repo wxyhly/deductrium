@@ -1,7 +1,7 @@
 import { AST } from "astmgr.js"
 export class ASTParser {
     keywords = ["E!", "⊢M", "<>"];
-    symChar = "VEMU()@~^>|&=,;:[]!⊢";
+    symChar = "VEMU()@~^>|&=,;:[]!⊢+";
     ast: AST;
     cursor: number = 0;
     tokens: string[];
@@ -98,12 +98,22 @@ export class ASTParser {
             throw "语法错误";
         }
     }
-    private boolTerm4(): AST {
+    private boolTerm5(): AST {
         let val = this.itemTerm();
-        while (this.token === "@" || this.token === "=" || this.token?.match(/^\$\$.+/)) {
+        while (this.token === "+" || this.token === "-" || this.token?.match(/^\$\$.+/)) {
             const name = this.token;
             this.nextSym();
             let val2 = this.itemTerm();
+            val = { type: "sym", name, nodes: [val, val2] };
+        }
+        return val;
+    }
+    private boolTerm4(): AST {
+        let val = this.boolTerm5();
+        while (this.token === "@" || this.token === "=" || this.token?.match(/^\$\$.+/)) {
+            const name = this.token;
+            this.nextSym();
+            let val2 = this.boolTerm5();
             val = { type: "sym", name, nodes: [val, val2] };
         }
         return val;

@@ -1,6 +1,6 @@
 export class ASTParser {
     keywords = ["E!", "⊢M", "<>"];
-    symChar = "VEMU()@~^>|&=,;:[]!⊢";
+    symChar = "VEMU()@~^>|&=,;:[]!⊢+";
     ast;
     cursor = 0;
     tokens;
@@ -100,12 +100,22 @@ export class ASTParser {
             throw "语法错误";
         }
     }
-    boolTerm4() {
+    boolTerm5() {
         let val = this.itemTerm();
-        while (this.token === "@" || this.token === "=" || this.token?.match(/^\$\$.+/)) {
+        while (this.token === "+" || this.token === "-" || this.token?.match(/^\$\$.+/)) {
             const name = this.token;
             this.nextSym();
             let val2 = this.itemTerm();
+            val = { type: "sym", name, nodes: [val, val2] };
+        }
+        return val;
+    }
+    boolTerm4() {
+        let val = this.boolTerm5();
+        while (this.token === "@" || this.token === "=" || this.token?.match(/^\$\$.+/)) {
+            const name = this.token;
+            this.nextSym();
+            let val2 = this.boolTerm5();
             val = { type: "sym", name, nodes: [val, val2] };
         }
         return val;

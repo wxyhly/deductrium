@@ -3,17 +3,15 @@ const astmgr = new ASTMgr;
 export class FormalSystem {
     hypothesisAmount = 0;
     deductions = [];
-    metaRules = [];
+    metaRules = {};
     deductionReplNameRule = /^\$/g;
+    consts = new Map([["0", -1], ["1", -1], ["2", -1], ["3", -1], ["4", -1], ["5", -1], ["6", -1], ["7", -1], ["8", -1], ["9", -1]]); // [constName -> defineDeductionIdx]
+    fns = new Map([["S", -1]]); // [fnName -> defineDeductionIdx]
     fnParamNames = (n) => "#" + n;
     propositions = [];
     ast2deduction(ast) {
-        let grammarCheck = ast.type === "meta" && ast.name === "⊢" && ast.nodes?.length === 2;
-        if (!grammarCheck)
-            throw "未找到推理符号";
+        this.checkGrammer(ast, "d");
         const [conditions, conclusions] = ast.nodes;
-        if (conclusions.nodes?.length !== 1)
-            throw "推理符号后面的结论数量必须为1";
         const netConditions = conditions.nodes.map(c => {
             const netC = astmgr.clone(c);
             this.getNetCondition(netC);
@@ -55,6 +53,104 @@ export class FormalSystem {
                 this.getNetCondition(n);
         }
     }
+    checkGrammer(ast, type) {
+        if (type === "v") {
+            const netAst = astmgr.clone(ast);
+            this.getNetCondition(netAst);
+            if (netAst.type !== "replvar")
+                throw `表达式出现在了变量的位置中`;
+            return netAst.name;
+        }
+        if (ast.type === "meta") {
+            if (ast.name === "⊢M")
+                if (type !== "m")
+                    throw "元推理符号⊢M只能出现在元推理规则中";
+            if (ast.name === "⊢")
+                if (type !== "d")
+                    throw "推理符号⊢只能出现在推理规则中";
+            if (ast.name === "⊢" || ast.name === "⊢M") {
+                //check arrays
+                if (ast.nodes?.length !== 2)
+                    throw "元推理/推理符号子节点数目必须为2";
+                const [cond, conc] = ast.nodes;
+                if (cond.type !== "fn" || cond.name !== "#array")
+                    throw "元推理/推理符号的条件格式必须为数组";
+                if (conc.type !== "fn" || conc.name !== "#array")
+                    throw "元推理/推理符号的结论格式必须为数组";
+                if (ast.name === "⊢" && conc.nodes?.length !== 1)
+                    throw "推理符号的结论数必须为1";
+                if (ast.name === "⊢M" && !conc.nodes?.length)
+                    throw "元推理符号的结论不能为空";
+                if (type === "m")
+                    return; // skip metarule check: check it by hand
+                if (cond.nodes?.length) {
+                    for (const cd of cond.nodes) {
+                        try {
+                            this.checkGrammer(cd, "p");
+                        }
+                        catch (e) {
+                            throw `条件中` + e;
+                        }
+                    }
+                }
+                for (const cc of conc.nodes) {
+                    try {
+                        this.checkGrammer(cc, "p");
+                    }
+                    catch (e) {
+                        throw `结论中` + e;
+                    }
+                }
+                return;
+            }
+        }
+        if (ast.type === "sym") {
+            if (type === "m")
+                throw "未找到元推理符号";
+            if (type === "d")
+                throw "未找到推理符号";
+            if (ast.name === "E" || ast.name === "V" || ast.name === "E!") {
+                let varName;
+                try {
+                    varName = this.checkGrammer(ast.nodes[0], "v");
+                }
+                catch (e) {
+                    throw `量词${ast.name}的变量中：${e}`;
+                }
+                if (this.consts.has(varName)) {
+                    throw `在d${this.consts.get(varName)}中定义的常数符号${varName}禁止出现在量词${ast.name}的约束变量中`;
+                }
+                this.checkGrammer(ast.nodes[1], "p");
+                return;
+            }
+        }
+        if (type === "m")
+            return "未找到元推理符号";
+        if (type === "d")
+            return "未找到推理符号";
+        if (ast.type === "fn") {
+            if (ast.name === "#repl" || ast.name === "#canrepl") {
+                if (ast.nodes?.length !== 3)
+                    throw `系统函数${ast.name}的参数个数必须为三个`;
+            }
+            if (ast.name === "#nofree") {
+                if (!(ast.nodes?.length > 1))
+                    throw `系统函数${ast.name}的参数个数必须至少有两个`;
+                for (let i = 1; i < ast.nodes.length; i++) {
+                    try {
+                        this.checkGrammer(ast.nodes[i], "v");
+                    }
+                    catch (e) {
+                        throw `系统函数${ast.name}第${i + 1}个参数中：${e}`;
+                    }
+                }
+            }
+        }
+        if (ast.nodes?.length) {
+            for (const n of ast.nodes)
+                this.checkGrammer(n, "p");
+        }
+    }
     getReplNames(ast) {
         const replNames = new Set;
         if (ast.name.match(this.deductionReplNameRule)) {
@@ -85,18 +181,18 @@ export class FormalSystem {
         deduction.steps = macro;
         return this.deductions.push(deduction) - 1;
     }
-    addMetaRule(m, from) {
+    addMetaRule(name, m, from) {
         const metaRule = this.ast2metaRule(m);
         metaRule.from = from;
-        // this.calculateMetaRuleReplaceValues(metaRule);
-        this.metaRules.push(metaRule);
+        this.metaRules[name] = metaRule;
     }
     addHypothese(m) {
+        this.checkGrammer(m, "p");
         if (this.hypothesisAmount !== this.propositions.length)
             return false;
         if (!this.expandNofreeFn(m, this.deductionReplNameRule))
             throw "假设中的附加条件自相矛盾";
-        this.propositions.push({ value: m, from: [] });
+        this.propositions.push({ value: m, from: null });
         this.hypothesisAmount++;
     }
     addMacro(propositionIdx) {
@@ -108,17 +204,13 @@ export class FormalSystem {
         }
         const conclusion = this.propositions[propositionIdx].value;
         const macro = [];
-        for (let i = this.hypothesisAmount, cursor = i; i <= propositionIdx; i++) {
-            const stepStack = this.propositions[i].from;
-            const step = stepStack[0];
-            if (step.isSubstep)
-                continue;
+        for (let i = this.hypothesisAmount; i <= propositionIdx; i++) {
+            const step = this.propositions[i].from;
             macro.push({
-                conditionIdxs: step.conditionIdxs.map(cidx => cidx < this.hypothesisAmount ? cidx : cidx - cursor),
+                conditionIdxs: step.conditionIdxs.map(cidx => cidx < this.hypothesisAmount ? cidx : cidx - i),
                 replaceValues: step.replaceValues,
                 deductionIdx: step.deductionIdx
             });
-            cursor = i + 1;
         }
         return this.addDeduction({
             type: "meta", name: "⊢", nodes: [
@@ -126,13 +218,6 @@ export class FormalSystem {
                 { type: "fn", name: "#array", nodes: [conclusion] },
             ]
         }, "", macro);
-    }
-    getMacroLayers(stepStack) {
-        for (let i = 0; i < stepStack.length; i++) {
-            if (!stepStack[i].isSubstep)
-                return i;
-        }
-        return 0;
     }
     removePropositions(amount) {
         if (!isFinite(amount)) {
@@ -146,17 +231,67 @@ export class FormalSystem {
             this.hypothesisAmount = Math.min(this.propositions.length, this.hypothesisAmount);
         }
     }
+    setPropositions(ps) {
+        this.propositions = ps;
+        this.hypothesisAmount = Math.max(0, ps.findIndex(p => p.from));
+    }
+    removeLastDeduction() {
+        const didx = this.deductions.length - 1;
+        for (const [name, idx] of this.consts) {
+            if (didx === idx) {
+                this.consts.delete(name);
+                break;
+            }
+        }
+        this.deductions.pop();
+    }
+    isNameCanBeNewConst(name) {
+        if (this.consts.has(name))
+            return `"${name}" 已在d${this.consts.get(name)}中被定义，无法重复定义`;
+        for (const [idx, d] of this.deductions.entries()) {
+            if (this.isNameQuantVarIn(name, d.value))
+                return `"${name}" 已作为量词中的约束变量出现在了d${idx}中，无法定义为常量符号`;
+        }
+        for (const [idx, p] of this.propositions.entries()) {
+            if (this.isNameQuantVarIn(name, p.value))
+                return `"${name}" 已作为量词中的约束变量出现在了p${idx}中，无法定义为常量符号`;
+        }
+        return true;
+    }
+    isNameQuantVarIn(name, ast) {
+        if (ast.type === "sym" && (ast.name === "E" || ast.name === "V" || ast.name === "E!")) {
+            const netVar = astmgr.clone(ast.nodes[0]);
+            this.getNetCondition(netVar);
+            if (name === netVar.name)
+                return true;
+        }
+        if (ast.nodes?.length) {
+            for (const n of ast.nodes) {
+                if (this.isNameQuantVarIn(name, n))
+                    return true;
+            }
+        }
+        return false;
+    }
     deduct(step, inlineMode) {
         const { conditionIdxs, deductionIdx, replaceValues } = step;
         const deduction = this.deductions[deductionIdx];
         const { conditions, conclusion, replaceNames, steps, netConditions } = deduction;
         const errorMsg = `d${deductionIdx} 推理失败: `;
+        // find repls provided by user, replfns must be by user
+        // firstly, check and reduce nofree fns in user's inputs
         replaceValues.forEach((ast, idx) => {
+            try {
+                this.checkGrammer(ast, "p");
+            }
+            catch (e) {
+                throw errorMsg + `替代${replaceNames[idx]}的表达式中发生语法错误：` + e;
+            }
             if (!this.expandNofreeFn(ast, this.deductionReplNameRule)) {
-                throw `替代${replaceNames[idx]}的表达式中的附加条件自相矛盾`;
+                throw errorMsg + `替代${replaceNames[idx]}的表达式中的附加条件自相矛盾`;
             }
         });
-        // find repls provided by user, replfns must be by user
+        // build repl table for matching
         let replsMatchTable = Object.fromEntries(replaceNames.map((replname, idx) => [replname, replaceValues[idx]]));
         // then match given condition props with net condition (with #nofree peeled)
         for (const [conditionIdx, condition] of conditions.entries()) {
@@ -172,39 +307,71 @@ export class FormalSystem {
                 throw errorMsg + `无法匹配第${conditionIdx + 1}个条件`;
         }
         // replace replvars in conditions, test and expand #nofree
+        // preventCircularReplace in fn's contents
+        for (const [key, ast] of Object.entries(replsMatchTable)) {
+            const clonedAst = astmgr.clone(ast);
+            astmgr.preventCircularReplace(clonedAst, this.deductionReplNameRule);
+            replsMatchTable[key] = clonedAst;
+        }
         for (const [conditionIdx, condition] of conditions.entries()) {
             const condPropIdx = conditionIdxs[conditionIdx];
             const condProp = this.propositions[condPropIdx];
             const replacedCondition = astmgr.clone(condition);
             astmgr.expandReplFn(replacedCondition, this.fnParamNames, replsMatchTable);
             astmgr.replaceByMatchResult(replacedCondition, replsMatchTable);
+            astmgr.finishReplace(replacedCondition);
             if (!this.expandNofreeFn(replacedCondition, this.deductionReplNameRule))
                 throw errorMsg + `第${conditionIdx + 1}个条件中的附加条件无法满足`;
+            this.expandCanreplFn(replacedCondition, this.deductionReplNameRule);
+            this.expandReplFn(replacedCondition, this.deductionReplNameRule);
             if (!astmgr.equal(replacedCondition, condProp.value))
                 throw errorMsg + `第${conditionIdx + 1}个条件中的附加条件无法满足`;
         }
         let replacedConclusion = astmgr.clone(conclusion);
         astmgr.expandReplFn(replacedConclusion, this.fnParamNames, replsMatchTable);
         astmgr.replaceByMatchResult(replacedConclusion, replsMatchTable);
+        astmgr.finishReplace(replacedConclusion);
         if (!this.expandNofreeFn(replacedConclusion, this.deductionReplNameRule))
             throw errorMsg + "结论中的附加条件无法满足";
-        // if it isn't macro, done
-        if (!steps?.length || inlineMode) {
-            return this.propositions.push({ value: replacedConclusion, from: [step] }) - 1;
+        this.expandCanreplFn(replacedConclusion, this.deductionReplNameRule);
+        this.expandReplFn(replacedConclusion, this.deductionReplNameRule);
+        try {
+            this.checkGrammer(replacedConclusion, "p");
         }
-        // if it is macro verify substeps 
+        catch (e) {
+            throw "结论中出现语法错误：" + e;
+        }
+        // if it isn't macro or not inineMode, done
+        let netInlineMode = inlineMode;
+        if (typeof netInlineMode === "function")
+            netInlineMode = netInlineMode(step);
+        if (!steps?.length || !netInlineMode) {
+            return this.propositions.push({ value: replacedConclusion, from: step }) - 1;
+        }
+        // if it is macro and inline, expand substeps 
         let startPropositions = this.propositions.length;
-        for (const substep of steps) {
+        let propsOffset = [];
+        for (const [substepIdx, substep] of steps.entries()) {
             // if condition number is positive, use given macro condition props
             // if condition number is negative, this implies newly deducted props, which is relative to the end of prop list
-            const replacedConditionIdxs = substep.conditionIdxs.map(idx => idx >= 0 ? conditionIdxs[idx] : this.propositions.length + idx);
+            const replacedConditionIdxs = substep.conditionIdxs.map(idx => {
+                if (idx >= 0)
+                    return conditionIdxs[idx];
+                let newIdx = this.propositions.length + idx;
+                for (let i = 0; i < -1 - idx; i++) {
+                    newIdx -= propsOffset[i];
+                }
+                return newIdx;
+            });
             const replaceValues = substep.replaceValues.map(ast => {
                 const replaced = astmgr.clone(ast);
                 astmgr.replaceByMatchResult(replaced, replsMatchTable);
                 return replaced;
             });
+            let firstPos = this.propositions.length - 1;
+            let lastPos;
             try {
-                this.deduct({ deductionIdx: substep.deductionIdx, replaceValues, conditionIdxs: replacedConditionIdxs });
+                lastPos = this.deduct({ deductionIdx: substep.deductionIdx, replaceValues, conditionIdxs: replacedConditionIdxs }, netInlineMode === "deep" ? inlineMode : null);
             }
             catch (e) {
                 // if one substep is wrong, remove newly added substeps from proplist
@@ -214,16 +381,9 @@ export class FormalSystem {
                 }
                 throw substepErrMsg;
             }
+            propsOffset.unshift(lastPos - firstPos - 1);
         }
-        // mark macro layer
         const propLength = this.propositions.length;
-        const stepMarkedSub = {
-            conditionIdxs: step.conditionIdxs, deductionIdx: step.deductionIdx, replaceValues: step.replaceValues,
-            isSubstep: true
-        };
-        for (let idx = startPropositions; idx < propLength; idx++) {
-            this.propositions[idx].from.unshift(idx === propLength - 1 ? step : stepMarkedSub);
-        }
         return propLength - 1;
     }
     _reconstructNoFreeFn(ast, nofreeVars) {
@@ -232,6 +392,228 @@ export class FormalSystem {
         }
         else {
             ast.nodes = [ast.nodes[0], ...Array.from(nofreeVars).map(v => ({ type: "replvar", name: v }))];
+        }
+    }
+    _isFreeIn(name, ast, replNameRule) {
+        if (ast.type === "replvar") {
+            // a is free in a 
+            // $0 is free in $0
+            if (ast.name === name)
+                return 1;
+            // cannot decide a is free in $1
+            // cannot decide $0 is free in $1
+            // cannot decide $0 is free in a
+            if (name.match(replNameRule) || ast.name.match(replNameRule))
+                return 0;
+            // a is not free in b
+            return -1;
+        }
+        if (ast.type === "fn" && ast.name === "#nofree") {
+            const subNofreeAsts = ast.nodes.slice(1);
+            let subNofreeVars = new Set(subNofreeAsts.map(n => n.name));
+            // a is not free in .(a)
+            // $0 is not free in .($0)
+            if (subNofreeVars.has(name))
+                return -1;
+            const testSubAst = ast.nodes[0];
+            if (testSubAst.type !== "replvar")
+                throw "cannot reached";
+            // is A free in B([^A]) => is A free in B
+            return this._isFreeIn(name, testSubAst, replNameRule);
+        }
+        if (ast.type === "sym" && (ast.name === "V" || ast.name === "E" || ast.name === "E!")) {
+            let localVar = ast.nodes[0].name;
+            // a is not free in Va:.
+            if (name === localVar)
+                return -1;
+            // else: is a free in Vb:A => is a free in A
+            let subAst = ast.nodes[1];
+            return this._isFreeIn(name, subAst, replNameRule);
+        }
+        if (ast.nodes?.length) {
+            let res = -1;
+            for (const n of ast.nodes) {
+                // free + notsure + notfree => free
+                // notsure + notfree => notsure
+                // notfree + notfree => notfree
+                res = Math.max(res, this._isFreeIn(name, n, replNameRule));
+                if (res === 1)
+                    return 1;
+            }
+        }
+    }
+    expandCanreplFn(ast, replNameRule) {
+        if (ast.type === "fn" && ast.name === "#canrepl") {
+            const testAst = ast.nodes[0];
+            const srcAst = ast.nodes[1];
+            if (testAst.type === "fn" && testAst.name === "#canrepl") {
+                this.expandCanreplFn(testAst, replNameRule);
+            }
+            if (testAst.type === "fn" && testAst.name === "#canrepl") {
+                // two layers of the same assertion, merge into one
+                if (astmgr.equal(testAst.nodes[1], srcAst) && astmgr.equal(testAst.nodes[2], ast.nodes[2])) {
+                    astmgr.assign(ast, testAst);
+                }
+                return;
+            }
+            const rawSrcAst = astmgr.clone(srcAst);
+            const srcIsNot = new Set;
+            if (srcAst.type === "fn" && srcAst.name === "#nofree") {
+                for (let i = 1; i < srcAst.nodes.length; i++) {
+                    srcIsNot.add(srcAst.nodes[i].name);
+                }
+            }
+            this.getNetCondition(srcAst);
+            if (srcAst.type !== "replvar")
+                throw "只能替换变量，不能替换表达式";
+            const src = srcAst.name;
+            const dst2 = astmgr.clone(ast.nodes[2]);
+            this.getNetCondition(dst2);
+            if (dst2.type === "replvar" && dst2.name === src) {
+                // #canrepl(.,A,A) -> .
+                astmgr.assign(ast, testAst);
+                return;
+            }
+            if (testAst.type === "replvar") {
+                if (!testAst.name.match(replNameRule)) {
+                    // #canrepl(a,.,.) -> a
+                    astmgr.assign(ast, testAst);
+                    return;
+                }
+                if (testAst.name === src) {
+                    // #canrepl($0,$0(b),.) -> $0(b)
+                    // #canrepl($0,$0,.) -> $0
+                    astmgr.assign(ast, rawSrcAst);
+                    return;
+                }
+                // else, noway to reduce it
+                return;
+            }
+            if (testAst.type === "fn" && testAst.name === "#nofree") {
+                const subNofreeAsts = testAst.nodes.slice(1); // .map(n => (this.getNetCondition(n), n));
+                let subNofreeVars = new Set(subNofreeAsts.map(n => n.name));
+                if (subNofreeVars.has(src)) {
+                    // #canrepl($0(a),a,.) -> $0(a)
+                    // #canrepl($0($1),$1,.) -> $0($1)
+                    astmgr.assign(ast, testAst);
+                    return;
+                }
+                const testSubAst = testAst.nodes[0];
+                if (testSubAst.type !== "replvar")
+                    throw "cannot reached";
+                if (!testSubAst.name.match(replNameRule)) {
+                    // #canrepl(a(.),.,.) -> a(.)
+                    astmgr.assign(ast, testAst);
+                    return;
+                }
+                if (testSubAst.name === src) {
+                    // #canrepl($0(a),$0(b),.) -> $0(a,b)
+                    // #canrepl($0(a),$0,.) -> $0(a)
+                    srcIsNot.forEach(e => subNofreeVars.add(e));
+                    this._reconstructNoFreeFn(testAst, subNofreeVars);
+                    astmgr.assign(ast, testAst);
+                    return;
+                }
+                // else, noway to reduce it
+                return;
+            }
+            if (testAst.type === "sym" && (testAst.name === "V" || testAst.name === "E" || testAst.name === "E!")) {
+                let localVar = testAst.nodes[0].name;
+                let subAst = testAst.nodes[1];
+                if (src === localVar) {
+                    // #canrepl(Va:.,a,.) -> Va:.
+                    astmgr.assign(ast, testAst);
+                    return;
+                }
+                // #canrepl(Va:A,b,B(a)) -> Va:#canrepl(A,b,B(a))
+                const testRes = this._isFreeIn(localVar, ast.nodes[2], replNameRule);
+                if (testRes === 1) {
+                    throw `原先自由的变量${src}替换后将被${localVar}约束`;
+                }
+                if (testRes === 0) {
+                    // throw `原先自由的变量${src}替换后可能被${localVar}约束`;
+                    // no way to reduce it
+                    return;
+                }
+                const newSubAst = {
+                    type: "fn", name: "#canrepl", nodes: [
+                        subAst, rawSrcAst, ast.nodes[2]
+                    ]
+                };
+                astmgr.assign(ast, {
+                    type: "sym", name: testAst.name, nodes: [
+                        testAst.nodes[0],
+                        newSubAst
+                    ]
+                });
+                return this.expandCanreplFn(ast, replNameRule);
+            }
+            if (testAst.nodes?.length) {
+                const newTestAst = {
+                    type: testAst.type,
+                    name: testAst.name,
+                    nodes: []
+                };
+                for (const subAst of testAst.nodes) {
+                    newTestAst.nodes.push({
+                        type: "fn", name: "#canrepl",
+                        nodes: [subAst, astmgr.clone(rawSrcAst), ast.nodes[2]]
+                    });
+                }
+                astmgr.assign(ast, newTestAst);
+                return this.expandCanreplFn(ast, replNameRule);
+            }
+            throw "cannot reached";
+        }
+        if (ast.nodes?.length) {
+            for (const n of ast.nodes)
+                this.expandCanreplFn(n, replNameRule);
+        }
+    }
+    _execReplFn(ast, name, dstAst) {
+        if (ast.type === "replvar") {
+            if (ast.name === name) {
+                astmgr.assign(ast, dstAst);
+            }
+            return;
+        }
+        if (ast.type === "fn" && ast.name === "#canrepl") {
+            throw "cannot resolve #canrepl in #repl";
+        }
+        if (ast.type === "fn" && ast.name === "#nofree") {
+            const subAst = ast.nodes[0];
+            if (subAst.name === name) {
+                astmgr.assign(ast, dstAst);
+            }
+            return;
+        }
+        if (ast.type === "sym" && (ast.name === "V" || ast.name === "E" || ast.name === "E!")) {
+            let localVar = ast.nodes[0].name;
+            let subAst = ast.nodes[1];
+            if (name === localVar)
+                return;
+            this._execReplFn(subAst, name, dstAst);
+            return;
+        }
+        if (ast.nodes?.length) {
+            for (const n of ast.nodes)
+                this._execReplFn(n, name, dstAst);
+        }
+    }
+    expandReplFn(ast, replNameRule, replFnName = "#repl") {
+        if (ast.type === "fn" && ast.name === replFnName) {
+            const [testAst, srcAst, dstAst] = ast.nodes;
+            // verify we can do #repl fn
+            const newAst = { type: "fn", name: "#canrepl", nodes: ast.nodes.map(n => astmgr.clone(n)) };
+            this.expandCanreplFn(newAst, replNameRule);
+            this.getNetCondition(srcAst);
+            this._execReplFn(testAst, srcAst.name, dstAst);
+            astmgr.assign(ast, testAst);
+            return;
+        }
+        if (ast.nodes?.length) {
+            for (const n of ast.nodes)
+                this.expandReplFn(n, replNameRule, replFnName);
         }
     }
     expandNofreeFn(ast, replNameRule) {
@@ -306,17 +688,51 @@ export class FormalSystem {
         }
         return true;
     }
-    metaDeduct0(deductionIdx) {
+    expandMacroWithProp(propositionIdx) {
+        const p = this.propositions[propositionIdx];
+        if (!p.from)
+            throw "该定理为假设，无推理步骤可展开";
+        const { deductionIdx, conditionIdxs, replaceValues } = p.from;
+        if (!this.deductions[deductionIdx].steps)
+            throw `该定理由原子推理规则得到，无子步骤`;
+        const hyps = conditionIdxs.map(c => this.propositions[c].value);
+        this.removePropositions();
+        hyps.forEach(h => this.addHypothese(h));
+        this.deduct({
+            deductionIdx, conditionIdxs: hyps.map((v, idx) => idx), replaceValues
+        }, "inline");
+    }
+    expandMacroWithDefaultValue(deductionIdx) {
         const d = this.deductions[deductionIdx];
-        const errorMsg = "m0 元推理失败：";
+        if (!d)
+            throw `推理规则${deductionIdx}不存在`;
+        if (!d.steps)
+            throw `无法展开原子推理规则`;
+        this.removePropositions();
+        d.conditions.forEach(dcond => this.addHypothese(dcond));
+        this.deduct({
+            deductionIdx, conditionIdxs: d.conditions.map((v, idx) => idx), replaceValues: d.replaceNames.map(str => str.includes("(") ?
+                {
+                    type: "fn", name: str.replace(/^(.+)\(.*\)$/g, "$1"),
+                    nodes: str.replace(/^.+\((.*)\)$/g, "$1").split(",").map(e => ({
+                        type: "replvar", name: e
+                    }))
+                }
+                :
+                    {
+                        type: "replvar", name: str
+                    })
+        }, "inline");
+    }
+    metaDeductTheorem(deductionIdx) {
+        const d = this.deductions[deductionIdx];
+        const errorMsg = "演绎元定理执行失败：";
         if (!d)
             throw errorMsg + "条件中的推理规则不存在";
         if (!d.conditions.length)
             throw errorMsg + "推理规则不包含假设，无法与条件匹配";
         const oldPropositions = this.propositions;
         const oldHypothesisAmount = this.hypothesisAmount;
-        // 假设中的函数设为同名函数，会不会发生递归？？
-        // const netConditions = d.conditions.map(dc => this.getNetCondition(dc, {}));
         try {
             // expand macro in propositions, store it in const refPropositions
             this.removePropositions();
@@ -333,19 +749,19 @@ export class FormalSystem {
                         {
                             type: "replvar", name: str
                         })
-            });
+            }, step => step.conditionIdxs.length ? "deep" : null);
             const refPropositions = this.propositions;
             // write required deduction step in current proposition list according to refsteps
             this.removePropositions();
             const newConditions = d.conditions.slice(0, -1);
             // const newNetCoditions = netConditions.slice(0, -1);
             newConditions.forEach(dcond => this.addHypothese(dcond));
-            refPropositions.forEach(p => p.from ? p.from = [p.from[p.from.length - 1]] : null);
+            // refPropositions.forEach(p => p.from ? p.from = [p.from[p.from.length - 1]] : null);
             const HYP = 0, CND = 1, AXM = 2, DDT = 3;
             const infoTable = [];
             const offsetTable = [];
             for (const [pidx, p] of refPropositions.entries()) {
-                const step = p.from[0];
+                const step = p.from;
                 if (!step) {
                     if (pidx < this.hypothesisAmount) {
                         // hypothese, skip
@@ -451,44 +867,40 @@ export class FormalSystem {
                         continue;
                     }
                 }
-                if (step.deductionIdx === 7) {
-                    const s0Info = infoTable[step.conditionIdxs[0]];
-                    const s0 = offsetTable[step.conditionIdxs[0]];
-                    const s1Ast = p.value.nodes[0];
-                    const s0IsTrue = (s0Info & 1) === 0;
-                    if (s0IsTrue) {
-                        infoTable.push(AXM);
-                        offsetTable.push(this.propositions.length);
-                        this.deduct({
-                            deductionIdx: 7, conditionIdxs: [s0],
-                            replaceValues: [s1Ast]
-                        }); // axiom, copy it
-                        continue;
-                    }
-                    else {
-                        const s0Ast = p.value.nodes[1];
-                        // |- $0 > V$1:$0
-                        const p1 = this.deduct({
-                            deductionIdx: 99, conditionIdxs: [],
-                            replaceValues: [s0Ast, s1Ast]
-                        });
-                        if (s0Info === CND) {
-                            // |- CND > V$1:CND, only mark it
-                            offsetTable.push(p1);
-                            infoTable.push(DDT);
-                            continue;
-                        }
-                        else {
-                            //  CND >  $0 , $0 > V$1:$0 |- CND > V$1:$0
-                            offsetTable.push(this.deduct({
-                                deductionIdx: 93, conditionIdxs: [s0, p1],
-                                replaceValues: [s0Ast, s1Ast]
-                            }));
-                            infoTable.push(DDT);
-                            continue;
-                        }
-                    }
-                }
+                // if (step.deductionIdx === 7) {
+                //     const s0Info = infoTable[step.conditionIdxs[0]];
+                //     const s0 = offsetTable[step.conditionIdxs[0]];
+                //     const s1Ast = p.value.nodes[0];
+                //     const s0IsTrue = (s0Info & 1) === 0;
+                //     if (s0IsTrue) {
+                //         infoTable.push(AXM);
+                //         offsetTable.push(this.propositions.length);
+                //         this.deduct({
+                //             deductionIdx: 7, conditionIdxs: [s0],
+                //             replaceValues: [s1Ast]
+                //         }); // axiom, copy it
+                //         continue;
+                //     } else {
+                //         const s0Ast = p.value.nodes[1];
+                //         // |- $0 > V$1:$0
+                //         const p1 = this.deduct({
+                //             deductionIdx: 99, conditionIdxs: [],
+                //             replaceValues: [s0Ast, s1Ast]
+                //         });
+                //         if (s0Info === CND) {
+                //             // |- CND > V$1:CND, only mark it
+                //             offsetTable.push(p1);
+                //             infoTable.push(DDT); continue;
+                //         } else {
+                //             //  CND >  $0 , $0 > V$1:$0 |- CND > V$1:$0
+                //             offsetTable.push(this.deduct({
+                //                 deductionIdx: 93, conditionIdxs: [s0, p1],
+                //                 replaceValues: [s0Ast, s1Ast]
+                //             }));
+                //             infoTable.push(DDT); continue;
+                //         }
+                //     }
+                // }
             }
             const lastInfo = infoTable.pop();
             const lastP = offsetTable.pop();
@@ -509,16 +921,101 @@ export class FormalSystem {
                     deductionIdx: 0, replaceValues: []
                 });
             }
+            while (this.propositions.length > 1 && astmgr.equal(this.propositions[this.propositions.length - 1].value, this.propositions[this.propositions.length - 2].value)) {
+                this.removePropositions(1);
+            }
             // add deduction as macro and recover proposition list
             const didx = this.addMacro(this.propositions.length - 1);
             this.propositions = oldPropositions;
             this.hypothesisAmount = oldHypothesisAmount;
+            this.deductions[didx].from = "*mdt " + deductionIdx;
             return didx;
         }
         catch (e) {
             this.propositions = oldPropositions;
             this.hypothesisAmount = oldHypothesisAmount;
             throw e;
+        }
+    }
+    metaQuantifyAxiomSchema(deductionIdx, replaceValue) {
+        const d = this.deductions[deductionIdx];
+        if (d.conditions?.length)
+            throw "无法匹配带条件的推理规则";
+        if (d.steps?.length)
+            throw "无法匹配非公理推理规则";
+        const didx = this.addDeduction({
+            type: "meta", name: "⊢",
+            nodes: [
+                { type: "fn", name: "#array", nodes: [] },
+                {
+                    type: "fn", name: "#array", nodes: [
+                        {
+                            type: "sym", name: "V", nodes: [
+                                replaceValue,
+                                d.conclusion
+                            ]
+                        }
+                    ]
+                },
+            ]
+        }, "mq " + deductionIdx);
+        return didx;
+    }
+    metaNewConstant(replaceValues) {
+        const [constAst, varAst, exprAst] = replaceValues;
+        if (constAst.type !== "replvar")
+            throw "$$0只能为纯变量名";
+        if (constAst.name.startsWith("$"))
+            throw "以$开头的变量名称被系统保留";
+        if (constAst.name.startsWith("#"))
+            throw "以#开头的变量名称被系统保留";
+        const constCheckRes = this.isNameCanBeNewConst(constAst.name);
+        if (constCheckRes !== true)
+            throw "匹配条件##newconst($$0)时：" + constCheckRes;
+        const deduction = astmgr.clone(this.metaRules["c"].value.nodes[1].nodes[0].nodes[0]);
+        const replTable = {
+            "$$0": constAst,
+            "$$1": varAst,
+            "$$2": exprAst
+        };
+        astmgr.replaceByMatchResult(deduction, replTable);
+        this.expandReplFn(deduction, this.deductionReplNameRule, "##repl");
+        this.consts.set(constAst.name, this.deductions.length);
+        return this.addDeduction(deduction, "*mc '" + constAst.name + "'");
+    }
+    metaNewFunction(replaceValues) {
+        const [fnAst, varAst1, varAst2, exprAst] = replaceValues;
+        if (fnAst.type !== "replvar")
+            throw "$$0只能为纯变量名";
+        if (fnAst.name.startsWith("#"))
+            throw "以#开头的函数被系统保留";
+        if (fnAst.name.startsWith("$"))
+            throw "以$开头的函数被系统保留";
+        const fnCheckRes = this.fns.has(fnAst.name);
+        if (fnCheckRes)
+            throw `匹配条件##newfn($$0)时：函数已于d${this.fns.get(fnAst.name)}中定义`;
+        const deduction = astmgr.clone(this.metaRules["f"].value.nodes[1].nodes[0].nodes[0]);
+        const replTable = {
+            "$$0": fnAst,
+            "$$1": varAst1,
+            "$$2": varAst2,
+            "$$3": exprAst
+        };
+        astmgr.replaceByMatchResult(deduction, replTable);
+        this._replaceFnName(deduction, "$$0", fnAst.name);
+        this.expandReplFn(deduction, this.deductionReplNameRule, "##repl");
+        this.fns.set(fnAst.name, this.deductions.length);
+        return this.addDeduction(deduction, "*mf '" + fnAst.name + "(#0)'");
+    }
+    _replaceFnName(ast, src, dst) {
+        if (ast.type === "fn" && ast.name === src) {
+            ast.name = dst;
+            return;
+        }
+        if (ast.nodes?.length) {
+            for (const n of ast.nodes) {
+                this._replaceFnName(n, src, dst);
+            }
         }
     }
 }

@@ -214,7 +214,7 @@ export class FSGui {
         prefix: string, logicArray: T[], list: HTMLElement,
         filter: (term: T, idx: number) => boolean,
         setInfo: (term: T, itInfo: HTMLElement[], it: HTMLElement) => void,
-        refresh?: boolean
+        refresh?: boolean, customIdx?: string[]
     ) {
         if (refresh) {
             while (list.lastChild) {
@@ -232,7 +232,7 @@ export class FSGui {
         }
         for (; listLength < targetLength; listLength++) {
             const p = logicArray[listLength];
-            const pname = prefix + listLength;
+            const pname = customIdx ? customIdx[listLength] : prefix + listLength;
             if (!filter(p, listLength)) continue;
 
             const itIdx = document.createElement("div");
@@ -262,20 +262,12 @@ export class FSGui {
         list.scroll({ top: list.scrollHeight });
     }
     updatePropositionList(refresh?: boolean) {
-        this.updateGuiList("p", this.formalSystem.propositions, this.propositionList, (p) => {
-            if (this.displayPLayers === -1) return true;
-            return this.formalSystem.getMacroLayers(p.from) <= this.displayPLayers;
-        }, (p, itInfo, it) => {
-            if (!p.from?.length) {
+        this.updateGuiList("p", this.formalSystem.propositions, this.propositionList, (p) => true, (p, itInfo, it) => {
+            if (!p.from) {
                 itInfo[0].innerText = "假设";
                 return;
             }
-            if (p.from[0].isSubstep) it.classList.add("macro-substep");
-            for (let i = 0; i < p.from.length; i++) {
-                const fr = p.from[i];
-                if (!itInfo[i]) { itInfo[i - 1].innerHTML = "..."; return; }
-                itInfo[i].innerHTML = fr.isSubstep ? "&nbsp; |" : this.stringifyDeductionStep(fr);
-            }
+            itInfo[0].innerHTML = this.stringifyDeductionStep(p.from);
         }, refresh);
     }
     updateDeductionList(refresh?: boolean) {
@@ -286,9 +278,9 @@ export class FSGui {
         );
     }
     updateMetaRuleList(refresh?: boolean) {
-        this.updateGuiList("m", this.formalSystem.metaRules, this.metaRuleList, (p) => true, (p, itInfo, it) => {
+        this.updateGuiList("m", Object.values(this.formalSystem.metaRules), this.metaRuleList, (p) => true, (p, itInfo, it) => {
             itInfo[0].innerText = p.from;
-        }, refresh);
+        }, refresh, Object.keys(this.formalSystem.metaRules).map(e => "m" + e));
     }
     stringifyDeductionStep(step: DeductionStep) {
         return `&nbsp;d${step.deductionIdx} ${step.conditionIdxs.join(", ")}`;

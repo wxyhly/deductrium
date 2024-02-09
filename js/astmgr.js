@@ -31,6 +31,17 @@ export class ASTMgr {
         }
         return true;
     }
+    preventCircularReplace(ast, replNameRule) {
+        if (ast.type === "replvar" && ast.name.match(replNameRule)) {
+            ast.type = "$" + ast.type;
+        }
+        else {
+            if (ast.nodes?.length) {
+                for (const n of ast.nodes)
+                    this.preventCircularReplace(n, replNameRule);
+            }
+        }
+    }
     expandReplFn(ast, fnParamNames, fnExprs) {
         if (!fnExprs)
             return;
