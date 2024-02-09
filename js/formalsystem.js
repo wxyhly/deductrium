@@ -5,6 +5,8 @@ export class FormalSystem {
     deductions = [];
     metaRules = {};
     deductionReplNameRule = /^\$/g;
+    localNameRule = /^\#/g;
+    replacedLocalNameRule = /^&/g;
     consts = new Map([["0", -1], ["1", -1], ["2", -1], ["3", -1], ["4", -1], ["5", -1], ["6", -1], ["7", -1], ["8", -1], ["9", -1]]); // [constName -> defineDeductionIdx]
     fns = new Map([["S", -1]]); // [fnName -> defineDeductionIdx]
     fnParamNames = (n) => "#" + n;
@@ -190,10 +192,34 @@ export class FormalSystem {
         this.checkGrammer(m, "p");
         if (this.hypothesisAmount !== this.propositions.length)
             return false;
-        if (!this.expandNofreeFn(m, this.deductionReplNameRule))
+        if (this._hasLocalNames(m))
+            throw "假设中不能出现局部变量";
+        if (!this.expandNofreeFn(m, this.deductionReplNameRule, null, this.replacedLocalNameRule))
             throw "假设中的附加条件自相矛盾";
         this.propositions.push({ value: m, from: null });
         this.hypothesisAmount++;
+    }
+    _replaceLocalNames(ast, prefix) {
+        if (ast.type === "replvar" && ast.name.match(this.localNameRule)) {
+            ast.name = prefix + ast.name;
+        }
+        if (ast.nodes?.length) {
+            for (const n of ast.nodes) {
+                this._replaceLocalNames(n, prefix);
+            }
+        }
+    }
+    _hasLocalNames(ast) {
+        if (ast.type === "replvar" && ast.name.match(this.localNameRule)) {
+            return true;
+        }
+        if (ast.nodes?.length) {
+            for (const n of ast.nodes) {
+                if (this._hasLocalNames(n))
+                    return true;
+            }
+        }
+        return false;
     }
     addMacro(propositionIdx) {
         if (propositionIdx < this.hypothesisAmount)
@@ -203,12 +229,19 @@ export class FormalSystem {
             conditions.push(this.propositions[i].value);
         }
         const conclusion = this.propositions[propositionIdx].value;
+        if (this._hasLocalNames(conclusion)) {
+            throw "局部变量不能出现在推理宏的结论中";
+        }
         const macro = [];
         for (let i = this.hypothesisAmount; i <= propositionIdx; i++) {
             const step = this.propositions[i].from;
             macro.push({
                 conditionIdxs: step.conditionIdxs.map(cidx => cidx < this.hypothesisAmount ? cidx : cidx - i),
-                replaceValues: step.replaceValues,
+                replaceValues: step.replaceValues.map(v => {
+                    const newv = astmgr.clone(v);
+                    this._replaceLocalNames(newv, "&" + this.deductions.length);
+                    return newv;
+                }),
                 deductionIdx: step.deductionIdx
             });
         }
@@ -287,7 +320,7 @@ export class FormalSystem {
             catch (e) {
                 throw errorMsg + `替代${replaceNames[idx]}的表达式中发生语法错误：` + e;
             }
-            if (!this.expandNofreeFn(ast, this.deductionReplNameRule)) {
+            if (!this.expandNofreeFn(ast, this.deductionReplNameRule, this.localNameRule, this.replacedLocalNameRule)) {
                 throw errorMsg + `替代${replaceNames[idx]}的表达式中的附加条件自相矛盾`;
             }
         });
@@ -320,7 +353,7 @@ export class FormalSystem {
             astmgr.expandReplFn(replacedCondition, this.fnParamNames, replsMatchTable);
             astmgr.replaceByMatchResult(replacedCondition, replsMatchTable);
             astmgr.finishReplace(replacedCondition);
-            if (!this.expandNofreeFn(replacedCondition, this.deductionReplNameRule))
+            if (!this.expandNofreeFn(replacedCondition, this.deductionReplNameRule, this.localNameRule, this.replacedLocalNameRule))
                 throw errorMsg + `第${conditionIdx + 1}个条件中的附加条件无法满足`;
             this.expandCanreplFn(replacedCondition, this.deductionReplNameRule);
             this.expandReplFn(replacedCondition, this.deductionReplNameRule);
@@ -331,7 +364,7 @@ export class FormalSystem {
         astmgr.expandReplFn(replacedConclusion, this.fnParamNames, replsMatchTable);
         astmgr.replaceByMatchResult(replacedConclusion, replsMatchTable);
         astmgr.finishReplace(replacedConclusion);
-        if (!this.expandNofreeFn(replacedConclusion, this.deductionReplNameRule))
+        if (!this.expandNofreeFn(replacedConclusion, this.deductionReplNameRule, this.localNameRule, this.replacedLocalNameRule))
             throw errorMsg + "结论中的附加条件无法满足";
         this.expandCanreplFn(replacedConclusion, this.deductionReplNameRule);
         this.expandReplFn(replacedConclusion, this.deductionReplNameRule);
@@ -616,7 +649,7 @@ export class FormalSystem {
                 this.expandReplFn(n, replNameRule, replFnName);
         }
     }
-    expandNofreeFn(ast, replNameRule) {
+    expandNofreeFn(ast, replNameRule, localNameRule, ignoreNameRule) {
         if (ast.type === "fn" && ast.name === "#nofree") {
             const nofreeAsts = ast.nodes.slice(1).map(n => (this.getNetCondition(n), n));
             let nofreeVars = new Set(nofreeAsts.map(n => n.name));
@@ -627,11 +660,24 @@ export class FormalSystem {
                 if (nofreeVars.has(testAst.name)) {
                     return false;
                 }
+                if (testAst.name.match(ignoreNameRule)) {
+                    this._reconstructNoFreeFn(ast, new Set);
+                    return true;
+                }
                 // else a!=b:
                 // #nofree(a,..b..), delete b
                 if (!testAst.name.match(replNameRule)) {
                     nofreeVars.forEach(b => {
-                        if (!b.match(replNameRule)) {
+                        if (b.match(ignoreNameRule) || !b.match(replNameRule)) {
+                            nofreeVars.delete(b);
+                        }
+                    });
+                }
+                else {
+                    // local vars
+                    // #nofree($0,..#b..), delete #b
+                    nofreeVars.forEach(b => {
+                        if (b.match(ignoreNameRule) || b.match(localNameRule)) {
                             nofreeVars.delete(b);
                         }
                     });
@@ -645,7 +691,7 @@ export class FormalSystem {
                 nofreeVars.forEach(e => subNofreeVars.add(e));
                 astmgr.assign(ast, testAst);
                 this._reconstructNoFreeFn(ast, subNofreeVars);
-                return this.expandNofreeFn(ast, replNameRule);
+                return this.expandNofreeFn(ast, replNameRule, localNameRule, ignoreNameRule);
             }
             if (testAst.type === "sym" && (testAst.name === "V" || testAst.name === "E" || testAst.name === "E!")) {
                 let localVar = testAst.nodes[0].name;
@@ -662,7 +708,7 @@ export class FormalSystem {
                         newSubAst
                     ]
                 });
-                return this.expandNofreeFn(ast, replNameRule);
+                return this.expandNofreeFn(ast, replNameRule, localNameRule, ignoreNameRule);
             }
             if (testAst.nodes?.length) {
                 const newTestAst = {
@@ -677,13 +723,13 @@ export class FormalSystem {
                     });
                 }
                 astmgr.assign(ast, newTestAst);
-                return this.expandNofreeFn(ast);
+                return this.expandNofreeFn(ast, replNameRule, localNameRule, ignoreNameRule);
             }
             throw "cannot reached";
         }
         if (ast.nodes?.length) {
             for (const n of ast.nodes)
-                if (!this.expandNofreeFn(n, replNameRule))
+                if (!this.expandNofreeFn(n, replNameRule, localNameRule, ignoreNameRule))
                     return false;
         }
         return true;
