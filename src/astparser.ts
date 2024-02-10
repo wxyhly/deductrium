@@ -1,7 +1,7 @@
 import { AST } from "astmgr.js"
 export class ASTParser {
     keywords = ["E!", "⊢M", "<>"];
-    symChar = "VEMU()@~^>|&=,;:[]!⊢+";
+    symChar = "VEMU()@~^<>|&=,;:[]!⊢+";
     ast: AST;
     cursor: number = 0;
     tokens: string[];
@@ -53,6 +53,7 @@ export class ASTParser {
     }
     private acceptVar() {
         if (!this.symChar.includes(this.token)) {
+            if(!this.token) return false; //eof
             this.nextSym();
             return true;
         }
@@ -110,7 +111,7 @@ export class ASTParser {
     }
     private boolTerm4(): AST {
         let val = this.boolTerm5();
-        while (this.token === "@" || this.token === "=" || this.token?.match(/^\$\$.+/)) {
+        while (this.token === "@" || this.token === "=" || this.token === "<" || this.token?.match(/^\$\$.+/)) {
             const name = this.token;
             this.nextSym();
             let val2 = this.boolTerm5();
@@ -119,7 +120,18 @@ export class ASTParser {
         return val;
     }
     private boolTerm3(): AST {
-        if (this.token === "~") {
+        if (this.token === "V" || this.token === "E" || this.token === "E!") {
+            const name = this.token;
+            this.nextSym();
+            this.expectVar();
+            return {
+                type: "sym", name,
+                nodes: [
+                    { type: "replvar", name: this.prevToken(1) },
+                    (this.acceptSym(":"), this.boolTerm3()) // ":" is optional
+                ]
+            };
+        } else if (this.token === "~") {
             this.nextSym();
             return { type: "sym", name: "~", nodes: [this.boolTerm3()] };
         } else if (this.token === "!") {
@@ -149,18 +161,6 @@ export class ASTParser {
         return val;
     }
     private bool(): AST {
-        if (this.token === "V" || this.token === "E" || this.token === "E!") {
-            const name = this.token;
-            this.nextSym();
-            this.expectVar();
-            return {
-                type: "sym", name,
-                nodes: [
-                    { type: "replvar", name: this.prevToken(1) },
-                    (this.acceptSym(":"), this.bool()) // ":" is optional
-                ]
-            };
-        }
         let val = this.boolTerm1();
         while (this.token === ">" || this.token === "<>") {
             const name = this.token;

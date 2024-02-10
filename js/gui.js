@@ -8,6 +8,7 @@ export class FSGui {
     propositionList;
     deductionList;
     metaRuleList;
+    divCmdBtns;
     displayPLayers = -1;
     displayDs = new Set();
     isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
@@ -18,6 +19,7 @@ export class FSGui {
         this.deductionList = deductionList;
         this.actionInput = actionInput;
         this.hintText = hintText;
+        this.divCmdBtns = divCmdBtns;
         this.cmd = new FSCmd(this);
         addZFC(this.formalSystem);
         displayPLayerSelect.addEventListener('change', () => {
@@ -74,7 +76,7 @@ export class FSGui {
         }
     }
     prettyPrint(s) {
-        return s.replace(/<>/g, "↔").replace(/>/g, "→").replace(/@/g, "∈").replace(/\|/g, "∨").replace(/&/g, "∧").replace(/~/g, "¬").replace(/V/g, "∀").replace(/E/g, "∃");
+        return s.replace(/<>/g, "↔").replace(/>/g, "→").replace(/</g, "⊆").replace(/@/g, "∈").replace(/\|/g, "∨").replace(/&/g, "∧").replace(/~/g, "¬").replace(/V/g, "∀").replace(/E/g, "∃");
     }
     addSpan(parentSpan, text) {
         const span = document.createElement("span");
@@ -117,7 +119,12 @@ export class FSGui {
             this.addSpan(varnode, ")");
         }
         else if (ast.type === "fn") {
-            this.addSpan(varnode, ast.name + "(");
+            const fnName = this.addSpan(varnode, ast.name);
+            if (ast.name.startsWith("#"))
+                fnName.classList.add("sysfn");
+            if (this.formalSystem.fns.has(ast.name))
+                fnName.classList.add("fn");
+            this.addSpan(varnode, "(");
             let firstTerm = true;
             for (const n of ast.nodes) {
                 if (firstTerm) {
@@ -131,8 +138,23 @@ export class FSGui {
             this.addSpan(varnode, ")");
         }
         else if (ast.type === "replvar") {
-            this.addSpan(varnode, ast.name);
+            const el = this.addSpan(varnode, ast.name);
             const scopeStack = scopes.slice(0);
+            if (this.formalSystem.consts.has(ast.name)) {
+                el.classList.add("constant");
+            }
+            else if (ast.name.replace(/^\.\.\./, "").match(this.formalSystem.deductionReplNameRule)) {
+                el.classList.add("replvar");
+            }
+            else if (scopeStack[0]) {
+                el.classList.add("boundedVar");
+            }
+            else {
+                el.classList.add("freeVar");
+            }
+            // quantvar is only aimed for mark css style
+            if (scopeStack[0]?.type === "quantvar")
+                scopeStack.pop();
             do {
                 if (scopeStack[0] && scopeStack[0].nodes[0].name === ast.name) {
                     varnode.setAttribute("ast-scope", this.stringify(scopeStack[0]));
@@ -152,7 +174,9 @@ export class FSGui {
                 case "E!":
                     const outterLayers = [];
                     outterLayers.push(this.addSpan(varnode, "(" + this.prettyPrint(ast.name)));
-                    outterLayers.push(varnode.appendChild(this.ast2HTML(idx, ast.nodes[0])));
+                    const varast = this.ast2HTML(idx, ast.nodes[0], [{ type: "quantvar", name: "quantvar" }]);
+                    varast.classList.add("boundedVar");
+                    outterLayers.push(varnode.appendChild(varast));
                     outterLayers.push(this.addSpan(varnode, ":"));
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], [ast, ...scopes]));
                     outterLayers.push(this.addSpan(varnode, ")"));
@@ -210,11 +234,11 @@ export class FSGui {
         }
         return varnode;
     }
-    // private _convert(d: Deduction) {
-    //     let str = this.stringify(d.value);
-    //     let steps = d.steps?.map(step => [step.deductionIdx, step.replaceValues.map(v => this.stringify(v)), step.conditionIdxs]);
-    //     return [str, JSON.stringify(steps)];
-    // }
+    _convert(d) {
+        let str = this.stringify(d.value);
+        let steps = d.steps?.map(step => [step.deductionIdx, step.replaceValues.map(v => this.stringify(v)), step.conditionIdxs]);
+        return [str, JSON.stringify(steps)];
+    }
     updateGuiList(prefix, logicArray, list, filter, setInfo, refresh, customIdx) {
         if (refresh) {
             while (list.lastChild) {
@@ -270,8 +294,8 @@ export class FSGui {
         }, refresh);
     }
     updateDeductionList(refresh) {
-        this.updateGuiList("d", this.formalSystem.deductions, this.deductionList, (p, idx) => (this.displayDs.has(p.from) || (this.displayDs.has("添加的规则") && p.from.startsWith("*"))), (p, itInfo, it) => {
-            itInfo[0].innerText = p.from;
+        this.updateGuiList("d", this.formalSystem.deductions, this.deductionList, (p, idx) => (this.displayDs.has(p.from.replace("[S]", "")) || (this.displayDs.has("添加的规则") && !p.from.endsWith("[S]"))), (p, itInfo, it) => {
+            itInfo[0].innerText = p.from + (p.steps?.length ? "[宏]" : "");
         }, refresh);
     }
     updateMetaRuleList(refresh) {

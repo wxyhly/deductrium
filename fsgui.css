@@ -8,6 +8,27 @@
     margin-bottom: 1em;
     user-select: none;
 }
+.constant{
+    color: blue;
+}
+.fn {
+    color: blueviolet;
+}
+.sysfn{
+    color: darkblue;
+}
+
+.freeVar{
+    font-weight: bold;
+}
+.boundedVar {
+    color:#999;
+}
+.replvar{
+    color:brown;
+}
+
+
 
 .list-wrapper::-webkit-scrollbar-thumb {
     background-color: gray;
@@ -107,5 +128,8 @@ h1 {
 }
 
 .highlighted {
+    color: white;
+}
+.highlighted span {
     color: white;
 }

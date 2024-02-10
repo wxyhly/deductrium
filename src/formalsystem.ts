@@ -16,6 +16,7 @@ export class FormalSystem {
     fns = new Map<string, number>([["S", -1]]); // [fnName -> defineDeductionIdx]
     fnParamNames = (n: number) => "#" + n;
     propositions: Proposition[] = [];
+    private tempMQDs: number[] = [];
     private ast2deduction(ast: AST): Deduction {
         this.checkGrammer(ast, "d");
         const [conditions, conclusions] = ast.nodes;
@@ -57,6 +58,7 @@ export class FormalSystem {
         }
     }
     private checkGrammer(ast: AST, type: "m" | "d" | "p" | "v") {
+        if (ast.type.startsWith("$")) throw "意外的错误：循环替换标记$未被正确清除";
         if (type === "v") {
             const netAst = astmgr.clone(ast);
             this.getNetCondition(netAst);
@@ -193,7 +195,7 @@ export class FormalSystem {
         }
         return false;
     }
-    addMacro(propositionIdx: number) {
+    addMacro(propositionIdx: number, from: string) {
         if (propositionIdx < this.hypothesisAmount) throw "无有效定理推导步骤，创建宏推导失败";
         const conditions: AST[] = [];
         for (let i = 0; i < this.hypothesisAmount; i++) {
@@ -223,7 +225,7 @@ export class FormalSystem {
                 { type: "fn", name: "#array", nodes: conditions },
                 { type: "fn", name: "#array", nodes: [conclusion] },
             ]
-        }, "", macro);
+        }, from, macro);
     }
     removePropositions(amount?: number) {
         if (!isFinite(amount)) {
@@ -244,6 +246,11 @@ export class FormalSystem {
         const didx = this.deductions.length - 1;
         for (const [name, idx] of this.consts) {
             if (didx === idx) { this.consts.delete(name); break; }
+        }
+        for (const [idx, target] of this.tempMQDs.entries()) {
+            if (target === idx) {
+                this.tempMQDs[idx] = null; break;
+            }
         }
         this.deductions.pop();
     }
@@ -270,7 +277,7 @@ export class FormalSystem {
         }
         return false;
     }
-    deduct(step: DeductionStep, inlineMode?: DeductInlineMode | ((step: DeductionStep) => DeductInlineMode)) {
+    deduct(step: DeductionStep, inlineMode?: DeductInlineMode | ((step: DeductionStep, conclusion: AST) => DeductInlineMode)) {
         const { conditionIdxs, deductionIdx, replaceValues } = step;
         const deduction = this.deductions[deductionIdx];
         const { conditions, conclusion, replaceNames, steps, netConditions } = deduction;
@@ -322,8 +329,8 @@ export class FormalSystem {
             astmgr.replaceByMatchResult(replacedCondition, replsMatchTable);
             astmgr.finishReplace(replacedCondition);
             if (!this.expandNofreeFn(replacedCondition, this.deductionReplNameRule, this.localNameRule, this.replacedLocalNameRule)) throw errorMsg + `第${conditionIdx + 1}个条件中的附加条件无法满足`;
-            this.expandCanreplFn(replacedCondition, this.deductionReplNameRule);
-            this.expandReplFn(replacedCondition, this.deductionReplNameRule);
+            this.expandCanreplFn(replacedCondition, this.deductionReplNameRule, this.localNameRule, this.replacedLocalNameRule);
+            this.expandReplFn(replacedCondition, this.deductionReplNameRule, this.localNameRule, this.replacedLocalNameRule);
             if (!astmgr.equal(replacedCondition, condProp.value)) throw errorMsg + `第${conditionIdx + 1}个条件中的附加条件无法满足`;
         }
 
@@ -332,12 +339,12 @@ export class FormalSystem {
         astmgr.replaceByMatchResult(replacedConclusion, replsMatchTable);
         astmgr.finishReplace(replacedConclusion);
         if (!this.expandNofreeFn(replacedConclusion, this.deductionReplNameRule, this.localNameRule, this.replacedLocalNameRule)) throw errorMsg + "结论中的附加条件无法满足";
-        this.expandCanreplFn(replacedConclusion, this.deductionReplNameRule);
-        this.expandReplFn(replacedConclusion, this.deductionReplNameRule);
+        this.expandCanreplFn(replacedConclusion, this.deductionReplNameRule, this.localNameRule, this.replacedLocalNameRule);
+        this.expandReplFn(replacedConclusion, this.deductionReplNameRule, this.localNameRule, this.replacedLocalNameRule);
         try { this.checkGrammer(replacedConclusion, "p"); } catch (e) { throw "结论中出现语法错误：" + e }
         // if it isn't macro or not inineMode, done
         let netInlineMode = inlineMode;
-        if (typeof netInlineMode === "function") netInlineMode = netInlineMode(step);
+        if (typeof netInlineMode === "function") netInlineMode = netInlineMode(step, replacedConclusion);
         if (!steps?.length || !netInlineMode) {
             return this.propositions.push({ value: replacedConclusion, from: step }) - 1;
         }
@@ -360,6 +367,7 @@ export class FormalSystem {
             const replaceValues = substep.replaceValues.map(ast => {
                 const replaced = astmgr.clone(ast);
                 astmgr.replaceByMatchResult(replaced, replsMatchTable);
+                astmgr.finishReplace(replaced); //in replsMatchTable, there are $replvar typed vars
                 return replaced;
             });
             let firstPos = this.propositions.length - 1;
@@ -387,7 +395,7 @@ export class FormalSystem {
             ast.nodes = [ast.nodes[0], ...Array.from(nofreeVars).map(v => ({ type: "replvar", name: v }))];
         }
     }
-    private _isFreeIn(name: string, ast: AST, replNameRule?: RegExp) {
+    private _isFreeIn(name: string, ast: AST, replNameRule: RegExp, localNameRule: RegExp, ignoreNameRule: RegExp) {
         if (ast.type === "replvar") {
             // a is free in a 
             // $0 is free in $0
@@ -395,6 +403,8 @@ export class FormalSystem {
             // cannot decide a is free in $1
             // cannot decide $0 is free in $1
             // cannot decide $0 is free in a
+            if (name.match(ignoreNameRule) || ast.name.match(ignoreNameRule)) return -1;
+            if (name.match(localNameRule) || ast.name.match(localNameRule)) return -1;
             if (name.match(replNameRule) || ast.name.match(replNameRule)) return 0;
             // a is not free in b
             return -1;
@@ -408,7 +418,7 @@ export class FormalSystem {
             const testSubAst = ast.nodes[0];
             if (testSubAst.type !== "replvar") throw "cannot reached";
             // is A free in B([^A]) => is A free in B
-            return this._isFreeIn(name, testSubAst, replNameRule);
+            return this._isFreeIn(name, testSubAst, replNameRule, localNameRule, ignoreNameRule);
         }
         if (ast.type === "sym" && (ast.name === "V" || ast.name === "E" || ast.name === "E!")) {
             let localVar = ast.nodes[0].name;
@@ -416,7 +426,7 @@ export class FormalSystem {
             if (name === localVar) return -1;
             // else: is a free in Vb:A => is a free in A
             let subAst = ast.nodes[1];
-            return this._isFreeIn(name, subAst, replNameRule);
+            return this._isFreeIn(name, subAst, replNameRule, localNameRule, ignoreNameRule);
         }
         if (ast.nodes?.length) {
             let res = -1;
@@ -424,18 +434,19 @@ export class FormalSystem {
                 // free + notsure + notfree => free
                 // notsure + notfree => notsure
                 // notfree + notfree => notfree
-                res = Math.max(res, this._isFreeIn(name, n, replNameRule));
+                res = Math.max(res, this._isFreeIn(name, n, replNameRule, localNameRule, ignoreNameRule));
                 if (res === 1) return 1;
             }
+            return res;
         }
 
     }
-    private expandCanreplFn(ast: AST, replNameRule: RegExp) {
+    private expandCanreplFn(ast: AST, replNameRule: RegExp, localNameRule: RegExp, ignoreNameRule: RegExp) {
         if (ast.type === "fn" && ast.name === "#canrepl") {
             const testAst = ast.nodes[0];
             const srcAst = ast.nodes[1];
             if (testAst.type === "fn" && testAst.name === "#canrepl") {
-                this.expandCanreplFn(testAst, replNameRule);
+                this.expandCanreplFn(testAst, replNameRule, localNameRule, ignoreNameRule);
             }
             if (testAst.type === "fn" && testAst.name === "#canrepl") {
                 // two layers of the same assertion, merge into one
@@ -452,7 +463,7 @@ export class FormalSystem {
                 }
             }
             this.getNetCondition(srcAst);
-            if (srcAst.type !== "replvar") throw "只能替换变量，不能替换表达式";
+            if (srcAst.type !== "replvar") throw "#canrepl函数验证失败：只能替换变量，不能替换表达式";
             const src = srcAst.name;
 
             const dst2 = astmgr.clone(ast.nodes[2]);
@@ -512,9 +523,9 @@ export class FormalSystem {
                     astmgr.assign(ast, testAst); return;
                 }
                 // #canrepl(Va:A,b,B(a)) -> Va:#canrepl(A,b,B(a))
-                const testRes = this._isFreeIn(localVar, ast.nodes[2], replNameRule);
+                const testRes = this._isFreeIn(localVar, ast.nodes[2], replNameRule, localNameRule, ignoreNameRule);
                 if (testRes === 1) {
-                    throw `原先自由的变量${src}替换后将被${localVar}约束`;
+                    throw `#canrepl函数验证失败：原先自由的变量${src}替换后将被${localVar}约束`;
                 }
                 if (testRes === 0) {
                     // throw `原先自由的变量${src}替换后可能被${localVar}约束`;
@@ -532,7 +543,7 @@ export class FormalSystem {
                         newSubAst
                     ]
                 });
-                return this.expandCanreplFn(ast, replNameRule);
+                return this.expandCanreplFn(ast, replNameRule, localNameRule, ignoreNameRule);
             }
             if (testAst.nodes?.length) {
                 const newTestAst = {
@@ -547,55 +558,63 @@ export class FormalSystem {
                     });
                 }
                 astmgr.assign(ast, newTestAst);
-                return this.expandCanreplFn(ast, replNameRule);
+                return this.expandCanreplFn(ast, replNameRule, localNameRule, ignoreNameRule);
             }
             throw "cannot reached";
         }
         if (ast.nodes?.length) {
-            for (const n of ast.nodes) this.expandCanreplFn(n, replNameRule);
+            for (const n of ast.nodes) this.expandCanreplFn(n, replNameRule, localNameRule, ignoreNameRule);
         }
     }
-    private _execReplFn(ast: AST, name: string, dstAst: AST) {
+    private _execReplFn(ast: AST, name: string, dstAst: AST): boolean {
+        if (dstAst.type === "replvar") {
+            if (name === dstAst.name) return true;
+        }
         if (ast.type === "replvar") {
             if (ast.name === name) {
                 astmgr.assign(ast, dstAst);
+                return true;
             }
-            return;
+            return !(ast.name.match(this.deductionReplNameRule) || name.match(this.deductionReplNameRule));
+
         }
         if (ast.type === "fn" && ast.name === "#canrepl") {
-            throw "cannot resolve #canrepl in #repl";
+            // throw "cannot resolve #canrepl in #repl";
+            return false;
         }
         if (ast.type === "fn" && ast.name === "#nofree") {
             const subAst = ast.nodes[0];
             if (subAst.name === name) {
                 astmgr.assign(ast, dstAst);
+                return true;
             }
-            return;
+            return !(subAst.name.match(this.deductionReplNameRule) || name.match(this.deductionReplNameRule));
         }
         if (ast.type === "sym" && (ast.name === "V" || ast.name === "E" || ast.name === "E!")) {
             let localVar = ast.nodes[0].name;
             let subAst = ast.nodes[1];
-            if (name === localVar) return;
-            this._execReplFn(subAst, name, dstAst);
-            return;
+            if (name === localVar) return true;
+            return this._execReplFn(subAst, name, dstAst);
         }
         if (ast.nodes?.length) {
-            for (const n of ast.nodes) this._execReplFn(n, name, dstAst);
+            for (const n of ast.nodes) if (!this._execReplFn(n, name, dstAst)) return false;
         }
+        return true;
     }
-    private expandReplFn(ast: AST, replNameRule: RegExp, replFnName: string = "#repl") {
+    private expandReplFn(ast: AST, replNameRule: RegExp, localNameRule: RegExp, ignoreNameRule: RegExp, replFnName: string = "#repl") {
         if (ast.type === "fn" && ast.name === replFnName) {
             const [testAst, srcAst, dstAst] = ast.nodes;
             // verify we can do #repl fn
             const newAst = { type: "fn", name: "#canrepl", nodes: ast.nodes.map(n => astmgr.clone(n)) };
-            this.expandCanreplFn(newAst, replNameRule);
+            this.expandCanreplFn(newAst, replNameRule, localNameRule, ignoreNameRule);
             this.getNetCondition(srcAst);
-            this._execReplFn(testAst, srcAst.name, dstAst)
-            astmgr.assign(ast, testAst);
+            if (this._execReplFn(testAst, srcAst.name, dstAst)) {
+                astmgr.assign(ast, testAst);
+            }
             return;
         }
         if (ast.nodes?.length) {
-            for (const n of ast.nodes) this.expandReplFn(n, replNameRule, replFnName);
+            for (const n of ast.nodes) this.expandReplFn(n, replNameRule, localNameRule, ignoreNameRule, replFnName);
         }
     }
     private expandNofreeFn(ast: AST, replNameRule: RegExp, localNameRule: RegExp, ignoreNameRule: RegExp): boolean {
@@ -617,7 +636,7 @@ export class FormalSystem {
                 // #nofree(a,..b..), delete b
                 if (!testAst.name.match(replNameRule)) {
                     nofreeVars.forEach(b => {
-                        if (b.match(ignoreNameRule)|| !b.match(replNameRule)) {
+                        if (b.match(ignoreNameRule) || !b.match(replNameRule)) {
                             nofreeVars.delete(b);
                         }
                     });
@@ -625,7 +644,7 @@ export class FormalSystem {
                     // local vars
                     // #nofree($0,..#b..), delete #b
                     nofreeVars.forEach(b => {
-                        if (b.match(ignoreNameRule)||b.match(localNameRule)) {
+                        if (b.match(ignoreNameRule) || b.match(localNameRule)) {
                             nofreeVars.delete(b);
                         }
                     });
@@ -684,7 +703,7 @@ export class FormalSystem {
         const p = this.propositions[propositionIdx];
         if (!p.from) throw "该定理为假设，无推理步骤可展开";
         const { deductionIdx, conditionIdxs, replaceValues } = p.from;
-        if (!this.deductions[deductionIdx].steps) throw `该定理由原子推理规则得到，无子步骤`;
+        if (!this.deductions[deductionIdx].steps) throw `该定理由来自<${this.deductions[deductionIdx].from}>的原子推理规则得到，无子步骤`;
         const hyps = conditionIdxs.map(c => this.propositions[c].value);
         this.removePropositions();
         hyps.forEach(h => this.addHypothese(h));
@@ -854,40 +873,6 @@ export class FormalSystem {
                         continue;
                     }
                 }
-                // if (step.deductionIdx === 7) {
-                //     const s0Info = infoTable[step.conditionIdxs[0]];
-                //     const s0 = offsetTable[step.conditionIdxs[0]];
-                //     const s1Ast = p.value.nodes[0];
-                //     const s0IsTrue = (s0Info & 1) === 0;
-                //     if (s0IsTrue) {
-                //         infoTable.push(AXM);
-                //         offsetTable.push(this.propositions.length);
-                //         this.deduct({
-                //             deductionIdx: 7, conditionIdxs: [s0],
-                //             replaceValues: [s1Ast]
-                //         }); // axiom, copy it
-                //         continue;
-                //     } else {
-                //         const s0Ast = p.value.nodes[1];
-                //         // |- $0 > V$1:$0
-                //         const p1 = this.deduct({
-                //             deductionIdx: 99, conditionIdxs: [],
-                //             replaceValues: [s0Ast, s1Ast]
-                //         });
-                //         if (s0Info === CND) {
-                //             // |- CND > V$1:CND, only mark it
-                //             offsetTable.push(p1);
-                //             infoTable.push(DDT); continue;
-                //         } else {
-                //             //  CND >  $0 , $0 > V$1:$0 |- CND > V$1:$0
-                //             offsetTable.push(this.deduct({
-                //                 deductionIdx: 93, conditionIdxs: [s0, p1],
-                //                 replaceValues: [s0Ast, s1Ast]
-                //             }));
-                //             infoTable.push(DDT); continue;
-                //         }
-                //     }
-                // }
             }
             const lastInfo = infoTable.pop();
             const lastP = offsetTable.pop();
@@ -916,10 +901,9 @@ export class FormalSystem {
 
             // add deduction as macro and recover proposition list
 
-            const didx = this.addMacro(this.propositions.length - 1);
+            const didx = this.addMacro(this.propositions.length - 1, "mdt " + deductionIdx);
             this.propositions = oldPropositions;
             this.hypothesisAmount = oldHypothesisAmount;
-            this.deductions[didx].from = "*mdt " + deductionIdx;
             return didx;
         } catch (e) {
             this.propositions = oldPropositions;
@@ -963,11 +947,149 @@ export class FormalSystem {
             "$$2": exprAst
         }
         astmgr.replaceByMatchResult(deduction, replTable);
-        this.expandReplFn(deduction, this.deductionReplNameRule, "##repl");
+        this.expandReplFn(deduction, this.deductionReplNameRule, this.localNameRule, this.replacedLocalNameRule, "##repl");
         this.consts.set(constAst.name, this.deductions.length);
-        return this.addDeduction(deduction, "*mc '" + constAst.name + "'");
+        return this.addDeduction(deduction, "mc '" + constAst.name + "'");
     }
+    metaUniversalTheorem(deductionIdx: number, replaceValue: AST) {
+        const didxVaMP = 99;
+        const d = this.deductions[deductionIdx];
+        const errorMsg = "普遍化元定理执行失败：";
+        if (!d) throw errorMsg + "条件中的推理规则不存在";
+        if (replaceValue.type !== "replvar") throw "$$0只能为变量";
+        const variable = replaceValue.name;
+        if (this.consts.has(variable)) throw "$$0不能为常量";
+        for (const [idx, cond] of d.conditions.entries()) {
+            if (-1 !== this._isFreeIn(variable, cond, this.deductionReplNameRule, this.localNameRule, this.replacedLocalNameRule)) {
+                throw errorMsg + `条件${idx + 1}中##nofree函数无法满足`;
+            }
+        }
 
+
+        const oldTempMQDs = this.tempMQDs;
+        const oldPropositions = this.propositions;
+        const oldDeductions = this.deductions;
+        const oldHypothesisAmount = this.hypothesisAmount;
+
+        try {
+
+            // expand macro in propositions, store it in const refPropositions
+
+            this.removePropositions();
+            d.conditions.forEach(dcond => this.addHypothese(dcond));
+            this.deduct({
+                deductionIdx, conditionIdxs: d.conditions.map((v, idx) => idx), replaceValues: d.replaceNames.map(str => str.includes("(") ?
+                    {
+                        type: "fn", name: str.replace(/^(.+)\(.*\)$/g, "$1"),
+                        nodes: str.replace(/^.+\((.*)\)$/g, "$1").split(",").map(e => ({
+                            type: "replvar", name: e
+                        }))
+                    }
+                    :
+                    {
+                        type: "replvar", name: str
+                    })
+            }, (step, conclusion) => (-1 !== this._isFreeIn(variable, conclusion, this.deductionReplNameRule, this.localNameRule, this.replacedLocalNameRule) ? "deep" : null));
+            const refPropositions = this.propositions;
+
+            // write required deduction step in current proposition list according to refsteps
+
+            this.removePropositions();
+            d.conditions.forEach(dcond => this.addHypothese(dcond));
+
+            const NOFREE = 1, AXM = 2, MP = 3;
+            const infoTable = [];
+            const newTable = [];
+            const offsetVarTable = []; // with V:
+            const offsetTable = []; // without V:
+            for (const [pidx, p] of refPropositions.entries()) {
+                const step = p.from;
+                if (!step) {
+                    infoTable.push(NOFREE); // already checked hypotheses satisfy nofree
+                    offsetTable.push(pidx);
+                    continue;
+                }
+                if (-1 === this._isFreeIn(variable, p.value, this.deductionReplNameRule, this.localNameRule, this.replacedLocalNameRule)) {
+                    infoTable.push(NOFREE);
+                    continue;
+                }
+                if (step.deductionIdx === 0) {
+                    infoTable.push(MP);
+                    continue;
+                }
+                if (!this.deductions[step.deductionIdx].steps?.length) {
+                    infoTable.push(AXM);
+                    continue;
+                }
+                throw "cannot reached";
+            }
+            const generate = (idx: number, quantified: boolean) => {
+                const oldStep = refPropositions[idx].from;
+                const didx = oldStep?.deductionIdx;
+                if (!quantified) {
+                    // avoid repeated deductions on the same prop (here includes hyps)
+                    if (isFinite(offsetTable[idx])) return offsetTable[idx];
+                    // axiom or macros
+                    offsetTable[idx] = this.deduct({
+                        deductionIdx: didx, replaceValues: oldStep.replaceValues,
+                        conditionIdxs: oldStep.conditionIdxs.map(id => generate(id, false))
+                    });
+                    return offsetTable[idx];
+                }
+                // avoid repeated deductions on the same prop
+                if (isFinite(offsetVarTable[idx])) return offsetVarTable[idx];
+                let targetInfo = infoTable[idx];
+                if (targetInfo === NOFREE) {
+                    const id0 = this.deduct({ deductionIdx: 6, conditionIdxs: [], replaceValues: [replaceValue, refPropositions[idx].value] });
+                    const id = this.deduct({ deductionIdx: 0, conditionIdxs: [id0, generate(idx, false)], replaceValues: [] });
+                    offsetVarTable[idx] = id;
+                    return id;
+                }
+                if (targetInfo === AXM) {
+                    const newVariable = "$&" + didx;
+                    const newdIdx = this.tempMQDs[didx] ?? this.metaQuantifyAxiomSchema(didx, { type: "replvar", name: newVariable });
+                    this.tempMQDs[didx] = newdIdx;
+                    const oldd = this.deductions[didx];
+                    const newd = this.deductions[newdIdx];
+                    const newReplaceValues = new Array(newd.replaceNames.length);
+                    for (const [nidx, name] of oldd.replaceNames.entries()) {
+                        newReplaceValues[newd.replaceNames.indexOf(name)] = refPropositions[idx].from.replaceValues[nidx];
+                    }
+                    const variableReplaceValuesIdx = newd.replaceNames.indexOf(newVariable);
+                    newReplaceValues[variableReplaceValuesIdx] = replaceValue;
+                    const id = this.deduct({
+                        deductionIdx: newdIdx, conditionIdxs: [], replaceValues: newReplaceValues
+                    });
+                    offsetVarTable[idx] = id;
+                    return id;
+                }
+                if (targetInfo === MP) {
+                    const id = this.deduct({
+                        deductionIdx: didxVaMP, replaceValues: [], conditionIdxs: [
+                            generate(oldStep.conditionIdxs[0], true),
+                            generate(oldStep.conditionIdxs[1], true),
+                        ]
+                    });
+                    offsetVarTable[idx] = id;
+                    return id;
+                }
+            }
+            generate(infoTable.length - 1, true);
+
+            // add deduction as macro and recover proposition list
+
+            const didx = this.addMacro(this.propositions.length - 1, "mqt " + deductionIdx);
+            this.propositions = oldPropositions;
+            this.hypothesisAmount = oldHypothesisAmount;
+            return didx;
+        } catch (e) {
+            this.tempMQDs = oldTempMQDs;
+            this.deductions = oldDeductions; // no risk here because no const/fn added
+            this.hypothesisAmount = oldHypothesisAmount;
+            this.propositions = oldPropositions; // no risk here because we have updated hypothesisAmount by hand
+            throw e;
+        }
+    }
     metaNewFunction(replaceValues: AST[]) {
         const [fnAst, varAst1, varAst2, exprAst] = replaceValues;
         if (fnAst.type !== "replvar") throw "$$0只能为纯变量名";
@@ -984,9 +1106,9 @@ export class FormalSystem {
         }
         astmgr.replaceByMatchResult(deduction, replTable);
         this._replaceFnName(deduction, "$$0", fnAst.name);
-        this.expandReplFn(deduction, this.deductionReplNameRule, "##repl");
+        this.expandReplFn(deduction, this.deductionReplNameRule, this.localNameRule, this.replacedLocalNameRule, "##repl");
         this.fns.set(fnAst.name, this.deductions.length);
-        return this.addDeduction(deduction, "*mf '" + fnAst.name + "(#0)'");
+        return this.addDeduction(deduction, "mf '" + fnAst.name + "(#0)'");
     }
     _replaceFnName(ast: AST, src: string, dst: string) {
         if (ast.type === "fn" && ast.name === src) {

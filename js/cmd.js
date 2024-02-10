@@ -43,6 +43,9 @@ export class FSCmd {
             this.gui.hintText.innerText = "请输入命令";
             if (!this.gui.isMobile)
                 this.gui.actionInput.focus();
+            this.gui.divCmdBtns.querySelectorAll("button").forEach(e => {
+                e.disabled = false;
+            });
         }
         else {
             this.onEsc();
@@ -55,6 +58,9 @@ export class FSCmd {
             this.gui.actionInput.focus();
         if (!cmdBuffer.length)
             return;
+        this.gui.divCmdBtns.querySelectorAll("button").forEach(e => {
+            e.disabled = true;
+        });
         try {
             switch (cmdBuffer[0]) {
                 case "macro":
@@ -221,6 +227,25 @@ export class FSCmd {
                     hintText.innerText = "元规则执行错误：" + e;
                 }
                 break;
+            case "qt":
+                if (cmdBuffer.length === 2) {
+                    hintText.innerText = "请输入或点选条件推理规则，按Esc取消";
+                    return;
+                }
+                if (cmdBuffer.length === 3) {
+                    hintText.innerText = "请输入替代$$0的变量名，按Esc取消";
+                    return;
+                }
+                try {
+                    formalSystem.metaUniversalTheorem(Number(cmdBuffer[2]), this.astparser.parse(cmdBuffer[3]));
+                    this.gui.updateDeductionList();
+                    this.clearCmdBuffer();
+                }
+                catch (e) {
+                    this.clearCmdBuffer();
+                    hintText.innerText = "元规则执行错误：" + e;
+                }
+                break;
             default: hintText.innerText = "该元规则不存在或作者暂未实现";
         }
     }
@@ -287,7 +312,7 @@ export class FSCmd {
     execMacro() {
         const formalSystem = this.gui.formalSystem;
         try {
-            formalSystem.deductions[formalSystem.addMacro(formalSystem.propositions.length - 1)].from = "*录制宏";
+            formalSystem.addMacro(formalSystem.propositions.length - 1, "录制");
             this.gui.updateDeductionList();
             this.execClear();
         }
@@ -303,7 +328,7 @@ export class FSCmd {
     }
     execPopD() {
         const ds = this.gui.formalSystem.deductions;
-        if (ds[ds.length - 1].from.startsWith("*")) {
+        if (ds[ds.length - 1].from.includes("[S]")) {
             if (this.gui.formalSystem.propositions.length) {
                 this.clearCmdBuffer();
                 this.gui.hintText.innerText = "无法删除规则：需先清空定理列表";
