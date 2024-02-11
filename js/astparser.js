@@ -1,6 +1,6 @@
 export class ASTParser {
-    keywords = ["E!", "⊢M", "<>"];
-    symChar = "VEMU()@~^<>|&=,;:[]!⊢+";
+    keywords = ["E!", "⊢M", "<>", "Union"];
+    symChar = "VEMUI()@~^<>|&=,;:[]!⊢+-*/";
     ast;
     cursor = 0;
     tokens;
@@ -102,12 +102,22 @@ export class ASTParser {
             throw "语法错误";
         }
     }
-    boolTerm5() {
+    boolTerm6() {
         let val = this.itemTerm();
-        while (this.token === "+" || this.token === "-" || this.token?.match(/^\$\$.+/)) {
+        while (this.token === "*" || this.token === "I" || this.token?.match(/^\$\$.+/)) {
             const name = this.token;
             this.nextSym();
             let val2 = this.itemTerm();
+            val = { type: "sym", name, nodes: [val, val2] };
+        }
+        return val;
+    }
+    boolTerm5() {
+        let val = this.boolTerm6();
+        while (this.token === "+" || this.token === "U" || this.token === "-") {
+            const name = this.token;
+            this.nextSym();
+            let val2 = this.boolTerm6();
             val = { type: "sym", name, nodes: [val, val2] };
         }
         return val;
@@ -122,15 +132,33 @@ export class ASTParser {
         }
         return val;
     }
+    boundedVar() {
+        if (this.token.match(/^#?#nf$/)) {
+            this.nextSym();
+            this.expectSym("(");
+            const fnName = this.prevToken(2);
+            const nodes = [this.meta()];
+            while (this.token === ",") {
+                this.nextSym();
+                nodes.push(this.meta());
+            }
+            this.expectSym(")");
+            return { type: "fn", name: fnName, nodes };
+        }
+        else {
+            this.expectVar();
+            return { type: "replvar", name: this.prevToken(1) };
+        }
+    }
     boolTerm3() {
         if (this.token === "V" || this.token === "E" || this.token === "E!") {
             const name = this.token;
             this.nextSym();
-            this.expectVar();
+            // this.expectVar();
             return {
                 type: "sym", name,
                 nodes: [
-                    { type: "replvar", name: this.prevToken(1) },
+                    this.boundedVar(),
                     (this.acceptSym(":"), this.boolTerm3()) // ":" is optional
                 ]
             };

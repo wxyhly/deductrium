@@ -1,7 +1,7 @@
 import { AST } from "astmgr.js"
 export class ASTParser {
-    keywords = ["E!", "⊢M", "<>"];
-    symChar = "VEMU()@~^<>|&=,;:[]!⊢+";
+    keywords = ["E!", "⊢M", "<>", "Union"];
+    symChar = "VEMUI()@~^<>|&=,;:[]!⊢+-*/";
     ast: AST;
     cursor: number = 0;
     tokens: string[];
@@ -53,7 +53,7 @@ export class ASTParser {
     }
     private acceptVar() {
         if (!this.symChar.includes(this.token)) {
-            if(!this.token) return false; //eof
+            if (!this.token) return false; //eof
             this.nextSym();
             return true;
         }
@@ -99,12 +99,22 @@ export class ASTParser {
             throw "语法错误";
         }
     }
-    private boolTerm5(): AST {
+    private boolTerm6(): AST {
         let val = this.itemTerm();
-        while (this.token === "+" || this.token === "-" || this.token?.match(/^\$\$.+/)) {
+        while (this.token === "*" || this.token === "I" || this.token?.match(/^\$\$.+/)) {
             const name = this.token;
             this.nextSym();
             let val2 = this.itemTerm();
+            val = { type: "sym", name, nodes: [val, val2] };
+        }
+        return val;
+    }
+    private boolTerm5(): AST {
+        let val = this.boolTerm6();
+        while (this.token === "+" || this.token === "U" || this.token === "-") {
+            const name = this.token;
+            this.nextSym();
+            let val2 = this.boolTerm6();
             val = { type: "sym", name, nodes: [val, val2] };
         }
         return val;
@@ -119,15 +129,32 @@ export class ASTParser {
         }
         return val;
     }
+    private boundedVar(): AST {
+        if (this.token.match(/^#?#nf$/)) {
+            this.nextSym();
+            this.expectSym("(");
+            const fnName = this.prevToken(2);
+            const nodes = [this.meta()];
+            while (this.token === ",") {
+                this.nextSym();
+                nodes.push(this.meta());
+            }
+            this.expectSym(")");
+            return { type: "fn", name: fnName, nodes };
+        } else {
+            this.expectVar();
+            return { type: "replvar", name: this.prevToken(1) };
+        }
+    }
     private boolTerm3(): AST {
         if (this.token === "V" || this.token === "E" || this.token === "E!") {
             const name = this.token;
             this.nextSym();
-            this.expectVar();
+            // this.expectVar();
             return {
                 type: "sym", name,
                 nodes: [
-                    { type: "replvar", name: this.prevToken(1) },
+                    this.boundedVar(),
                     (this.acceptSym(":"), this.boolTerm3()) // ":" is optional
                 ]
             };

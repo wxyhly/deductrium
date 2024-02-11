@@ -22,17 +22,19 @@
     font-weight: bold;
 }
 .boundedVar {
-    color:#999;
+    color:#595;
 }
+    
 .replvar{
     color:brown;
 }
 
 
 
+
 .list-wrapper::-webkit-scrollbar-thumb {
     background-color: gray;
-    border-radius: 2px;
+    border-radius: 4px;
 }
 
 .list-wrapper::-webkit-scrollbar {

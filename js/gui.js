@@ -71,12 +71,14 @@ export class FSGui {
             case "V":
             case "E":
             case "E!": return `(${ast.name}${this.stringify(nd[0])}: ${this.stringify(nd[1])})`;
-            default: //case "@": case "=": case "&": case "|": case "^": case ">":
+            default:
                 return `(${this.stringify(nd[0])} ${ast.name} ${this.stringify(nd[1])})`;
         }
     }
     prettyPrint(s) {
-        return s.replace(/<>/g, "↔").replace(/>/g, "→").replace(/</g, "⊆").replace(/@/g, "∈").replace(/\|/g, "∨").replace(/&/g, "∧").replace(/~/g, "¬").replace(/V/g, "∀").replace(/E/g, "∃");
+        return s.replace(/<>/g, "↔").replace(/>/g, "→").replace(/</g, "⊂").replace(/@/g, "∈")
+            .replace(/U/g, "∪").replace(/I/g, "∩").replace(/\*/g, "×")
+            .replace(/\|/g, "∨").replace(/&/g, "∧").replace(/~/g, "¬").replace(/V/g, "∀").replace(/E/g, "∃");
     }
     addSpan(parentSpan, text) {
         const span = document.createElement("span");
@@ -125,15 +127,23 @@ export class FSGui {
             if (this.formalSystem.fns.has(ast.name))
                 fnName.classList.add("fn");
             this.addSpan(varnode, "(");
-            let firstTerm = true;
-            for (const n of ast.nodes) {
-                if (firstTerm) {
-                    firstTerm = false;
+            for (const [nidx, n] of ast.nodes.entries()) {
+                const sub = ast.name.match(/^#?#(nf|(can)?repl)/) && nidx;
+                const sup = ast.name.match(/^#?#(can)?repl/) && nidx === 1;
+                const noComma = (nidx >= 1 && (sub || sup));
+                if (nidx && (!noComma))
+                    this.addSpan(varnode, ", ");
+                const node = this.ast2HTML(idx, n, scopes);
+                if (sub || sup) {
+                    const wrappedNode = document.createElement(sup ? "sup" : "sub");
+                    if (nidx > 1 && ast.name.match(/^#?#nf/))
+                        wrappedNode.appendChild(this.addSpan(wrappedNode, ","));
+                    wrappedNode.appendChild(node);
+                    varnode.appendChild(wrappedNode);
                 }
                 else {
-                    this.addSpan(varnode, ", ");
+                    varnode.appendChild(node);
                 }
-                varnode.appendChild(this.ast2HTML(idx, n, scopes));
             }
             this.addSpan(varnode, ")");
         }

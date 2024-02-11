@@ -13,7 +13,7 @@ export class FormalSystem {
     localNameRule: RegExp = /^\#/g;
     replacedLocalNameRule: RegExp = /^&/g;
     consts = new Map<string, number>([["0", -1], ["1", -1], ["2", -1], ["3", -1], ["4", -1], ["5", -1], ["6", -1], ["7", -1], ["8", -1], ["9", -1]]); // [constName -> defineDeductionIdx]
-    fns = new Map<string, number>([["S", -1]]); // [fnName -> defineDeductionIdx]
+    fns = new Map<string, number>([["S", -1], ["P", -1], ["Pow", -1], ["Union", -1]]); // [fnName -> defineDeductionIdx]
     fnParamNames = (n: number) => "#" + n;
     propositions: Proposition[] = [];
     private tempMQDs: number[] = [];
@@ -50,14 +50,14 @@ export class FormalSystem {
         };
     }
     private getNetCondition(condition: AST) {
-        if (condition.type === "fn" && condition.name === "#nofree") {
+        if (condition.type === "fn" && condition.name === "#nf") {
             astmgr.assign(condition, condition.nodes[0]);
             this.getNetCondition(condition);
         } else if (condition.nodes?.length) {
             for (const n of condition.nodes) this.getNetCondition(n);
         }
     }
-    private checkGrammer(ast: AST, type: "m" | "d" | "p" | "v") {
+    private checkGrammer(ast: AST, type: "m" | "d" | "p" | "v" | "i") {
         if (ast.type.startsWith("$")) throw "意外的错误：循环替换标记$未被正确清除";
         if (type === "v") {
             const netAst = astmgr.clone(ast);
@@ -112,6 +112,19 @@ export class FormalSystem {
                 this.checkGrammer(ast.nodes[1], "p");
                 return;
             }
+            if (ast.name === "U" || ast.name === "I") {
+                if (type !== "i") throw "意外出现集合表达式";
+                this.checkGrammer(ast.nodes[0], "i");
+                this.checkGrammer(ast.nodes[1], "i");
+                return;
+            }
+
+            if (ast.name === "@" || ast.name === "=" || ast.name === "<") {
+                if (type !== "p") throw "意外出现原子谓词公式";
+                this.checkGrammer(ast.nodes[0], "i");
+                this.checkGrammer(ast.nodes[1], "i");
+                return;
+            }
         }
         if (type === "m") return "未找到元推理符号";
         if (type === "d") return "未找到推理符号";
@@ -119,7 +132,7 @@ export class FormalSystem {
             if (ast.name === "#repl" || ast.name === "#canrepl") {
                 if (ast.nodes?.length !== 3) throw `系统函数${ast.name}的参数个数必须为三个`;
             }
-            if (ast.name === "#nofree") {
+            if (ast.name === "#nf") {
                 if (!(ast.nodes?.length > 1)) throw `系统函数${ast.name}的参数个数必须至少有两个`;
                 for (let i = 1; i < ast.nodes.length; i++) {
                     try {
@@ -285,7 +298,7 @@ export class FormalSystem {
 
         // find repls provided by user, replfns must be by user
 
-        // firstly, check and reduce nofree fns in user's inputs
+        // firstly, check and reduce nf fns in user's inputs
         replaceValues.forEach((ast, idx) => {
             try { this.checkGrammer(ast, "p"); } catch (e) { throw errorMsg + `替代${replaceNames[idx]}的表达式中发生语法错误：` + e; }
             if (!this.expandNofreeFn(ast, this.deductionReplNameRule, this.localNameRule, this.replacedLocalNameRule)) {
@@ -297,7 +310,7 @@ export class FormalSystem {
 
         let replsMatchTable: ASTMatchResult = Object.fromEntries(replaceNames.map((replname: string, idx: number) => [replname, replaceValues[idx]]));
 
-        // then match given condition props with net condition (with #nofree peeled)
+        // then match given condition props with net condition (with #nf peeled)
         for (const [conditionIdx, condition] of conditions.entries()) {
             const condPropIdx = conditionIdxs[conditionIdx];
             const condProp = this.propositions[condPropIdx];
@@ -312,7 +325,7 @@ export class FormalSystem {
             if (!replsMatchTable) throw errorMsg + `无法匹配第${conditionIdx + 1}个条件`;
         }
 
-        // replace replvars in conditions, test and expand #nofree
+        // replace replvars in conditions, test and expand #nf
 
         // preventCircularReplace in fn's contents
         for (const [key, ast] of Object.entries(replsMatchTable)) {
@@ -409,7 +422,7 @@ export class FormalSystem {
             // a is not free in b
             return -1;
         }
-        if (ast.type === "fn" && ast.name === "#nofree") {
+        if (ast.type === "fn" && ast.name === "#nf") {
             const subNofreeAsts = ast.nodes.slice(1);
             let subNofreeVars = new Set(subNofreeAsts.map(n => n.name));
             // a is not free in .(a)
@@ -457,7 +470,7 @@ export class FormalSystem {
             }
             const rawSrcAst = astmgr.clone(srcAst);
             const srcIsNot = new Set<string>;
-            if (srcAst.type === "fn" && srcAst.name === "#nofree") {
+            if (srcAst.type === "fn" && srcAst.name === "#nf") {
                 for (let i = 1; i < srcAst.nodes.length; i++) {
                     srcIsNot.add(srcAst.nodes[i].name);
                 }
@@ -488,7 +501,7 @@ export class FormalSystem {
                 // else, noway to reduce it
                 return;
             }
-            if (testAst.type === "fn" && testAst.name === "#nofree") {
+            if (testAst.type === "fn" && testAst.name === "#nf") {
                 const subNofreeAsts = testAst.nodes.slice(1); // .map(n => (this.getNetCondition(n), n));
                 let subNofreeVars = new Set(subNofreeAsts.map(n => n.name));
                 if (subNofreeVars.has(src)) {
@@ -582,7 +595,7 @@ export class FormalSystem {
             // throw "cannot resolve #canrepl in #repl";
             return false;
         }
-        if (ast.type === "fn" && ast.name === "#nofree") {
+        if (ast.type === "fn" && ast.name === "#nf") {
             const subAst = ast.nodes[0];
             if (subAst.name === name) {
                 astmgr.assign(ast, dstAst);
@@ -618,13 +631,13 @@ export class FormalSystem {
         }
     }
     private expandNofreeFn(ast: AST, replNameRule: RegExp, localNameRule: RegExp, ignoreNameRule: RegExp): boolean {
-        if (ast.type === "fn" && ast.name === "#nofree") {
+        if (ast.type === "fn" && ast.name === "#nf") {
             const nofreeAsts = ast.nodes.slice(1).map(n => (this.getNetCondition(n), n));
             let nofreeVars = new Set(nofreeAsts.map(n => n.name));
             const testAst = ast.nodes[0];
             if (testAst.type === "replvar") {
-                // #nofree($0,..$0..), fail 
-                // #nofree(a,..a..), fail 
+                // #nf($0,..$0..), fail 
+                // #nf(a,..a..), fail 
                 if (nofreeVars.has(testAst.name)) {
                     return false;
                 }
@@ -633,7 +646,7 @@ export class FormalSystem {
                     return true;
                 }
                 // else a!=b:
-                // #nofree(a,..b..), delete b
+                // #nf(a,..b..), delete b
                 if (!testAst.name.match(replNameRule)) {
                     nofreeVars.forEach(b => {
                         if (b.match(ignoreNameRule) || !b.match(replNameRule)) {
@@ -642,7 +655,7 @@ export class FormalSystem {
                     });
                 } else {
                     // local vars
-                    // #nofree($0,..#b..), delete #b
+                    // #nf($0,..#b..), delete #b
                     nofreeVars.forEach(b => {
                         if (b.match(ignoreNameRule) || b.match(localNameRule)) {
                             nofreeVars.delete(b);
@@ -652,7 +665,7 @@ export class FormalSystem {
                 this._reconstructNoFreeFn(ast, nofreeVars);
                 return true;
             }
-            if (testAst.type === "fn" && testAst.name === "#nofree") {
+            if (testAst.type === "fn" && testAst.name === "#nf") {
                 const subNofreeAsts = testAst.nodes.slice(1).map(n => (this.getNetCondition(n), n));
                 let subNofreeVars = new Set(subNofreeAsts.map(n => n.name));
                 nofreeVars.forEach(e => subNofreeVars.add(e));
@@ -663,11 +676,11 @@ export class FormalSystem {
             if (testAst.type === "sym" && (testAst.name === "V" || testAst.name === "E" || testAst.name === "E!")) {
                 let localVar = testAst.nodes[0].name;
                 let subAst = testAst.nodes[1];
-                // #nofree(Va:xxx,a) -> true
+                // #nf(Va:xxx,a) -> true
                 if (nofreeVars.has(localVar)) {
                     nofreeVars.delete(localVar);
                 }
-                const newSubAst = { type: "fn", name: "#nofree", nodes: [testAst.nodes[1]] };
+                const newSubAst = { type: "fn", name: "#nf", nodes: [testAst.nodes[1]] };
                 this._reconstructNoFreeFn(newSubAst, nofreeVars);
                 astmgr.assign(ast, {
                     type: "sym", name: testAst.name, nodes: [
@@ -685,7 +698,7 @@ export class FormalSystem {
                 }
                 for (const subAst of testAst.nodes) {
                     newTestAst.nodes.push({
-                        type: "fn", name: "#nofree",
+                        type: "fn", name: "#nf",
                         nodes: [subAst, ...nofreeAsts.map(e => astmgr.clone(e))]
                     });
                 }
@@ -1005,7 +1018,7 @@ export class FormalSystem {
             for (const [pidx, p] of refPropositions.entries()) {
                 const step = p.from;
                 if (!step) {
-                    infoTable.push(NOFREE); // already checked hypotheses satisfy nofree
+                    infoTable.push(NOFREE); // already checked hypotheses satisfy nf
                     offsetTable.push(pidx);
                     continue;
                 }
