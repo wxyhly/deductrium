@@ -80,8 +80,10 @@ export function addZFC(fs: FormalSystem) {
     addDeduction("⊢ 9 = S(8)");
     addDeduction("( ⊢ S($x+$y)=($x+S($y)))");
     addDeduction("( ⊢ $x+0=$x)");
+    addDeduction("( ⊢ $x+$y-$y=$x)");
     addDeduction("( ⊢ $x*0=0)");
     addDeduction("( ⊢ S($x)*$y=$y+$x*$y)");
+    addDeduction("( ⊢ $x*$y/$y=$x)");
 
     deductionFrom = "ZFC集合论";
     addDeduction("⊢ Ex: x=0");

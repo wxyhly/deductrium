@@ -11,7 +11,6 @@ export class FSGui {
     deductionList: HTMLOListElement;
     metaRuleList: HTMLOListElement;
     divCmdBtns: HTMLDivElement;
-    displayPLayers: number = -1;
     displayDs = new Set();
     isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
     cmd: FSCmd;
@@ -28,9 +27,6 @@ export class FSGui {
         this.divCmdBtns = divCmdBtns;
         this.cmd = new FSCmd(this);
         addZFC(this.formalSystem);
-        displayPLayerSelect.addEventListener('change', () => {
-            this.setDisplayPLayer(Number(displayPLayerSelect.value));
-        });
         divCmdBtns.querySelectorAll("button").forEach(btn => {
             btn.addEventListener("click", () => {
                 if (this.cmd.cmdBuffer.length) return;
@@ -79,7 +75,7 @@ export class FSGui {
     }
     prettyPrint(s: string) {
         return s.replace(/<>/g, "↔").replace(/>/g, "→").replace(/</g, "⊂").replace(/@/g, "∈")
-            .replace(/U/g, "∪").replace(/I/g, "∩").replace(/\*/g, "×")
+            .replace(/U/g, "∪").replace(/I/g, "∩").replace(/\*/g, "×").replace(/\//g, "÷").replace(/-/g, "−")
             .replace(/\|/g, "∨").replace(/&/g, "∧").replace(/~/g, "¬").replace(/V/g, "∀").replace(/E/g, "∃");
     }
     private addSpan(parentSpan: HTMLSpanElement, text: string) {
@@ -314,10 +310,6 @@ export class FSGui {
     }
     stringifyDeductionStep(step: DeductionStep) {
         return `&nbsp;d${step.deductionIdx} ${step.conditionIdxs.join(", ")}`;
-    }
-    setDisplayPLayer(n: number) {
-        this.displayPLayers = n;
-        this.updatePropositionList(true);
     }
 }
 

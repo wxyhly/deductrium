@@ -104,7 +104,7 @@ export class ASTParser {
     }
     boolTerm6() {
         let val = this.itemTerm();
-        while (this.token === "*" || this.token === "I" || this.token?.match(/^\$\$.+/)) {
+        while (this.token === "*" || this.token === "/" || this.token === "I" || this.token?.match(/^\$\$.+/)) {
             const name = this.token;
             this.nextSym();
             let val2 = this.itemTerm();

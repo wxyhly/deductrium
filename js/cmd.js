@@ -20,6 +20,10 @@ export class FSCmd {
             this.actionInputKeydown(e);
         });
         this.clearCmdBuffer();
+        actionInput.addEventListener("blur", ev => {
+            this._selStart = actionInput.selectionStart;
+            this._selEnd = actionInput.selectionEnd;
+        });
     }
     actionInputKeydown(e) {
         const actionInput = this.gui.actionInput;
@@ -190,6 +194,7 @@ export class FSCmd {
                 try {
                     formalSystem.metaNewConstant(cmdBuffer.slice(2).map(ast => this.astparser.parse(ast)));
                     this.gui.updateDeductionList();
+                    this.gui.updatePropositionList(true); //update const color
                     this.clearCmdBuffer();
                 }
                 catch (e) {
@@ -205,6 +210,7 @@ export class FSCmd {
                 try {
                     formalSystem.metaNewFunction(cmdBuffer.slice(2).map(ast => this.astparser.parse(ast)));
                     this.gui.updateDeductionList();
+                    this.gui.updatePropositionList(true); // update fn color
                     this.clearCmdBuffer();
                 }
                 catch (e) {
@@ -328,7 +334,7 @@ export class FSCmd {
     }
     execPopD() {
         const ds = this.gui.formalSystem.deductions;
-        if (ds[ds.length - 1].from.includes("[S]")) {
+        if (!ds[ds.length - 1].from.includes("[S]")) {
             if (this.gui.formalSystem.propositions.length) {
                 this.clearCmdBuffer();
                 this.gui.hintText.innerText = "无法删除规则：需先清空定理列表";
@@ -455,6 +461,17 @@ export class FSCmd {
         }
         else if (cmdBuffer[0] === "meta") {
             switch (cmdBuffer[1]) {
+                case "qt":
+                    if (cmdBuffer.length === 2) {
+                        if (idx[0] === "d") {
+                            cmdBuffer.push(Number(idx.slice(1)));
+                            this.execCmdBuffer();
+                        }
+                    }
+                    else {
+                        this.replaceActionInputFromClick(inserted);
+                    }
+                    break;
                 case "q":
                     if (cmdBuffer.length === 2) {
                         if (idx[0] === "d") {
@@ -478,16 +495,19 @@ export class FSCmd {
             this.execCmdBuffer();
         }
     }
+    _selStart = 0;
+    _selEnd = 0;
     replaceActionInputFromClick(inserted) {
         const actionInput = this.gui.actionInput;
         if (!this.gui.isMobile)
             actionInput.focus();
         const val = actionInput.value;
-        const start = actionInput.selectionStart;
-        const end = actionInput.selectionEnd;
+        const start = this._selStart;
+        const end = this._selEnd;
         actionInput.value = val.substring(0, start) + inserted + val.substring(end);
-        actionInput.selectionStart = start;
-        actionInput.selectionEnd = start + inserted.length;
+        actionInput.selectionStart = this._selStart = start;
+        actionInput.selectionEnd = this._selEnd = start + inserted.length;
+        // alert(start + "|" + end + " => " + actionInput.selectionStart + "|" + actionInput.selectionEnd)
     }
     onEsc() {
         const hintText = this.gui.hintText;
