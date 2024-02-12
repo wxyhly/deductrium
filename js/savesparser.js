@@ -1,3 +1,5 @@
+import { FormalSystem } from "./formalsystem.js";
+import { addZFC } from "./initial.js";
 const dict = {
     '"nodes":[{"type":"replvar"': "%:",
     '{"type":"replvar","name":"': "*:",
@@ -59,17 +61,33 @@ const dict = {
 const replaceArr1 = Object.entries(dict);
 const replaceArr2 = replaceArr1.slice(0).reverse();
 export class SavesParser {
-    serialize(json) {
+    serialize(fs) {
+        return this.serializeStr(JSON.stringify([Array.from(fs.fns), Array.from(fs.consts), fs.deductions.slice(100)]));
+    }
+    serializeStr(json) {
         for (const [a, b] of replaceArr1) {
             json = json.replaceAll(a, b);
         }
         return json;
     }
-    deserialize(str) {
+    deserializeStr(str) {
         for (const [a, b] of replaceArr2) {
             str = str.replaceAll(b, a);
         }
         return str;
+    }
+    deserialize(str) {
+        const fs = new FormalSystem();
+        addZFC(fs);
+        const data = JSON.parse(this.deserializeStr(str));
+        fs.deductions = fs.deductions.concat(data[2]);
+        for (const [k, v] of data[0]) {
+            fs.consts.set(k, v);
+        }
+        for (const [k, v] of data[1]) {
+            fs.fns.set(k, v);
+        }
+        return fs;
     }
 }
 //# sourceMappingURL=savesparser.js.map

@@ -352,9 +352,9 @@ export class FSCmd {
     execSave() {
         if (this.cmdBuffer.length > 1)
             return;
-        const ds = this.gui.formalSystem.deductions;
+        const fs = this.gui.formalSystem;
         this.gui.hintText.innerText = "正在保存";
-        const data = this.savesParser.serialize(JSON.stringify(ds));
+        const data = this.savesParser.serialize(fs);
         if (!navigator.clipboard) {
             this.gui.actionInput.value = data;
             this.gui.actionInput.select();
@@ -377,14 +377,14 @@ export class FSCmd {
         if (this.cmdBuffer.length > 1) {
             let ds;
             try {
-                ds = JSON.parse(this.savesParser.deserialize(this.cmdBuffer[1]));
+                this.gui.formalSystem = this.savesParser.deserialize(this.cmdBuffer[1]);
             }
             catch (e) {
                 this.clearCmdBuffer();
                 this.gui.hintText.innerText = "进度导入失败";
                 return;
             }
-            this.gui.formalSystem.deductions = ds;
+            this.gui.updatePropositionList(true);
             this.gui.updateDeductionList(true);
             this.execClear();
         }
@@ -401,7 +401,7 @@ export class FSCmd {
         const cmdBuffer = this.cmdBuffer;
         const hintText = this.gui.hintText;
         const formalSystem = this.gui.formalSystem;
-        if (formalSystem.propositions.length !== formalSystem.hypothesisAmount) {
+        if (formalSystem.propositions.findIndex(e => e.from) !== -1) {
             this.clearCmdBuffer();
             hintText.innerText = `无法添加假设条件：假设须添加在其它定理之前`;
             return;

@@ -37,7 +37,7 @@ export function addZFC(fs) {
     addDeduction("⊢($0|$1) <> (~$0>$1)");
     addDeduction("⊢($0&$1) <> ~($0>~$1)");
     addDeduction("⊢(E$0:$1) <> ~(V$0:~$1)");
-    addDeduction("⊢ (#nf($a,$0)<#nf($b,$0)) <> (V$0:$0@#nf($a,$0) > $0@#nf($b,$0))");
+    addDeduction("⊢ (#nf($a,$0)<#nf($b,$0)) <> (V$0:($0@#nf($a,$0) > $0@#nf($b,$0)))");
     addDeduction("⊢ ($a=$b <> ($a < $b & $b < $a))");
     // addDeduction(`⊢ (E!#nf($0,$2):#nf($1,$2))`.replaceAll("\n",""));
     addDeduction(`

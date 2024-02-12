@@ -1,3 +1,6 @@
+import { FormalSystem } from "./formalsystem.js";
+import { addZFC } from "./initial.js";
+
 const dict = {
     '"nodes":[{"type":"replvar"': "%:",
     '{"type":"replvar","name":"': "*:",
@@ -58,18 +61,33 @@ const dict = {
 };
 const replaceArr1 = Object.entries(dict);
 const replaceArr2 = replaceArr1.slice(0).reverse();
-export class SavesParser{
-    
-    serialize(json:string){
-        for(const [a,b] of replaceArr1){
-            json = json.replaceAll(a,b);
+export class SavesParser {
+    serialize(fs: FormalSystem) {
+        return this.serializeStr(JSON.stringify([Array.from(fs.fns), Array.from(fs.consts), fs.deductions.slice(100)]));
+    }
+    serializeStr(json: string) {
+        for (const [a, b] of replaceArr1) {
+            json = json.replaceAll(a, b);
         }
         return json;
     }
-    deserialize(str:string){
-        for(const [a,b] of replaceArr2){
-            str = str.replaceAll(b,a);
+    deserializeStr(str: string) {
+        for (const [a, b] of replaceArr2) {
+            str = str.replaceAll(b, a);
         }
         return str;
+    }
+    deserialize(str: string) {
+        const fs = new FormalSystem();
+        addZFC(fs);
+        const data = JSON.parse(this.deserializeStr(str));
+        fs.deductions = fs.deductions.concat(data[2]);
+        for (const [k, v] of data[0]) {
+            fs.consts.set(k, v)
+        }
+        for (const [k, v] of data[1]) {
+            fs.fns.set(k, v)
+        }
+        return fs;
     }
 }

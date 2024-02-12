@@ -1,7 +1,6 @@
 import { ASTMgr } from "./astmgr.js";
 const astmgr = new ASTMgr;
 export class FormalSystem {
-    hypothesisAmount = 0;
     deductions = [];
     metaRules = {};
     deductionReplNameRule = /^\$/g;
@@ -205,16 +204,15 @@ export class FormalSystem {
         metaRule.from = from;
         this.metaRules[name] = metaRule;
     }
-    addHypothese(m) {
+    addHypothese(m, expandMode) {
         this.checkGrammer(m, "p");
-        if (this.hypothesisAmount !== this.propositions.length)
+        if (this.propositions.findIndex(e => e.from) !== -1)
             return false;
-        if (this._hasLocalNames(m))
+        if (!expandMode && this._hasLocalNames(m))
             throw "假设中不能出现局部变量";
         if (!this.expandNofreeFn(m, this.deductionReplNameRule, null, this.replacedLocalNameRule))
             throw "假设中的附加条件自相矛盾";
         this.propositions.push({ value: m, from: null });
-        this.hypothesisAmount++;
     }
     _replaceLocalNames(ast, prefix) {
         if (ast.type === "replvar" && ast.name.match(this.localNameRule)) {
@@ -239,10 +237,13 @@ export class FormalSystem {
         return false;
     }
     addMacro(propositionIdx, from) {
-        if (propositionIdx < this.hypothesisAmount)
+        let hypothesisAmount = this.propositions.findIndex(e => e.from);
+        if (hypothesisAmount == -1)
+            hypothesisAmount = this.propositions.length;
+        if (propositionIdx < hypothesisAmount)
             throw "无有效定理推导步骤，创建宏推导失败";
         const conditions = [];
-        for (let i = 0; i < this.hypothesisAmount; i++) {
+        for (let i = 0; i < hypothesisAmount; i++) {
             conditions.push(this.propositions[i].value);
         }
         const conclusion = this.propositions[propositionIdx].value;
@@ -250,10 +251,10 @@ export class FormalSystem {
             throw "局部变量不能出现在推理宏的结论中";
         }
         const macro = [];
-        for (let i = this.hypothesisAmount; i <= propositionIdx; i++) {
+        for (let i = hypothesisAmount; i <= propositionIdx; i++) {
             const step = this.propositions[i].from;
             macro.push({
-                conditionIdxs: step.conditionIdxs.map(cidx => cidx < this.hypothesisAmount ? cidx : cidx - i),
+                conditionIdxs: step.conditionIdxs.map(cidx => cidx < hypothesisAmount ? cidx : cidx - i),
                 replaceValues: step.replaceValues.map(v => {
                     const newv = astmgr.clone(v);
                     this._replaceLocalNames(newv, "&" + this.deductions.length);
@@ -272,18 +273,15 @@ export class FormalSystem {
     removePropositions(amount) {
         if (!isFinite(amount)) {
             this.propositions = [];
-            this.hypothesisAmount = 0;
         }
         else {
             while (amount--) {
                 this.propositions.pop();
             }
-            this.hypothesisAmount = Math.min(this.propositions.length, this.hypothesisAmount);
         }
     }
     setPropositions(ps) {
         this.propositions = ps;
-        this.hypothesisAmount = Math.max(0, ps.findIndex(p => p.from));
     }
     removeLastDeduction() {
         const didx = this.deductions.length - 1;
@@ -781,7 +779,8 @@ export class FormalSystem {
             throw `该定理由来自<${this.deductions[deductionIdx].from}>的原子推理规则得到，无子步骤`;
         const hyps = conditionIdxs.map(c => this.propositions[c].value);
         this.removePropositions();
-        hyps.forEach(h => this.addHypothese(h));
+        // expandMode set true to skip local var check in addHypothese
+        hyps.forEach(h => this.addHypothese(h, true));
         this.deduct({
             deductionIdx, conditionIdxs: hyps.map((v, idx) => idx), replaceValues
         }, "inline");
@@ -816,7 +815,6 @@ export class FormalSystem {
         if (!d.conditions.length)
             throw errorMsg + "推理规则不包含假设，无法与条件匹配";
         const oldPropositions = this.propositions;
-        const oldHypothesisAmount = this.hypothesisAmount;
         try {
             // expand macro in propositions, store it in const refPropositions
             this.removePropositions();
@@ -840,6 +838,9 @@ export class FormalSystem {
             const newConditions = d.conditions.slice(0, -1);
             // const newNetCoditions = netConditions.slice(0, -1);
             newConditions.forEach(dcond => this.addHypothese(dcond));
+            let hypothesisAmount = this.propositions.findIndex(e => e.from);
+            if (hypothesisAmount == -1)
+                hypothesisAmount = this.propositions.length;
             // refPropositions.forEach(p => p.from ? p.from = [p.from[p.from.length - 1]] : null);
             const HYP = 0, CND = 1, AXM = 2, DDT = 3;
             const infoTable = [];
@@ -847,12 +848,12 @@ export class FormalSystem {
             for (const [pidx, p] of refPropositions.entries()) {
                 const step = p.from;
                 if (!step) {
-                    if (pidx < this.hypothesisAmount) {
+                    if (pidx < hypothesisAmount) {
                         // hypothese, skip
                         infoTable.push(HYP);
                         offsetTable.push(pidx);
                     }
-                    else if (pidx === this.hypothesisAmount) {
+                    else if (pidx === hypothesisAmount) {
                         // condition for moving
                         infoTable.push(CND);
                         offsetTable.push(NaN); // removed, access forbidden
@@ -963,7 +964,7 @@ export class FormalSystem {
                     conditionIdxs: [],
                     deductionIdx: 1, replaceValues: [
                         this.propositions[lastP].value,
-                        refPropositions[this.hypothesisAmount].value
+                        refPropositions[hypothesisAmount].value
                     ]
                 });
                 this.deduct({
@@ -977,12 +978,10 @@ export class FormalSystem {
             // add deduction as macro and recover proposition list
             const didx = this.addMacro(this.propositions.length - 1, "mdt " + deductionIdx);
             this.propositions = oldPropositions;
-            this.hypothesisAmount = oldHypothesisAmount;
             return didx;
         }
         catch (e) {
             this.propositions = oldPropositions;
-            this.hypothesisAmount = oldHypothesisAmount;
             throw e;
         }
     }
@@ -1051,7 +1050,6 @@ export class FormalSystem {
         const oldTempMQDs = this.tempMQDs;
         const oldPropositions = this.propositions;
         const oldDeductions = this.deductions;
-        const oldHypothesisAmount = this.hypothesisAmount;
         try {
             // expand macro in propositions, store it in const refPropositions
             this.removePropositions();
@@ -1156,13 +1154,11 @@ export class FormalSystem {
             // add deduction as macro and recover proposition list
             const didx = this.addMacro(this.propositions.length - 1, "mqt " + deductionIdx);
             this.propositions = oldPropositions;
-            this.hypothesisAmount = oldHypothesisAmount;
             return didx;
         }
         catch (e) {
             this.tempMQDs = oldTempMQDs;
             this.deductions = oldDeductions; // no risk here because no const/fn added
-            this.hypothesisAmount = oldHypothesisAmount;
             this.propositions = oldPropositions; // no risk here because we have updated hypothesisAmount by hand
             throw e;
         }
