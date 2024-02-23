@@ -110,7 +110,8 @@ h1 {
     bottom: 0px;
     left: 8px;
     right: 8px;
-    background-color: beige;
+    background-color: rgba(240, 240, 230, 0.9);
+    border-radius: 5px;
     padding: 5px;
 }
 

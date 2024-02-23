@@ -1,68 +1,60 @@
-import { FormalSystem } from "./formalsystem.js";
-import { addZFC } from "./initial.js";
+import { ASTParser } from "./astparser.js";
+import { initFormalSystem } from "./initial.js";
 const dict = {
-    '"nodes":[{"type":"replvar"': "%:",
-    '{"type":"replvar","name":"': "*:",
-    '"nodes":[]': "o:",
-    '"value":{': "v:",
-    '"nodes":[{': "d:",
-    '"replaceNames":["$0","$1","$2"': "9:",
-    '"replaceNames":["$0","$1"': "8:",
-    '"replaceNames":["$0"': "7:",
-    '"replaceNames":[': "#:",
-    '"conditionIdxs":[': "Y:",
-    '"replaceValues":[': "$:",
-    '"deductionIdx":"': "N:",
-    '"conditions":[': "c:",
-    '"conclusion":{': "j:",
-    '"conclusion":': ",:",
-    '"from":"': "f:",
-    '"name":"#array"': "a:",
-    '"type":"fn"': "k:",
-    '"type":"meta"': "m:",
-    '"type":"replvar"': "r:",
-    '"type":"sym"': "s:",
-    '"type":': "t:",
-    '"name":"$0"': "0:",
-    '"name":"$1"': "1:",
-    '"name":"$2"': "2:",
-    '"name":">"': "x:",
-    '"name":"~"': "~:",
-    '"name":': "n:",
-    'n:"#0"': "):",
-    'n:"⊢"': "T:",
-    'n:"V"': "V:",
-    '}]}': "b:",
-    '},{': "q:",
-    ':},': "::",
-    's:,x:,': "z:",
-    'q:z:,': "Z:",
-    'z:d:s:,': "D:",
-    'k:,n:"#replace",%:': "R:",
-    'k:,n:"#satisfy",%:,': "S:",
-    '*:$2"b:]': "B:",
-    ':*:$': "X:",
-    'b:]},': "A:",
-    '"}],#:': "C:",
-    'f:一阶逻辑"': "P:",
-    'f:m0所需宏"': "/:",
-    'f:*录制宏"': "Q:",
-    'f:符号宏"': "W:",
-    'f:命题逻辑"': "G:",
-    ':],': "I:",
-    '`': "(:",
-    ':,': "`",
-    'Q`"steps":[{Y': "^:",
-    'v:m`T`d:k`a`': "!:",
-    'V`%`0:': "?:",
-    '.': ";:",
-    ':q:': ".",
+    ',"aE0","aPair","aPow","aUnion","areg","arepl","asep","ainf",': "a#`",
+    '],["0","1","2","3","4","5","6","7","8","9"': "b#`",
+    '[["Union","Pow","Pair","S"': "c#`",
+    ',"d0","d1","d2","d3","d4","d5","d6","d7","d8","d9",': "d#`",
+    '","a': 'a`',
+    '","d': 'd`',
 };
 const replaceArr1 = Object.entries(dict);
 const replaceArr2 = replaceArr1.slice(0).reverse();
+const astparser = new ASTParser;
 export class SavesParser {
-    serialize(fs) {
-        return this.serializeStr(JSON.stringify([Array.from(fs.fns), Array.from(fs.consts), fs.deductions.slice(100)]));
+    serializeDeduction(deduction) {
+        const value = astparser.stringifyTight(deduction.value);
+        const steps = deduction.steps?.map(s => [
+            s.deductionIdx, s.conditionIdxs,
+            s.replaceValues.map(v => astparser.stringifyTight(v))
+        ]);
+        return [value, deduction.from, steps];
+    }
+    deserializeDeduction(name, fs, sd) {
+        fs.addDeduction(name, astparser.parse(sd[0]), sd[1], sd[2]?.map(e => ({
+            deductionIdx: e[0], conditionIdxs: e[1], replaceValues: e[2].map(v => astparser.parse(v))
+        })));
+    }
+    serialize(dlist, fs) {
+        const userD = {};
+        for (const [n, d] of Object.entries(fs.deductions)) {
+            if (!d.from.endsWith("*"))
+                continue;
+            if (n.startsWith("c") || n.startsWith("<") || n.startsWith(">") || n.startsWith("v") || n.startsWith("u")) {
+                continue;
+            }
+            userD[n] = this.serializeDeduction(d);
+        }
+        return this.serializeStr(JSON.stringify([
+            Array.from(fs.fns), Array.from(fs.consts), userD, dlist
+        ]));
+    }
+    deserializeArr(fs, arr) {
+        const [arrC, arrFn, dictD, arrD] = arr;
+        for (const [k, v] of Object.entries(dictD)) {
+            this.deserializeDeduction(k, fs, v);
+        }
+        for (const v of arrC) {
+            fs.consts.add(v);
+        }
+        for (const v of arrFn) {
+            fs.fns.add(v);
+        }
+        return { fs, arrD };
+    }
+    deserialize(str) {
+        const fsArrD = initFormalSystem();
+        return this.deserializeArr(fsArrD.fs, JSON.parse(this.deserializeStr(str)));
     }
     serializeStr(json) {
         for (const [a, b] of replaceArr1) {
@@ -75,19 +67,6 @@ export class SavesParser {
             str = str.replaceAll(b, a);
         }
         return str;
-    }
-    deserialize(str) {
-        const fs = new FormalSystem();
-        addZFC(fs);
-        const data = JSON.parse(this.deserializeStr(str));
-        fs.deductions = fs.deductions.concat(data[2]);
-        for (const [k, v] of data[0]) {
-            fs.consts.set(k, v);
-        }
-        for (const [k, v] of data[1]) {
-            fs.fns.set(k, v);
-        }
-        return fs;
     }
 }
 //# sourceMappingURL=savesparser.js.map

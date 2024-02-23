@@ -77,15 +77,35 @@ export class FSCmd {
                 case "d": return this.execDeduct();
                 case "meta": return this.execMetaDeduct();
                 case "pop": return this.execPop();
-                case "popd": return this.execPopD();
+                case "del": return this.execDel();
                 case "clear": return this.execClear();
                 default:
-                    if (cmdBuffer.length === 1 && cmdBuffer[0].startsWith("d")) {
-                        cmdBuffer.push(cmdBuffer[0].substring(1));
-                        cmdBuffer[0] = "d";
-                        this.execCmdBuffer();
+                    if (cmdBuffer[0].includes(" ")) {
+                        const queue = cmdBuffer[0].split(" ").filter(e => e);
+                        this.cmdBuffer = [];
+                        for (const c of queue) {
+                            this.cmdBuffer.push(c);
+                            this.execCmdBuffer();
+                        }
                     }
                     else {
+                        if (cmdBuffer.length === 1) {
+                            try {
+                                if (this.gui.formalSystem.generateDeduction(cmdBuffer[0])) {
+                                    cmdBuffer.unshift("d");
+                                    this.execCmdBuffer();
+                                    return;
+                                }
+                            }
+                            catch (e) {
+                                // do nothing but wait for unknown cmd
+                            }
+                            if (this.gui.formalSystem.metaRules[cmdBuffer[0].slice(1)]) {
+                                cmdBuffer[0] = cmdBuffer[0].slice(1);
+                                cmdBuffer.unshift("meta");
+                                return;
+                            }
+                        }
                         this.clearCmdBuffer();
                         hintText.innerText = `无效命令`;
                     }
@@ -105,17 +125,17 @@ export class FSCmd {
             return;
         }
         if (this.cmdBuffer.length % 2 == 0) {
-            if (this.cmdBuffer[this.cmdBuffer.length - 1].startsWith("d")) {
+            const item = this.cmdBuffer[this.cmdBuffer.length - 1];
+            if (this.gui.formalSystem.deductions[item]) {
                 if (!this.escClear) {
                     this.cmdBuffer.pop();
                     this.execCmdBuffer();
                     hintText.innerText += `\n要展开推理规则，请先按Esc返回`;
                     return;
                 }
-                const d = this.cmdBuffer[this.cmdBuffer.length - 1].slice(1);
                 this.cmdBuffer.push(this.gui.formalSystem.propositions);
                 try {
-                    this.gui.formalSystem.expandMacroWithDefaultValue(Number(d));
+                    this.gui.formalSystem.expandMacroWithDefaultValue(item);
                     this.execCmdBuffer();
                 }
                 catch (e) {
@@ -125,8 +145,8 @@ export class FSCmd {
                     hintText.innerText += "\n" + e;
                 }
             }
-            else if (this.cmdBuffer[this.cmdBuffer.length - 1].startsWith("p")) {
-                const p = this.cmdBuffer[this.cmdBuffer.length - 1].slice(1);
+            else if (item.startsWith("p")) {
+                const p = item.slice(1);
                 this.cmdBuffer.push(this.gui.formalSystem.propositions);
                 try {
                     this.gui.formalSystem.expandMacroWithProp(Number(p));
@@ -142,13 +162,22 @@ export class FSCmd {
             else {
                 // else if clicked metarule, pop to roll back
                 this.cmdBuffer.pop();
+                this.execCmdBuffer();
+                hintText.innerText += "\n无法展开元规则";
                 return;
             }
         }
         else {
             this.gui.updatePropositionList(true);
             this.escClear = false;
-            hintText.innerText = `目前位于第${(this.cmdBuffer.length - 1) / 2}层推理宏内，按Esc返回上一层定理表\n或继续输入/点击要展开的定理`;
+            hintText.innerHTML = `目前位于${this.cmdBuffer.map((v, idx, arr) => {
+                if (idx % 2 === 0)
+                    return null;
+                if (v.match(/^p[0-9]+$/)) {
+                    return v + ` (${this.gui.stringifyDeductionStep(arr[idx + 1][Number(v.slice(1))].from)})`;
+                }
+                return `( ${v} )`;
+            }).filter(v => v).join(" > ")}共${(this.cmdBuffer.length - 1) / 2}层推理宏内，按Esc返回上一层定理表\n或继续输入/点击要展开的定理`;
         }
     }
     execHelp() {
@@ -160,99 +189,97 @@ export class FSCmd {
         const cmdBuffer = this.cmdBuffer;
         const hintText = this.gui.hintText;
         const formalSystem = this.gui.formalSystem;
-        if (cmdBuffer.length === 1) {
+        const curLength = cmdBuffer.length;
+        if (curLength === 1) {
             hintText.innerText = "请输入或点选元规则，按Esc取消";
             return;
         }
+        const mr = this.gui.formalSystem.metaRules[cmdBuffer[1]];
+        if (!mr) {
+            this.clearCmdBuffer();
+            hintText.innerText = "该元规则不存在，元推理取消";
+        }
         // a metarule is chosen, we verify vars and conditions
-        let preInfo = `正在执行元规则m${cmdBuffer[1]}:\n`;
-        switch (cmdBuffer[1]) {
-            case "q":
-                if (cmdBuffer.length === 2) {
-                    hintText.innerText = preInfo + "请输入匹配条件( ⊢ $$0)的公理规则，按Esc取消";
-                    return;
-                }
-                if (cmdBuffer.length === 3) {
-                    hintText.innerText = preInfo + "请输入替代$$1的内容，按Esc取消";
-                    return;
-                }
-                try {
-                    formalSystem.deductions[formalSystem.metaQuantifyAxiomSchema(Number(cmdBuffer[2]), this.astparser.parse(cmdBuffer[3]))].from = `*mq d${cmdBuffer[2]}`;
-                    this.gui.updateDeductionList();
-                    this.clearCmdBuffer();
-                }
-                catch (e) {
-                    this.clearCmdBuffer();
-                    hintText.innerText = preInfo + "错误：" + e;
-                }
-                break;
-            case "c":
-                if (cmdBuffer.length < 5) {
-                    hintText.innerText = `请输入替代${['$$0', '$$1', '$$2'][cmdBuffer.length - 2]}的内容，按Esc取消`;
-                    return;
-                }
-                try {
-                    formalSystem.metaNewConstant(cmdBuffer.slice(2).map(ast => this.astparser.parse(ast)));
-                    this.gui.updateDeductionList();
-                    this.gui.updatePropositionList(true); //update const color
-                    this.clearCmdBuffer();
-                }
-                catch (e) {
-                    this.clearCmdBuffer();
-                    hintText.innerText = "元规则执行错误：" + e;
-                }
-                break;
-            case "f":
-                if (cmdBuffer.length < 6) {
-                    hintText.innerText = `请输入替代${['$$0', '$$1', '$$2', '$$3'][cmdBuffer.length - 2]}的内容，按Esc取消`;
-                    return;
-                }
-                try {
-                    formalSystem.metaNewFunction(cmdBuffer.slice(2).map(ast => this.astparser.parse(ast)));
-                    this.gui.updateDeductionList();
-                    this.gui.updatePropositionList(true); // update fn color
-                    this.clearCmdBuffer();
-                }
-                catch (e) {
-                    this.clearCmdBuffer();
-                    hintText.innerText = "元规则执行错误：" + e;
-                }
-                break;
-            case "dt":
-                if (cmdBuffer.length === 2) {
-                    hintText.innerText = "请输入或点选条件推理规则，按Esc取消";
-                    return;
-                }
-                try {
-                    formalSystem.metaDeductTheorem(Number(cmdBuffer[2]));
-                    this.gui.updateDeductionList();
-                    this.clearCmdBuffer();
-                }
-                catch (e) {
-                    this.clearCmdBuffer();
-                    hintText.innerText = "元规则执行错误：" + e;
-                }
-                break;
-            case "qt":
-                if (cmdBuffer.length === 2) {
-                    hintText.innerText = "请输入或点选条件推理规则，按Esc取消";
-                    return;
-                }
-                if (cmdBuffer.length === 3) {
-                    hintText.innerText = "请输入替代$$0的变量名，按Esc取消";
-                    return;
-                }
-                try {
-                    formalSystem.metaUniversalTheorem(Number(cmdBuffer[2]), this.astparser.parse(cmdBuffer[3]));
-                    this.gui.updateDeductionList();
-                    this.clearCmdBuffer();
-                }
-                catch (e) {
-                    this.clearCmdBuffer();
-                    hintText.innerText = "元规则执行错误：" + e;
-                }
-                break;
-            default: hintText.innerText = "该元规则不存在或作者暂未实现";
+        const replVarsLength = mr.replaceNames.length;
+        const condLength = mr.conditionDeductionIdxs.length;
+        const vars = mr.replaceNames;
+        const writtenConditions = new Array(condLength); // conditions already inputted by user, used for hint
+        let j = 0;
+        for (let i = 2; i < 2 + condLength && i < curLength; i++, j++) {
+            const idx = cmdBuffer[i];
+            if (!formalSystem.deductions[idx]) {
+                this.clearCmdBuffer();
+                hintText.innerText = "元推理已取消：条件推理规则不存在";
+                return;
+            }
+            writtenConditions[j] = idx;
+        }
+        writtenConditions.fill("?", j);
+        let preInfo = `正在进行元推理 ${cmdBuffer[1]} ${writtenConditions.join(", ")} : \n`;
+        for (let i = 2 + condLength; i < 2 + condLength + replVarsLength && i < curLength; i++) {
+            preInfo += vars[i - 2 - condLength] + `: ${cmdBuffer[i]}\n`;
+        }
+        if (curLength < condLength + 2) {
+            //wait for conditionIdx input
+            hintText.innerText = preInfo + "请输入条件" + this.astparser.stringify(mr.conditions[mr.conditionDeductionIdxs[cmdBuffer.length - 2]]) + "的推理规则名或点推理规则";
+            return;
+        }
+        if (curLength < replVarsLength + condLength + 2) {
+            // wait for replvar input
+            hintText.innerText = preInfo + "请输入替代" + vars[cmdBuffer.length - 2 - condLength] + "的内容";
+            if (!this.gui.actionInput.value) {
+                this.gui.actionInput.value = vars[cmdBuffer.length - 2 - condLength];
+                this.gui.actionInput.setSelectionRange(0, this.gui.actionInput.value.length);
+            }
+            return;
+        }
+        // all params are there, finish it
+        try {
+            let newName;
+            let afterName = null;
+            switch (cmdBuffer[1]) {
+                case "q":
+                    newName = formalSystem.metaQuantifyAxiomSchema(cmdBuffer[2], "元规则生成*");
+                    afterName = cmdBuffer[2];
+                    break;
+                case "c":
+                    newName = formalSystem.metaNewConstant([cmdBuffer[2], cmdBuffer[3], cmdBuffer[4]].map(v => this.astparser.parse(v)), "元规则生成*");
+                    break;
+                case "f":
+                    newName = formalSystem.metaNewFunction([cmdBuffer[2], cmdBuffer[3], cmdBuffer[4], cmdBuffer[5]].map(v => this.astparser.parse(v)), "元规则生成*");
+                    break;
+                case "cdt":
+                    newName = formalSystem.metaConditionTheorem(cmdBuffer[2], "元规则生成*");
+                    afterName = cmdBuffer[2];
+                    break;
+                case "dt":
+                    newName = formalSystem.metaDeductTheorem(cmdBuffer[2], "元规则生成*");
+                    afterName = cmdBuffer[2];
+                    break;
+                case "cvt":
+                    newName = formalSystem.metaConditionUniversalTheorem(cmdBuffer[2], "元规则生成*");
+                    afterName = cmdBuffer[2];
+                    break;
+                case "vt":
+                    newName = formalSystem.metaUniversalTheorem(cmdBuffer[2], "元规则生成*");
+                    afterName = cmdBuffer[2];
+                    break;
+                case "ifft":
+                    // ["m","ifft",sx,ast,nth,  pos, null, name]
+                    if (!this.getInputNewDeductionPos(5))
+                        return;
+                    newName = formalSystem.metaIffTheorem(cmdBuffer[2], [cmdBuffer[3], cmdBuffer[4]].map(v => this.astparser.parse(v)), cmdBuffer[7], "元规则生成*");
+                    afterName = cmdBuffer[5];
+                    break;
+                default:
+                    throw "很抱歉，该规则暂未被作者实现";
+            }
+            this.gui.addToDeductions(newName, afterName);
+            this.clearCmdBuffer();
+        }
+        catch (e) {
+            this.clearCmdBuffer();
+            hintText.innerText = preInfo + "错误：" + e;
         }
     }
     execDeduct() {
@@ -264,18 +291,23 @@ export class FSCmd {
             return;
         }
         // a deduction is chosen, we verify vars and conditions
-        const deduction = formalSystem.deductions[cmdBuffer[1]];
+        const deduction = formalSystem.deductions[cmdBuffer[1]] ?? formalSystem.generateDeduction(cmdBuffer[1]);
+        if (!deduction) {
+            this.clearCmdBuffer();
+            hintText.innerText = `推理已取消：\n未找到推理规则 ${cmdBuffer[1]}`;
+        }
         const vars = deduction.replaceNames;
         const conditions = deduction.conditions;
         // cmdBuffer : [
-        //    "d", d_idx: number, 
-        //    ...replVars:ast[], ...conditionIdxs: number[]
+        //    "d", d_idx: string, ...conditionIdxs: number[]
+        //    ...replVars:ast[], 
         // ]
         const replVarsLength = vars.length;
-        const conditionIdxsLength = conditions.length;
-        const writtenConditions = new Array(conditionIdxsLength); // conditions already inputted by user, used for hint
+        const condLength = conditions.length;
+        const curLength = cmdBuffer.length;
+        const writtenConditions = new Array(condLength); // conditions already inputted by user, used for hint
         let j = 0;
-        for (let i = 2 + replVarsLength; i < 2 + replVarsLength + conditionIdxsLength && i < cmdBuffer.length; i++, j++) {
+        for (let i = 2; i < 2 + condLength && i < curLength; i++, j++) {
             const idx = cmdBuffer[i];
             if (!formalSystem.propositions[idx]) {
                 this.clearCmdBuffer();
@@ -285,25 +317,29 @@ export class FSCmd {
             writtenConditions[j] = idx;
         }
         writtenConditions.fill("?", j);
-        let preInfo = `正在进行推理${writtenConditions.join(", ")} d${cmdBuffer[1]}:\n`;
-        for (let i = 2; i < 2 + replVarsLength && i < cmdBuffer.length; i++) {
-            preInfo += vars[i - 2] + `: ${cmdBuffer[i]}\n`;
+        let preInfo = `正在进行推理 ${cmdBuffer[1]} ${writtenConditions.join(", ")} :  ${this.astparser.stringify(deduction.value)}\n`;
+        for (let i = 2 + condLength; i < 2 + condLength + replVarsLength && i < curLength; i++) {
+            preInfo += vars[i - 2 - condLength] + `: ${cmdBuffer[i]}\n`;
         }
-        if (replVarsLength + 2 > cmdBuffer.length) {
-            // wait for replvar input
-            hintText.innerText = preInfo + "请输入替代" + vars[cmdBuffer.length - 2] + "的内容";
-        }
-        else if (replVarsLength + conditionIdxsLength + 2 > cmdBuffer.length) {
+        if (curLength < condLength + 2) {
             //wait for conditionIdx input
-            hintText.innerText = preInfo + "请输入条件" + this.gui.stringify(deduction.conditions[cmdBuffer.length - replVarsLength - 2]) + "的定理编号，或点选定理";
+            hintText.innerText = preInfo + "请输入条件" + this.astparser.stringify(deduction.conditions[cmdBuffer.length - 2]) + "的定理编号，或点选定理";
+        }
+        else if (curLength < replVarsLength + condLength + 2) {
+            // wait for replvar input
+            hintText.innerText = preInfo + "请输入替代" + vars[cmdBuffer.length - 2 - condLength] + "的内容";
+            if (!this.gui.actionInput.value) {
+                this.gui.actionInput.value = vars[cmdBuffer.length - 2 - condLength];
+                this.gui.actionInput.setSelectionRange(0, this.gui.actionInput.value.length);
+            }
         }
         else {
             // all params are there, finish it
             try {
                 formalSystem.deduct({
-                    deductionIdx: Number(cmdBuffer[1]),
-                    replaceValues: cmdBuffer.slice(2, 2 + replVarsLength).map((it) => this.astparser.parse(it)),
-                    conditionIdxs: cmdBuffer.slice(2 + replVarsLength).map(n => Number(n))
+                    deductionIdx: cmdBuffer[1],
+                    replaceValues: cmdBuffer.slice(2 + condLength).map((it) => this.astparser.parse(it)),
+                    conditionIdxs: cmdBuffer.slice(2, 2 + condLength).map(n => Number(n))
                 });
                 this.clearCmdBuffer();
                 this.gui.updatePropositionList();
@@ -317,9 +353,12 @@ export class FSCmd {
     }
     execMacro() {
         const formalSystem = this.gui.formalSystem;
+        if (!this.getInputNewDeductionPos(1))
+            return; // ["m"].length == 1
         try {
-            formalSystem.addMacro(formalSystem.propositions.length - 1, "录制");
-            this.gui.updateDeductionList();
+            // ["m", pos, null, name]
+            formalSystem.addMacro(this.cmdBuffer[3], "录制*");
+            this.gui.addToDeductions(this.cmdBuffer[3], this.cmdBuffer[1]);
             this.execClear();
         }
         catch (e) {
@@ -332,21 +371,23 @@ export class FSCmd {
         this.gui.updatePropositionList(true);
         this.clearCmdBuffer();
     }
-    execPopD() {
-        const ds = this.gui.formalSystem.deductions;
-        if (!ds[ds.length - 1].from.includes("[S]")) {
-            if (this.gui.formalSystem.propositions.length) {
-                this.clearCmdBuffer();
-                this.gui.hintText.innerText = "无法删除规则：需先清空定理列表";
-                return;
-            }
-            this.gui.formalSystem.removeLastDeduction();
-            this.gui.updateDeductionList(true);
-            this.execClear();
+    execDel() {
+        if (this.cmdBuffer.length === 1) {
+            this.gui.hintText.innerText = "请输入要删除的推理规则名称";
+            return;
         }
-        else {
+        try {
+            const pos = this.gui.deductions.indexOf(this.cmdBuffer[1]);
+            if (pos === -1)
+                throw "列表中无此规则";
+            this.gui.formalSystem.removeDeduction(this.cmdBuffer[1]);
+            this.gui.deductions.splice(pos, 1);
+            this.gui.updateDeductionList();
             this.clearCmdBuffer();
-            this.gui.hintText.innerText = "无法删除系统推理规则";
+        }
+        catch (e) {
+            this.clearCmdBuffer();
+            this.gui.hintText.innerText = "删除推理规则失败：" + e;
         }
     }
     execSave() {
@@ -354,7 +395,7 @@ export class FSCmd {
             return;
         const fs = this.gui.formalSystem;
         this.gui.hintText.innerText = "正在保存";
-        const data = this.savesParser.serialize(fs);
+        const data = this.savesParser.serialize(this.gui.deductions, fs);
         if (!navigator.clipboard) {
             this.gui.actionInput.value = data;
             this.gui.actionInput.select();
@@ -377,7 +418,9 @@ export class FSCmd {
         if (this.cmdBuffer.length > 1) {
             let ds;
             try {
-                this.gui.formalSystem = this.savesParser.deserialize(this.cmdBuffer[1]);
+                const { fs, arrD } = this.savesParser.deserialize(this.cmdBuffer[1]);
+                this.gui.formalSystem = fs;
+                this.gui.deductions = arrD;
             }
             catch (e) {
                 this.clearCmdBuffer();
@@ -385,7 +428,7 @@ export class FSCmd {
                 return;
             }
             this.gui.updatePropositionList(true);
-            this.gui.updateDeductionList(true);
+            this.gui.updateDeductionList();
             this.execClear();
         }
         else {
@@ -401,11 +444,6 @@ export class FSCmd {
         const cmdBuffer = this.cmdBuffer;
         const hintText = this.gui.hintText;
         const formalSystem = this.gui.formalSystem;
-        if (formalSystem.propositions.findIndex(e => e.from) !== -1) {
-            this.clearCmdBuffer();
-            hintText.innerText = `无法添加假设条件：假设须添加在其它定理之前`;
-            return;
-        }
         if (cmdBuffer[cmdBuffer.length - 1] === "$") {
             this.clearCmdBuffer();
             return;
@@ -426,67 +464,49 @@ export class FSCmd {
     onClickSubAst(idx, inserted) {
         const cmdBuffer = this.cmdBuffer;
         if (!cmdBuffer.length) {
-            if (idx[0] === "d") {
-                // click to start a deduction
-                cmdBuffer.push("d", Number(idx.slice(1)));
-                this.execCmdBuffer();
-            }
-            if (idx[0] === "m") {
-                // click to start a meta rule
-                cmdBuffer.push("meta", idx.slice(1));
-                this.execCmdBuffer();
-            }
+            // click item to start a cmd
+            cmdBuffer.push(idx);
+            this.execCmdBuffer();
             return;
         }
         // deduction started, but wait for click props or replvars
         if (cmdBuffer[0] === "d" && cmdBuffer.length >= 2) {
             const deduction = this.gui.formalSystem.deductions[cmdBuffer[1]];
-            const vars = deduction.replaceNames;
-            const conditions = deduction.conditions;
-            const replVarsLength = vars.length;
-            const conditionIdxsLength = conditions.length;
-            if (replVarsLength + 2 > cmdBuffer.length) {
-                // wait for replvar input, user can click both d&p terms
-                this.replaceActionInputFromClick(inserted);
-            }
-            else if (idx[0] === "p" && replVarsLength + conditionIdxsLength + 4 > cmdBuffer.length) {
+            const vars = deduction.replaceNames.length;
+            const conditions = deduction.conditions.length;
+            if (conditions + 2 > cmdBuffer.length) {
                 //wait for conditionIdx input
+                if (!idx.match(/^p[0-9]+$/)) {
+                    this.gui.hintText.innerText += "\n请点选定理！";
+                    return;
+                }
                 cmdBuffer.push(Number(idx.slice(1)));
                 this.execCmdBuffer();
+            }
+            else {
+                // wait for replvar input
+                this.replaceActionInputFromClick(inserted);
             }
         }
         else if (cmdBuffer[0] === "hyp") {
             // wait for hypothese input, user can click both d&p terms
             this.replaceActionInputFromClick(inserted);
         }
-        else if (cmdBuffer[0] === "meta") {
-            switch (cmdBuffer[1]) {
-                case "qt":
-                    if (cmdBuffer.length === 2) {
-                        if (idx[0] === "d") {
-                            cmdBuffer.push(Number(idx.slice(1)));
-                            this.execCmdBuffer();
-                        }
-                    }
-                    else {
-                        this.replaceActionInputFromClick(inserted);
-                    }
-                    break;
-                case "q":
-                    if (cmdBuffer.length === 2) {
-                        if (idx[0] === "d") {
-                            cmdBuffer.push(Number(idx.slice(1)));
-                            this.execCmdBuffer();
-                        }
-                    }
-                    else {
-                        this.replaceActionInputFromClick(inserted);
-                    }
-                    break;
-                case "dt":
-                    // wait for deduct idx input, user can click d terms
-                    cmdBuffer.push(Number(idx.slice(1)));
-                    this.execCmdBuffer();
+        else if (cmdBuffer[0] === "meta" && cmdBuffer.length >= 2) {
+            const mr = this.gui.formalSystem.metaRules[cmdBuffer[1]];
+            const conditions = mr.conditionDeductionIdxs.length;
+            if (conditions + 2 > cmdBuffer.length) {
+                //wait for conditionIdx input
+                if (!this.gui.formalSystem.deductions[idx]) {
+                    this.gui.hintText.innerText += "\n请点选推理规则！";
+                    return;
+                }
+                cmdBuffer.push(idx);
+                this.execCmdBuffer();
+            }
+            else {
+                // wait for replvar input
+                this.replaceActionInputFromClick(inserted);
             }
         }
         else if (cmdBuffer[0] === "expand") {
@@ -509,11 +529,49 @@ export class FSCmd {
         actionInput.selectionEnd = this._selEnd = start + inserted.length;
         // alert(start + "|" + end + " => " + actionInput.selectionStart + "|" + actionInput.selectionEnd)
     }
+    getInputNewDeductionPos(prevLength) {
+        const cmdLen = this.cmdBuffer.length - prevLength + 1;
+        // ["m", pos, null, name]
+        if (cmdLen === 1 || cmdLen === 3) {
+            // ["m"] || ["m", pos, null]
+            let i = 0;
+            while (this.gui.formalSystem.deductions["s" + (++i)])
+                ;
+            this.gui.actionInput.value = "s" + i;
+            this.gui.actionInput.selectionStart = 1;
+            this.gui.actionInput.selectionEnd = this.gui.actionInput.value.length;
+            this.gui.hintText.innerText = cmdLen === 1 ? "请输入在哪个规则后方插入新规则。若直接输入新规则名称，则默认插入至规则表最后" : "请输入新规则名称";
+            // ["m", pos] || ["m", name] || ["m", pos, null, name]
+            return false;
+        }
+        if (cmdLen === 2) {
+            const pos = this.gui.deductions.includes(this.cmdBuffer[prevLength]);
+            if (pos) {
+                // ["m", pos]
+                this.cmdBuffer.push(null);
+                // ["m", pos, null]
+                return this.getInputNewDeductionPos(prevLength);
+            }
+            else {
+                // ["m", name]
+                this.cmdBuffer.splice(prevLength, 0, null, null);
+                // ["m", pos=null, null, name]
+                return this.getInputNewDeductionPos(prevLength);
+            }
+        }
+        // ["m", pos, null, name]
+        if (this.cmdBuffer[prevLength + 2].match(/^<>uvdcamp\.]/)) {
+            this.gui.hintText.innerText = "以.<>uvdcamp开头的推理规则名称由系统保留，请重新命名";
+            this.cmdBuffer.pop();
+            return this.getInputNewDeductionPos(prevLength);
+        }
+        return true;
+    }
     onEsc() {
         const hintText = this.gui.hintText;
         if (this.cmdBuffer[0] === "expand") {
             // ["expand", "(d|p).", {props}, "p.", {props}, "p.", {props},....]
-            this.gui.formalSystem.setPropositions(this.cmdBuffer.pop());
+            this.gui.formalSystem.propositions = this.cmdBuffer.pop();
             this.cmdBuffer.pop();
             this.execCmdBuffer();
             if (this.escClear) {

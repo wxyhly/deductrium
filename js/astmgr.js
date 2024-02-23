@@ -31,95 +31,45 @@ export class ASTMgr {
         }
         return true;
     }
-    preventCircularReplace(ast, replNameRule) {
-        if (ast.type === "replvar" && ast.name.match(replNameRule)) {
-            ast.type = "$" + ast.type;
-        }
-        else {
-            if (ast.nodes?.length) {
-                for (const n of ast.nodes)
-                    this.preventCircularReplace(n, replNameRule);
+    // get all replvars, replNames is a given set to be added in
+    getVarNames(ast, varNames, reg) {
+        if (ast.type === "replvar" && (reg ? ast.name.match(reg) : true))
+            varNames.add(ast.name);
+        if (ast.nodes)
+            for (const n of ast.nodes) {
+                this.getVarNames(n, varNames, reg).forEach(v => varNames.add(v));
             }
-        }
+        return varNames;
     }
-    expandReplFn(ast, fnParamNames, fnExprs) {
-        if (!fnExprs)
-            return;
-        if (ast.type === "fn") {
-            // $0 stored in fnExprs as {$0(#0,#1..): ast contains #0,#1, ...}
-            const key = ast.name + `(${ast.nodes.map((n, idx) => fnParamNames(idx)).join(",")})`;
-            if (fnExprs[key]) {
-                const returned = this.clone(fnExprs[key]);
-                // returned = fnExprs ./ { #0 -> xxx , #1 -> yyy }
-                for (const [paramIdx, param] of ast.nodes.entries()) {
-                    this.replace(returned, { type: "replvar", name: fnParamNames(paramIdx) }, param);
-                }
-                this.assign(ast, returned);
-            }
+    replaceVarNamesInAst(ast, filterReg, replaceSrc, replaceDst) {
+        if (ast.type === "replvar" && ast.name.match(filterReg)) {
+            ast.name = ast.name.replace(replaceSrc, replaceDst);
         }
         if (ast.nodes?.length) {
             for (const n of ast.nodes) {
-                this.expandReplFn(n, fnParamNames, fnExprs);
+                this.replaceVarNamesInAst(n, filterReg, replaceSrc, replaceDst);
             }
         }
     }
-    match(ast, searchValue, replNameRule) {
-        let result = {};
-        if (searchValue.name.match(replNameRule)) {
-            if (searchValue.type === "replvar") {
-                result[searchValue.name] = ast;
-                return result;
-            }
-        }
-        if (ast.nodes?.length !== searchValue.nodes?.length)
-            return false;
-        if (ast.type !== searchValue.type || ast.name !== searchValue.name)
-            return false;
-        if (ast.nodes?.length) {
-            for (let i = 0; i < ast.nodes.length; i++) {
-                result = this.mergeMatchResults(result, this.match(ast.nodes[i], searchValue.nodes[i], replNameRule));
-                if (!result)
-                    return false;
-            }
-        }
-        return result;
-    }
-    mergeMatchResults(res, res2) {
-        if (!(res && res2))
-            return false;
-        for (const [varname, matchedAst] of Object.entries(res2)) {
-            res[varname] ??= matchedAst;
-            if (!this.equal(res[varname], matchedAst)) {
-                return false;
-            }
-        }
-        return res;
-    }
-    replace(ast, searchValue, replaceValue, preventCircularReplace, replNameRule) {
-        if (replNameRule) {
-            const matchResult = this.match(ast, searchValue, replNameRule);
-            if (matchResult) {
-                const newReplaceValue = this.clone(replaceValue);
-                this.replaceByMatchResult(newReplaceValue, matchResult);
-                this.assign(ast, newReplaceValue);
+    // exact replace, without matching $.*s
+    // nth: null or -1 for replaceAll, others for replace nth(start from 0) 
+    replace(ast, searchValue, replaceValue, preventCircularReplace, nth, matchedTimes = 0) {
+        nth ??= -1;
+        if (this.equal(ast, searchValue)) {
+            if (nth === -1 || (nth === matchedTimes)) {
+                this.assign(ast, replaceValue);
                 if (preventCircularReplace) {
                     ast.type = "$" + ast.type;
                 }
-                return;
             }
-        }
-        else if (this.equal(ast, searchValue)) {
-            this.assign(ast, replaceValue);
-            if (preventCircularReplace) {
-                ast.type = "$" + ast.type;
-            }
-            return;
+            return matchedTimes + 1;
         }
         if (ast.nodes?.length && !ast.type.startsWith("$")) {
-            for (const n of ast.nodes)
-                this.replace(n, searchValue, replaceValue, preventCircularReplace, replNameRule);
+            for (const n of ast.nodes) {
+                matchedTimes = this.replace(n, searchValue, replaceValue, preventCircularReplace, nth, matchedTimes);
+            }
         }
-        return;
+        return matchedTimes;
     }
     finishReplace(ast) {
         if (ast.type.startsWith("$"))
@@ -129,26 +79,11 @@ export class ASTMgr {
                 this.finishReplace(n);
         }
     }
-    replaceByMatchResult(ast, matchResult) {
-        if (!matchResult)
-            throw "模式匹配失败";
+    replaceByMatchTable(ast, matchResult) {
         for (const [varname, matchedAst] of Object.entries(matchResult)) {
             this.replace(ast, { type: "replvar", name: varname }, matchedAst, true);
         }
         this.finishReplace(ast);
-    }
-    replaceDeep(ast, searchValue, replaceValue, replNameRule) {
-        const nast = this.clone(ast);
-        while (true) {
-            this.replace(nast, searchValue, replaceValue, false, replNameRule);
-            if (this.equal(nast, ast)) {
-                this.assign(ast, nast);
-                return;
-            }
-            else {
-                this.assign(ast, nast);
-            }
-        }
     }
 }
 //# sourceMappingURL=astmgr.js.map

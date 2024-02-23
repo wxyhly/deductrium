@@ -5,9 +5,56 @@ export class ASTParser {
     cursor = 0;
     tokens;
     token;
+    stringifyTight(ast, bracket = false) {
+        const nd = ast.nodes;
+        if (ast.type === "fn") {
+            return `${ast.name}(${nd.map(n => this.stringifyTight(n)).join(",")})`;
+        }
+        if (ast.type === "replvar") {
+            return ast.name;
+        }
+        if (ast.type === "meta") {
+            const c = `${nd[0].nodes.map(n => this.stringifyTight(n, ast.name === "⊢M")).join(",")}${ast.name}${nd[1].nodes.map(n => this.stringifyTight(n, ast.name === "⊢M")).join(",")}`;
+            return bracket ? `(${c})` : c;
+        }
+        switch (ast.name) {
+            case "~":
+            case "!": return `${ast.name}${this.stringifyTight(nd[0], true)}`;
+            case "V":
+            case "E":
+            case "E!": return `(${ast.name}${this.stringifyTight(nd[0])}:${this.stringifyTight(nd[1], true)})`;
+            default:
+                const sym = ast.name;
+                const c = `${this.stringifyTight(nd[0], true)}${sym}${this.stringifyTight(nd[1], true)}`;
+                return bracket ? `(${c})` : c;
+        }
+    }
+    stringify(ast) {
+        const nd = ast.nodes;
+        if (ast.type === "fn") {
+            return `${ast.name}(${nd.map(n => this.stringify(n)).join(", ")})`;
+        }
+        if (ast.type === "replvar") {
+            return ast.name;
+        }
+        if (ast.type === "meta") {
+            return `(${nd[0].nodes.map(n => this.stringify(n)).join(", ")} ${ast.name} ${nd[1].nodes.map(n => this.stringify(n)).join(", ")})`;
+        }
+        switch (ast.name) {
+            case "~":
+            case "!": return `${ast.name}${this.stringify(nd[0])}`;
+            case "V":
+            case "E":
+            case "E!": return `(${ast.name}${this.stringify(nd[0])}: ${this.stringify(nd[1])})`;
+            default:
+                return `(${this.stringify(nd[0])} ${ast.name} ${this.stringify(nd[1])})`;
+        }
+    }
     parse(s) {
         this.cursor = 0;
-        this.tokenise(s);
+        this.tokenise(s.replaceAll("∀", "V").replaceAll("∃", "E").replaceAll("∈", "@").replaceAll("¬", "~")
+            .replaceAll("→", ">").replaceAll("↔", "<>").replaceAll("⊂", "<").replaceAll("∪", "U").replaceAll("∩", "I")
+            .replaceAll("∧", "&").replaceAll("∨", "|"));
         this.nextSym();
         return this.meta();
     }
