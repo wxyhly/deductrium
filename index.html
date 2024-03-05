@@ -2,67 +2,67 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta charset="UTF-8">
 <title>Deductrium</title>
-<link href="fsgui.css" rel="stylesheet" type="text/css">
+<link href="gui.css" rel="stylesheet" type="text/css">
 <h1>Deductrium</h1>
-[M]元规则：
-<div class="list-wrapper">
-    <div class="list" id="meta-list">
+<div id="panel"><button>几何层</button><button id="deduct-btn" class="hide">推理层</button><button class="hide">进度层</button>
+    <div id="panel-0" class="show"><canvas id="hyper"></canvas></div>
+    <div id="panel-2">
+        <button>保存(save)</button>
+        <button>加载(load)</button>
+        <button>帮助(help)</button>
+    </div>
+    <div id="panel-1">
+        <div class="">[M]元规则：
+            <div class="list-wrapper">
+                <div class="list" id="meta-list">
+                </div>
+            </div>
+        </div>
+        <div class="dlist-option">
+            <label>[D]推理规则：</label>
+            <span class=""><label><input name="show-d" type="checkbox" checked />命题逻辑</label>
+                <label><input name="show-d" type="checkbox" checked />一阶逻辑</label>
+                <label><input name="show-d" type="checkbox" checked />ZFC集合论</label>
+                <label><input name="show-d" type="checkbox" checked />逻辑符号定义</label>
+                <label><input name="show-d" type="checkbox" checked />集合符号定义</label>
+                <label><input name="show-d" type="checkbox" checked />算数符号定义</label>
+                <label><input name="show-d" type="checkbox" checked />内置宏</label>
+                <label><input name="show-d" type="checkbox" checked />添加的规则</label>
+            </span>
+        </div>
+        <div class="list-wrapper">
+            <div class="list" id="deduct-list">
+            </div>
+        </div>
+        [P]定理：
+        <div class="list-wrapper">
+            <div class="list" id="prop-list">
+            </div>
+        </div>
+        <div id="cmd-btns">
+            <button>推理(d)</button>
+            <button>回退定理(pop)</button>
+            <button>清空定理(clear)</button>
+            <button class="">记入规则(m)</button>
+            <button class="">回退规则(del)</button>
+            <button class="">进入宏(entr)</button>
+            <button class="">展开宏(inln)</button>
+            <button class="">假设(hyp)</button>
+        </div>
+        <p>&nbsp;</p>
+        <p>&nbsp;</p>
+        <p>&nbsp;</p>
+        <p>&nbsp;</p>
+        <p>&nbsp;</p>
+        <div class="footer">
+            <text id="hint"></text><span class="right"><button>OK</button> &nbsp; <button>Esc</button> &nbsp;</span>
+            <input type="text" id="action-input" />
+        </div>
+        <a id="github" href="https://github.com/wxyhly/deductrium#deductrium" target="_blank" style="display: none;">
+            github</a>
     </div>
 </div>
-<div class="dlist-option">
-    <label>[D]推理规则：</label>
-    <label><input name="show-d" type="checkbox" checked />命题逻辑</label>
-    <label><input name="show-d" type="checkbox" checked />一阶逻辑</label>
-    <label><input name="show-d" type="checkbox" checked />逻辑符号定义</label>
-    <label><input name="show-d" type="checkbox" checked />集合符号定义</label>
-    <label><input name="show-d" type="checkbox" checked />算数符号定义</label>
-    <label><input name="show-d" type="checkbox" checked />ZFC集合论</label>
-    <label><input name="show-d" type="checkbox" checked/>内置宏</label>
-    <label><input name="show-d" type="checkbox" checked />添加的规则</label>
-</div>
-<div class="list-wrapper">
-    <div class="list" id="deduct-list">
-    </div>
-</div>
-[P]定理：
-<div class="list-wrapper">
-    <div class="list" id="prop-list">
-    </div>
-</div>
-<div id="cmd-btns">
-    <button>保存(save)</button>
-    <button>加载(load)</button>
-    <button>帮助(help)</button>
-    <button>假设(hyp)</button>
-    <button>推理(d)</button>
-    <button>回退定理(pop)</button>
-    <button>清空定理(clear)</button>
-    <button>记入规则(m)</button>
-    <button>回退规则(del)</button>
-    <button>进入宏(expand)</button>
-    <!-- <button>展开宏(inline)</button> -->
-</div>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<div class="footer">
-    <text id="hint"></text><span class="right"><button>OK</button> &nbsp; <button>Esc</button> &nbsp;</span>
-    <input type="text" id="action-input" />
-</div>
-<a id="github" href="https://github.com/wxyhly/deductrium#deductrium" target="_blank" style="display: none;"> github</a>
-<script type="module">
-    import { FSGui } from "./js/gui.js";
-    new FSGui(
-        document.getElementById("prop-list"),
-        document.getElementById("deduct-list"),
-        document.getElementById("meta-list"),
-        document.getElementById("action-input"),
-        document.getElementById("hint"),
-        document.getElementById("display-p-layer"),
-        document.getElementById("cmd-btns"),
-    );
+<script type="module" src="js/game.js">
 </script>
 
 </html>
