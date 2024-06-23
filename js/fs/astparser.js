@@ -1,6 +1,6 @@
 export class ASTParser {
-    keywords = ["E!", "⊢M", "<>", "Union"];
-    symChar = "VEMUI()@~^<>|&=,;:[]!⊢+-*/";
+    keywords = ["E!", "⊢M", "<>", "Union", "{}"];
+    symChar = "VEMUI()@~^<>|&=,;:[]!⊢+-*/{}";
     ast;
     cursor = 0;
     tokens;
@@ -8,6 +8,8 @@ export class ASTParser {
     stringifyTight(ast, bracket = false) {
         const nd = ast.nodes;
         if (ast.type === "fn") {
+            if (ast.name === "{")
+                return `{${nd.map(n => this.stringify(n)).join(",")}}`;
             return `${ast.name}(${nd.map(n => this.stringifyTight(n)).join(",")})`;
         }
         if (ast.type === "replvar") {
@@ -32,6 +34,8 @@ export class ASTParser {
     stringify(ast) {
         const nd = ast.nodes;
         if (ast.type === "fn") {
+            if (ast.name === "{")
+                return `{${nd.map(n => this.stringify(n)).join(", ")}}`;
             return `${ast.name}(${nd.map(n => this.stringify(n)).join(", ")})`;
         }
         if (ast.type === "replvar") {
@@ -99,7 +103,7 @@ export class ASTParser {
         this.token = this.tokens[this.cursor - 1];
     }
     acceptVar() {
-        if (!this.symChar.includes(this.token)) {
+        if (!this.symChar.includes(this.token) || this.token.length > 1) {
             if (!this.token)
                 return false; //eof
             this.nextSym();
@@ -144,6 +148,15 @@ export class ASTParser {
             let val = this.meta();
             this.expectSym(")");
             return val;
+        }
+        else if (this.acceptSym("{")) {
+            const nodes = [this.meta()];
+            while (this.token === ",") {
+                this.nextSym();
+                nodes.push(this.meta());
+            }
+            this.expectSym("}");
+            return { type: "fn", name: "{", nodes };
         }
         else {
             throw "语法错误";

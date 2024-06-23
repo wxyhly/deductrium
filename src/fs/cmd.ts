@@ -10,6 +10,9 @@ export class FSCmd {
     gui: FSGui;
     lastDeduction: string = null;
     savesParser = new SavesParser;
+    // onsave: () => string;
+    // onload: (s: string) => void;
+    // onreset: () => void;
     constructor(gui: FSGui) {
         this.gui = gui;
         const actionInput = this.gui.actionInput;
@@ -50,7 +53,7 @@ export class FSCmd {
             this.gui.actionInput.value = "";
             this.gui.hintText.innerText = "请输入命令";
             if (!this.gui.isMobile) this.gui.actionInput.focus();
-            this.gui.divCmdBtns.querySelectorAll("button").forEach(e => {
+            this.gui.cmdBtns.forEach(e => {
                 e.disabled = false;
             });
         } else {
@@ -62,15 +65,13 @@ export class FSCmd {
         const hintText = this.gui.hintText;
         if (!this.gui.isMobile) this.gui.actionInput.focus();
         if (!cmdBuffer.length) return;
-        this.gui.divCmdBtns.querySelectorAll("button").forEach(e => {
+        this.gui.cmdBtns.forEach(e => {
             e.disabled = true;
         });
         try {
             switch (cmdBuffer[0]) {
-                case "_copy": hintText.innerText = "可复制定理内容，按Esc取消"; return;
+                case "copy": hintText.innerText = "可复制定理内容，按Esc取消"; return;
                 case "d": return this.execDeduct();
-                case "save": return this.execSave();
-                case "load": return this.execLoad();
                 case "help": return this.execHelp();
                 case "clear": return this.execClear();
                 case "pop": return this.execPop();
@@ -426,46 +427,7 @@ export class FSCmd {
             this.gui.hintText.innerText = "删除推理规则失败：" + e;
         }
     }
-    execSave() {
-        if (this.cmdBuffer.length > 1) return;
-        const fs = this.gui.formalSystem;
-        this.gui.hintText.innerText = "正在保存";
-        const data = this.savesParser.serialize(this.gui.deductions, fs);
-        if (!navigator.clipboard) {
-            this.gui.actionInput.value = data;
-            this.gui.actionInput.select();
-            if (document.execCommand("copy")) {
-                this.clearCmdBuffer();
-                this.gui.hintText.innerText = "进度成功保存至剪贴板";
-            } else {
-                this.gui.hintText.innerText = "无法访问剪贴板，请手动复制以下内容：";
-            }
-        } else {
-            navigator.clipboard.writeText(data).then(() => {
-                this.clearCmdBuffer();
-                this.gui.hintText.innerText = "进度成功保存至剪贴板";
-            });
-        }
-    }
-    execLoad() {
-        if (this.cmdBuffer.length > 1) {
-            let ds: Deduction[];
-            try {
-                const { fs, arrD } = this.savesParser.deserialize(this.cmdBuffer[1]);
-                this.gui.formalSystem = fs;
-                this.gui.deductions = arrD;
-            } catch (e) {
-                this.clearCmdBuffer();
-                this.gui.hintText.innerText = "进度导入失败";
-                return;
-            }
-            this.gui.updatePropositionList(true);
-            this.gui.updateDeductionList();
-            this.execClear();
-        } else {
-            this.gui.hintText.innerText = "请在此粘贴进度";
-        }
-    }
+    
     execClear() {
         this.gui.formalSystem.removePropositions();
         this.gui.updatePropositionList(true);
@@ -494,8 +456,8 @@ export class FSCmd {
     onClickSubAst(idx: string, inserted: string) {
         const cmdBuffer = this.cmdBuffer;
         // click prop just for copy
-        if (idx.startsWith("p") && !cmdBuffer.length || cmdBuffer[0] === "_copy") {
-            cmdBuffer.push("_copy");
+        if (idx.startsWith("p") && !cmdBuffer.length || cmdBuffer[0] === "copy") {
+            cmdBuffer.push("copy");
             this.execCmdBuffer();
             this.replaceActionInputFromClick(inserted);
             return;

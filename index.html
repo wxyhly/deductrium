@@ -3,16 +3,60 @@
 <meta charset="UTF-8">
 <title>Deductrium</title>
 <link href="gui.css" rel="stylesheet" type="text/css">
-<h1>Deductrium</h1>
-<div id="panel"><button>几何层</button><button id="deduct-btn" class="hide">推理层</button><button class="hide">进度层</button>
-    <div id="panel-0" class="show"><canvas id="hyper"></canvas></div>
-    <div id="panel-2">
-        <button>保存(save)</button>
-        <button>加载(load)</button>
-        <button>帮助(help)</button>
+<h1 style="user-select: none;">Deductrium</h1>
+<div id="panel"><button>几何层</button><button id="deduct-btn" class="hide">推理层</button><button id="type-btn"
+    class="hide">类型层</button><button id="progress-btn"
+        class="">进度层</button>
+    <div id="panel-0" class="show" style="user-select: none;"><canvas id="hyper"></canvas></div>
+    <div id="panel-3">
+        <hr>
+        <div class="progress-btns">
+            <button>保存</button>
+            <button class="danger">加载</button>
+            <button class="danger">清除进度</button>
+        </div>
+        <div><p></p>
+            <textarea id="progress-txtarea" rows="3" style="width: 100%;" onfocus="this.setSelectionRange(0,this.value.length);"></textarea>
+        </div>
+        <h3>数据统计：</h3>
+        <ul>
+            <li>拥有推理素：<span id="deductrium-amount">0</span></li>
+            <li>累计消耗推理素：<span id="deductrium-consumed">0</span></li>
+            <li>拆除门个数：<span id="destructed-gates">0</span>块</li>
+            <li>总方块步数：<span id="parcours-tiles">1</span>块</li>
+            </ul>
+        <h3>成就统计：</h3> upcoming soon
+        <div class="hide">
+            <div>解锁了成就</div>
+            <div>我推出我</div>
+            <div>你推出你，他推出他</div>
+            <div>一物推一物，万物推万物</div>
+            <div>If I were..</div>
+            <div>会跑的“⊢”</div>
+            <div>我推出你，你推出我</div>
+            <div>逻辑真值表</div>
+            <div>逻辑真值表</div>
+            
+            <div>吃素啦</div>
+            <div>第一次消费</div>
+            <div>敢于说不</div>
+            <div>负负得正</div>
+            <div>否定爆炸</div>
+            <div>素食主义者</div>
+            <div>排中律是真的！</div>
+            <div>皮尔士定律</div>
+
+            <div>一阶逻辑</div>
+            <div>ZFC集合论</div>
+            <div>空空如也，仅有一家</div>
+            <div>类型论</div>
+            <div>类型论</div>
+            <div>排中律是个谎言？</div>
+            <div>排中律是个谎言？</div>
+        </div>
     </div>
     <div id="panel-1">
-        <div class="">[M]元规则：
+        <div id="metarule-subpanel" class="hide">[M]元规则：
             <div class="list-wrapper">
                 <div class="list" id="meta-list">
                 </div>
@@ -20,15 +64,14 @@
         </div>
         <div class="dlist-option">
             <label>[D]推理规则：</label>
-            <span class=""><label><input name="show-d" type="checkbox" checked />命题逻辑</label>
-                <label><input name="show-d" type="checkbox" checked />一阶逻辑</label>
-                <label><input name="show-d" type="checkbox" checked />ZFC集合论</label>
-                <label><input name="show-d" type="checkbox" checked />逻辑符号定义</label>
-                <label><input name="show-d" type="checkbox" checked />集合符号定义</label>
-                <label><input name="show-d" type="checkbox" checked />算数符号定义</label>
-                <label><input name="show-d" type="checkbox" checked />内置宏</label>
-                <label><input name="show-d" type="checkbox" checked />添加的规则</label>
-            </span>
+            <label id="show-d-0" class="hide"><input name="show-d" type="checkbox" checked />命题逻辑</label>
+            <label id="show-d-1" class="hide"><input name="show-d" type="checkbox" checked />一阶逻辑</label>
+            <label id="show-d-zfc" class="hide"><input name="show-d" type="checkbox" checked />ZFC集合论</label>
+            <label id="show-d-sym" class="hide"><input name="show-d" type="checkbox" checked />逻辑符号定义</label>
+            <label class="hide"><input name="show-d" type="checkbox" checked />集合符号定义</label>
+            <label class="hide"><input name="show-d" type="checkbox" checked />算数符号定义</label>
+            <label id="show-d-i" class="hide"><input name="show-d" type="checkbox" checked />内置宏</label>
+            <label id="show-d-a" class="hide"><input name="show-d" type="checkbox" checked />添加的规则</label>
         </div>
         <div class="list-wrapper">
             <div class="list" id="deduct-list">
@@ -39,15 +82,17 @@
             <div class="list" id="prop-list">
             </div>
         </div>
-        <div id="cmd-btns">
+        <div class="cmd-btns">
+            <button id="hyp-btn" class="hide">假设(hyp)</button>
             <button>推理(d)</button>
             <button>回退定理(pop)</button>
-            <button>清空定理(clear)</button>
-            <button class="">记入规则(m)</button>
-            <button class="">回退规则(del)</button>
-            <button class="">进入宏(entr)</button>
-            <button class="">展开宏(inln)</button>
-            <button class="">假设(hyp)</button>
+            <button class="danger">清空定理(clear)</button>
+            <span id="macro-btns" class="hide">
+                <button>录制宏(m)</button>
+                <button class="danger">删除宏(del)</button>
+                <button>查看宏(entr)</button>
+                <button>展开宏(inln)</button>
+            </span>
         </div>
         <p>&nbsp;</p>
         <p>&nbsp;</p>
@@ -60,6 +105,30 @@
         </div>
         <a id="github" href="https://github.com/wxyhly/deductrium#deductrium" target="_blank" style="display: none;">
             github</a>
+    </div>
+    <div id="panel-2">
+        <div class="tlist">
+            <div class="float-type"></div>
+            <label>公理类型：</label>
+            <div class="list-wrapper">
+                <div class="list" id="type-list">
+                </div>
+            </div>
+            <label>定理：</label>
+            <div class="list-wrapper">
+                <div class="inhabitat" id="inhabit-list">
+                    <button class="inhabitat-modify" id="add-btn">+</button>
+                </div>
+            </div>
+            <label>证明策略：<span id="tactic-hint"></span></label>
+            <div class="list-wrapper">
+                <div id="tactic-list">
+                    <div id="tactic-state"></div>
+                    <button class="inhabitat-modify hide" id="tactic-remove">-</button><button class="inhabitat-modify" id="tactic-begin">+</button><input id="tactic-input" class="hide"/>
+                    <div id="tactic-errmsg"></div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 <script type="module" src="js/game.js">

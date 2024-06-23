@@ -13,6 +13,18 @@
     color: blue;
 }
 
+.constructors {
+    color: brown;
+}
+
+.ind_fn {
+    color: darkorchid;
+}
+
+.macro {
+    color: darkblue;
+}
+
 .fn {
     color: blueviolet;
 }
@@ -55,9 +67,6 @@
     display: block;
 }
 
-.hide {
-    display: none;
-}
 
 
 .list-wrapper::-webkit-scrollbar-thumb {
@@ -83,7 +92,7 @@ h1 {
     float: right;
 }
 
-#cmd-btns button {
+.cmd-btns button {
     width: 120px;
     height: 40px;
 }
@@ -120,6 +129,7 @@ h1 {
 .info:nth-of-type(16n+4),
 .info:nth-of-type(16n+5),
 .info:nth-of-type(16n+6),
+.inhabitat div.wrapper:nth-of-type(2n+1),
 .info:nth-of-type(16n+7) {
     background-color: aliceblue;
 }
@@ -166,7 +176,100 @@ h1 {
     color: white;
 }
 
-#hyper{
+#hyper {
     width: 100%;
-    height:80vh;
+    height: 80vh;
+}
+
+@keyframes hint-anim {
+    0% {
+        color: rgba(255, 0, 0, 0);
+        top: 40%;
+        right: 40%;
+
+    }
+
+    20% {
+        color: rgba(255, 0, 0, 1);
+        background-color: rgba(255, 255, 255, 0.2);
+        top: 0px;
+        right: 0px;
+    }
+
+    80% {
+        color: rgba(255, 0, 0, 0.6);
+        background-color: rgba(255, 255, 255, 1);
+    }
+
+    100% {
+        background-color: rgba(255, 255, 255, 0);
+        color: rgba(255, 0, 0, 0);
+
+    }
+}
+button{
+    user-select: none;
+}
+button.danger {
+    font-weight: bold;
+    color: red;
+}
+
+div.hintbar {
+    top: 0px;
+    right: 0px;
+    position: fixed;
+    animation-name: hint-anim;
+    animation-duration: 5s;
+    animation-fill-mode: both;
+}
+
+.inhabitat-modify {
+    border-radius: 4px;
+    border: 0;
+    background-color: #AAA;
+    color: white;
+    width: 20px;
+    margin-right: 1px;
+}
+
+.inhabitat-div {
+    width: calc(100% - 32px);
+    display: inline-block;
+}
+
+.inhabitat-div:hover {
+    background-color: orange;
+}
+
+.error {
+    border: solid;
+    border-color: red;
+}
+
+.inhabitat input {
+    width: calc(100% - 32px);
+}
+
+#tactic-input {
+    width: calc(100% - 64px);
+}
+
+#tactic-errmsg {
+    color: red;
+}
+
+.hide {
+    display: none;
+}
+
+.blocked {
+    display: block;
+}
+
+.float-type {
+    position: absolute;
+    border: solid;
+    background-color: rgba(240, 240, 230, 0.9);
+    border-radius: 2px;
 }

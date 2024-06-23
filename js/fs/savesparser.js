@@ -12,12 +12,29 @@ const replaceArr1 = Object.entries(dict);
 const replaceArr2 = replaceArr1.slice(0).reverse();
 const astparser = new ASTParser;
 export class SavesParser {
-    serializeDeduction(deduction) {
-        const value = astparser.stringifyTight(deduction.value);
-        const steps = deduction.steps?.map(s => [
+    serializeDeductionStep(s) {
+        return [
             s.deductionIdx, s.conditionIdxs,
             s.replaceValues.map(v => astparser.stringifyTight(v))
-        ]);
+        ];
+    }
+    serializeProposition(p) {
+        const value = astparser.stringifyTight(p.value);
+        const step = p.from ? this.serializeDeductionStep(p.from) : null;
+        return [value, step];
+    }
+    deserializeDeductionStep(v) {
+        return { conditionIdxs: v[1], deductionIdx: v[0], replaceValues: v[2].map(v => astparser.parse(v)) };
+    }
+    deserializeProposition(v) {
+        return {
+            value: astparser.parse(v[0]),
+            from: this.deserializeDeductionStep(v[1])
+        };
+    }
+    serializeDeduction(deduction) {
+        const value = astparser.stringifyTight(deduction.value);
+        const steps = deduction.steps?.map(s => this.serializeDeductionStep(s));
         return [value, deduction.from, steps];
     }
     deserializeDeduction(name, fs, sd) {
@@ -25,7 +42,9 @@ export class SavesParser {
             deductionIdx: e[0], conditionIdxs: e[1], replaceValues: e[2].map(v => astparser.parse(v))
         })));
     }
-    serialize(dlist, fs) {
+    serialize(gui) {
+        const fs = gui.formalSystem;
+        const dlist = gui.deductions;
         const userD = {};
         for (const [n, d] of Object.entries(fs.deductions)) {
             if (!d.from.endsWith("*"))
@@ -36,11 +55,11 @@ export class SavesParser {
             userD[n] = this.serializeDeduction(d);
         }
         return this.serializeStr(JSON.stringify([
-            Array.from(fs.fns), Array.from(fs.consts), userD, dlist
+            Array.from(fs.fns), Array.from(fs.consts), userD, dlist, fs.propositions.map(s => this.serializeProposition(s))
         ]));
     }
     deserializeArr(fs, arr) {
-        const [arrC, arrFn, dictD, arrD] = arr;
+        const [arrC, arrFn, dictD, arrD, arrP] = arr;
         for (const [k, v] of Object.entries(dictD)) {
             this.deserializeDeduction(k, fs, v);
         }
@@ -50,11 +69,19 @@ export class SavesParser {
         for (const v of arrFn) {
             fs.fns.add(v);
         }
+        if (arrP)
+            for (const v of arrP) {
+                fs.propositions.push(this.deserializeProposition(v));
+            }
         return { fs, arrD };
     }
-    deserialize(str) {
+    deserialize(gui, str) {
         const fsArrD = initFormalSystem();
-        return this.deserializeArr(fsArrD.fs, JSON.parse(this.deserializeStr(str)));
+        const fsdata = this.deserializeArr(fsArrD.fs, JSON.parse(this.deserializeStr(str)));
+        gui.formalSystem = fsdata.fs;
+        gui.deductions = fsdata.arrD;
+        gui.updatePropositionList(true);
+        gui.updateDeductionList();
     }
     serializeStr(json) {
         for (const [a, b] of replaceArr1) {

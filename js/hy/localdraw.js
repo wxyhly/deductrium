@@ -17,6 +17,11 @@ export class LocalDraw {
         this.ctxt.arc(this.canvas.width / 2, this.canvas.height / 2, this.scale * Math.min(this.canvas.width, this.canvas.height) / 2, 0, Math.PI * 2);
         this.ctxt.fill();
     }
+    drawPlayer() {
+        this.ctxt.beginPath();
+        this.ctxt.arc(this.canvas.width / 2, this.canvas.height / 2, 10, 0, Math.PI * 2);
+        this.ctxt.fill();
+    }
     moveTo(p) {
         const scale = this.scale / (p.z + 1) * Math.min(this.canvas.width, this.canvas.height) / 2;
         this.ctxt.moveTo(p.x * scale + this.canvas.width / 2, p.y * scale + this.canvas.height / 2);
@@ -47,21 +52,22 @@ export class LocalDraw {
             this.lineTo(Hvec.fastLerp(p1, p2, k / this.lineStep, precalc));
         }
     }
-    drawPolygon(p, mat, label) {
+    drawPolygon(p, mat) {
         const center = mat.apply(new Hvec);
-        if (center.z > 1e2)
+        if (center.z > 1e3)
             return;
         this.ctxt.beginPath();
         let pa = p.vertex;
         const r = Rotor.rotate(Math.PI * 2 / p.p);
         for (let i = 0; i < p.p; i++) {
             let pb = r.apply(pa);
-            this.drawLine(mat.apply(pa), mat.apply(pb));
+            this.drawLine(mat.apply(pa), mat.apply(pb), true);
             pa = pb;
         }
+        this.ctxt.fill();
+        this.ctxt.beginPath();
+        this.drawLine(mat.apply(new Hvec(1, 0, 0.4)).normalize(), mat.apply(new Hvec(1, 0, 0.7)).normalize(), true);
         this.ctxt.stroke();
-        if (label)
-            this.textTo(center, label);
     }
     drawHoroRect(hr, mat) {
         this.ctxt.beginPath();

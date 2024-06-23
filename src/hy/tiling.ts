@@ -31,8 +31,14 @@ export class Polygon {
         let moveR = Rotor.moveTo(this.edge);
         moveR = moveR.mul(moveR);
         for (let i = 0; i < this.p; i++) {
-            this.neighborMatrix.push(Rotor.rotate(Math.PI + t1 * i).mul(moveR));
+            this.neighborMatrix.push(Rotor.rotate(t1 * i * 2).mul(moveR).mul(Rotor.rotate(Math.PI)));
         }
+    }
+    isInDomain(p: Hvec) {
+        for (let i = 0; i < this.p; i++) {
+            if (Rotor.rotate(-Math.PI * 2 * i / this.p).apply(p).dot(this.n3) < 0) return i;
+        }
+        return -1;
     }
     generateRotorsByToddCoxter() {
         const cosetTable = this.cosetTable;
@@ -49,16 +55,16 @@ export class Polygon {
         // this.rotors = rs;
     }
     generateRotors(t: TileHash = []) {
-        const maxNums = 1024;
+        const maxNums = 512;
         const frontiers: TileHash[] = [t];
         this.rotors = new Map<string, Rotor>([[t.join(","), new Rotor]]);
         let f: TileHash;
         while ((f = frontiers.pop()) && this.rotors.size < maxNums) {
             for (let i = 0; i < this.p; i++) {
-                const nf = this.getNeighbor(f, i, true);
+                const [nf, dir] = this.getNeighborAndDir(f, i, true);
                 const str = nf.join(",");
                 if (this.rotors.has(str)) continue;
-                this.rotors.set(str, this.rotors.get(f.join(",")).mul(this.neighborMatrix[i]));
+                this.rotors.set(str, this.rotors.get(f.join(",")).mul(this.getNeighborMatrix(dir, i)));
                 frontiers.unshift(nf);
             }
         }
@@ -78,58 +84,62 @@ export class Polygon {
             else return tidx === 2 ? 2 : 1;
         }
     }
-    getNeighbor(t: TileHash, n: TileNeighbor, copy: boolean): TileHash {
+    getNeighborAndDir(t: TileHash, n: TileNeighbor, copy: boolean): [TileHash, TileNeighbor] {
+        if (n < 0) { n += this.p; }
+        if (n >= this.p) { n -= this.p; }
         if (this.q !== 4 && this.q !== 3) throw "not implemented yet";
         if (copy) t = t.slice(0);
 
         // state 0
-        if (!t.length) { t.push(n); return t; }
+        if (!t.length) { t.push(n); return [t, 0]; }
 
         // state 1/2
         if (n === 0) {
-            t.pop(); return t;
+            return [t, t.pop()];
         }
         if (n === this.p - 1) {
             const pn = t.pop() + 1;
-            this.getNeighbor(t, pn < this.p ? pn : pn - this.p, false);
-            if (this.q === 4) { t.push(1); return t; }
-            if (this.q === 3) { return t; }
+            const dir = this.getNeighborAndDir(t, pn, false)[1];
+            if (this.q === 4) { const nd = this.getNeighborAndDir(t, dir + 1, false)[1]; return [t, nd + 1]; }
+            if (this.q === 3) { return [t, dir + 1]; }
         }
         if (this.q === 3 && n === this.p - 2) {
-            this.getNeighbor(t, this.p - 1, false);
+            this.getNeighborAndDir(t, this.p - 1, false);
             const state1 = this.getState(t, t.length - 1) === 1;
-            t.push(state1 ? 2 : 3); return t;
+            t.push(state1 ? 2 : 3); return [t, 1];
         }
         const state1 = this.getState(t, t.length - 1) === 1;
         if (state1) {
             // state 1
             if (n === 1) {
-                if (this.q === 4) { t.push(n); return t; }
+                if (this.q === 4) { t.push(n); return [t, 0]; }
                 if (this.q === 3) {
                     const pn = t.pop() - 1;
-                    this.getNeighbor(t, pn >= 0 ? pn : pn + this.p, false); return t;
+                    this.getNeighborAndDir(t, pn, false); return [t, this.p - 1];
                 }
             }
         } else {
             // state 2
             if (n === 1) {
                 if (this.q === 4) {
-                    let pn = t.pop() - 1;
-                    let pn2 = (t.length === 1 ? t[0] : this.q) - 1;
-                    this.getNeighbor(t, pn >= 0 ? pn : pn + this.p, false);
-                    this.getNeighbor(t, pn2 >= 0 ? pn2 : pn2 + this.p, false);
-                    return t;
+                    let pn = t.pop();
+                    let dir = this.getNeighborAndDir(t, pn - 1, false)[1];
+                    dir = this.getNeighborAndDir(t, dir - 1, false)[1];
+                    return [t, dir - 1];
                 }
                 if (this.q === 3) {
                     const pn = t.pop() - 1;
-                    this.getNeighbor(t, pn >= 0 ? pn : pn + this.p, false); return t;
+                    const dir = this.getNeighborAndDir(t, pn, false)[1]; return [t, dir - 1];
                 }
             }
             if (this.q === 3 && n === 2) {
-                this.getNeighbor(t, 1, false); t.push(this.p - 3); return t;
+                this.getNeighborAndDir(t, 1, false); t.push(this.p - 3); return [t, this.p - 1];
             }
         }
-        t.push(n); return t;
+        t.push(n); return [t, 0];
+    }
+    getNeighborMatrix(dir: TileNeighbor, n: TileNeighbor) {
+        return this.neighborMatrix[n].mul(Rotor.rotate(-dir * 2 * Math.PI / this.p));
     }
 }
 export type TileNeighbor = number;

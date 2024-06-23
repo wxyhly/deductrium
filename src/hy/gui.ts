@@ -2,9 +2,10 @@ import { HWorld } from "./hworld.js";
 export class HyperGui {
     canvas = document.getElementById("hyper") as HTMLCanvasElement;
     world = new HWorld(this.canvas);
-    moveSpeed = 0.005;
+    moveSpeed = 0.1;
     needUpdate = false;
     keyDowns: Set<string>;
+    prevTime = new Date().getTime()
 
     constructor() {
         window.onresize = () => { this.onresize(); }
@@ -36,34 +37,35 @@ export class HyperGui {
             ev.stopPropagation();
             return false;
         });
-        this.mainLoop();
+        this.mainLoop(1 / 60);
     }
     onresize() {
         this.canvas.width = this.canvas.clientWidth;
         this.canvas.height = this.canvas.clientHeight;
         this.world.onLoop();
     }
-    mainLoop() {
+    mainLoop(deltaTime: number) {
         if (this.keyDowns.has("KeyW")) {
-            this.world.moveCam(0, this.moveSpeed);
+            this.world.moveCam(0, this.moveSpeed * deltaTime);
             this.needUpdate = true;
         }
         if (this.keyDowns.has("KeyS")) {
-            this.world.moveCam(0, -this.moveSpeed);
+            this.world.moveCam(0, -this.moveSpeed * deltaTime);
             this.needUpdate = true;
         }
         if (this.keyDowns.has("KeyA")) {
-            this.world.moveCam(-this.moveSpeed, 0);
+            this.world.moveCam(-this.moveSpeed * deltaTime, 0);
             this.needUpdate = true;
         }
         if (this.keyDowns.has("KeyD")) {
-            this.world.moveCam(this.moveSpeed, 0);
+            this.world.moveCam(this.moveSpeed * deltaTime, 0);
             this.needUpdate = true;
         }
         if (this.needUpdate) {
             this.world.onLoop();
             this.needUpdate = false;
         }
-        window.requestAnimationFrame(() => { this.mainLoop() });
+        const newDt = (new Date().getTime() - this.prevTime) / 1000;
+        window.requestAnimationFrame(() => { this.mainLoop(Math.min(newDt, 0.1)); });
     }
 }

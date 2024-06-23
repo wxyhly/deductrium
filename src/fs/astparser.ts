@@ -1,7 +1,7 @@
 import { AST } from "astmgr.js"
 export class ASTParser {
-    keywords = ["E!", "⊢M", "<>", "Union"];
-    symChar = "VEMUI()@~^<>|&=,;:[]!⊢+-*/";
+    keywords = ["E!", "⊢M", "<>", "Union", "{}"];
+    symChar = "VEMUI()@~^<>|&=,;:[]!⊢+-*/{}";
     ast: AST;
     cursor: number = 0;
     tokens: string[];
@@ -9,6 +9,7 @@ export class ASTParser {
     stringifyTight(ast: AST, bracket: boolean = false): string {
         const nd = ast.nodes;
         if (ast.type === "fn") {
+            if(ast.name==="{") return `{${nd.map(n => this.stringify(n)).join(",")}}`;
             return `${ast.name}(${nd.map(n => this.stringifyTight(n)).join(",")})`;
         }
         if (ast.type === "replvar") {
@@ -30,6 +31,7 @@ export class ASTParser {
     stringify(ast: AST): string {
         const nd = ast.nodes;
         if (ast.type === "fn") {
+            if(ast.name==="{") return `{${nd.map(n => this.stringify(n)).join(", ")}}`;
             return `${ast.name}(${nd.map(n => this.stringify(n)).join(", ")})`;
         }
         if (ast.type === "replvar") {
@@ -93,7 +95,7 @@ export class ASTParser {
         this.token = this.tokens[this.cursor - 1];
     }
     private acceptVar() {
-        if (!this.symChar.includes(this.token)) {
+        if (!this.symChar.includes(this.token) || this.token.length > 1) {
             if (!this.token) return false; //eof
             this.nextSym();
             return true;
@@ -136,6 +138,14 @@ export class ASTParser {
             let val = this.meta();
             this.expectSym(")");
             return val;
+        } else if (this.acceptSym("{")) {
+            const nodes = [this.meta()];
+            while (this.token === ",") {
+                this.nextSym();
+                nodes.push(this.meta());
+            }
+            this.expectSym("}");
+            return { type: "fn", name: "{", nodes };
         } else {
             throw "语法错误";
         }
@@ -238,7 +248,7 @@ export class ASTParser {
         }
         return val;
     }
-    private meta():AST {
+    private meta(): AST {
         let conditions = [];
         let rollBackCursor: number;
         if (this.token !== "⊢M" && this.token !== "⊢" && this.token !== "⊧") {
@@ -251,7 +261,7 @@ export class ASTParser {
             }
         }
         const sym = this.token;
-        if (this.token !== "⊢M" && this.token !== "⊢"&& this.token !== "⊧") {
+        if (this.token !== "⊢M" && this.token !== "⊢" && this.token !== "⊧") {
             this.moveCursor(rollBackCursor); // rollback to first ","
             return conditions[0]; // not meta, just bool
         }

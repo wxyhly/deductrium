@@ -199,7 +199,7 @@ export class AssertionSystem {
         // if src=dst, id T
         if (this.astEq(src, dst) === T) return T;
         // todo: verify: if contains assertions, just match them exactly is ok?
-        const scopes = this.getSubAstMatchTimes(ast, src);
+        const scopes = this.getSubAstMatchTimes(ast, src,Number(nth),dst);
         if (!scopes) return U; // can't decide
         for (const [idx, scope] of scopes.entries()) {
             // if not match all, just verify nth
@@ -344,7 +344,7 @@ export class AssertionSystem {
     // fussy search if subast exist in ast
     // return  matched positions's scopes, false if unknown
     getSubAstMatchTimes(
-        ast: AST, subAst: AST, scope: AST[] = [], res: AST[][] = []
+        ast: AST, subAst: AST,nth:number,dst:AST, scope: AST[] = [], res: AST[][] = []
     ): AST[][] | false {
         if (scope.length) {
             const vars = this.getVarNamesAndIsNots(subAst, {}, null);
@@ -358,17 +358,20 @@ export class AssertionSystem {
         }
         const eq = this.astEq(ast, subAst);
         if (eq === T) { res.push(scope); return res; } // matched whole ast one time
-        if (eq === U) return false; // unknown
+        if (eq === U) {
+            if(nth===-1 && (this.astEq(ast, dst))) return res;
+            return false; // unknown
+        }
         // else not equal
         if (!ast.nodes?.length) return res; // end of node, find 0
         const qp = this.getQuantParams(ast);
         if (qp) {
             scope.push(qp[0]);
-            return this.getSubAstMatchTimes(qp[1], subAst, scope);
+            return this.getSubAstMatchTimes(qp[1], subAst,nth,dst, scope);
         }
         for (const n of ast.nodes) {
             // unknown spread
-            if (this.getSubAstMatchTimes(n, subAst, scope.slice(0), res) === false) return false;
+            if (this.getSubAstMatchTimes(n, subAst,nth,dst, scope.slice(0), res) === false) return false;
         }
         return res;
     }
@@ -395,7 +398,10 @@ export class AssertionSystem {
             res.push(scope);
             return res;
         } // matched whole ast one time
-        if (eq === U) return false; // unknown
+        if (eq === U) {
+            if(nth===-1 && this.astEq(ast, newAst)) return res;
+            return false; // unknown
+        }
         // else not equal
         if (!ast.nodes?.length) return res; // end of node, find 0
         const qp = this.getQuantParams(ast);
@@ -692,7 +698,7 @@ export class AssertionSystem {
             }
         }
         if (ast.type === "replvar" && consts.has(ast.name)) {
-            if (type === "p") throw "无法将常量集合作为原子公式符号";
+            if (type === "p") throw "无法将集合常量符号“" + ast.name + "”作为原子公式符号";
             return;
         }
         // remained are unknown fns, keep type in subnodes
