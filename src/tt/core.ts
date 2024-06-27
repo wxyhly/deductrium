@@ -9,6 +9,9 @@ type Context = {
 function wrapVar(v: string): AST {
     return { type: "var", name: v };
 }
+function wrapU(v: string): AST {
+    return { type: "apply", name: "U", nodes: [wrapVar("U"), wrapVar(v)] };
+}
 function wrapLambda(type: string, param: string, paramType: AST, body: AST): AST {
     return { type, name: param, nodes: [paramType, body] };
 }
@@ -23,17 +26,18 @@ function wrapApply(...terms: AST[]): AST {
 function assignContext(added: Context, oldContext: Context) {
     return Object.assign(Object.assign({}, oldContext), added);
 }
+
 export class Core {
     /** this parameter affect performance for definitional equal checking */
     expandStepsBetweenEqCheck = 1;
-    assign(ast: AST, value: AST, moveSemantic?: boolean) {
+    static assign(ast: AST, value: AST, moveSemantic?: boolean) {
         const v = moveSemantic ? value : this.clone(value);
         ast.type = v.type;
         ast.name = v.name;
         ast.nodes = v.nodes;
         ast.checked = v.checked;
     }
-    clone(ast: AST, cloneChecked?: boolean): AST {
+    static clone(ast: AST, cloneChecked?: boolean): AST {
         const checked = (cloneChecked && ast.checked) ? this.clone(ast.checked) : null;
         const newast: AST = {
             type: ast.type, name: ast.name, checked, err: ast.err
@@ -43,6 +47,17 @@ export class Core {
         }
         return newast;
     }
+    static replaceByMatch(ast: AST, res: Context) {
+        if (!res) throw "未匹配";
+        if (ast.type === "var" && ast.name.match(/^\?/)) {
+            if (!res[ast.name]) return;
+            this.assign(ast, this.clone(res[ast.name]));
+        } else if (ast.nodes?.length) {
+            for (const n of ast.nodes) {
+                this.replaceByMatch(n, res);
+            }
+        }
+    }
     constsTypes: Context = {
         "nat": wrapVar("U"),
         "bool": wrapVar("U"),
@@ -50,21 +65,29 @@ export class Core {
         "true": wrapVar("True"),
         "succ": { type: "->", nodes: [wrapVar("nat"), wrapVar("nat")] },
         "False": wrapVar("U"),
-        "ind_nat": new ASTParser().parse("PC:Px:nat,U,Pc0:C 0,Pcs:(Px:nat,Py:C x,C (succ x)),Px:nat,C x"),
-        "eq": new ASTParser().parse("Pa:U,a->a->U"),
+        "ind_nat": new ASTParser().parse("Pu:lvl,PC:Px:nat,Uu,Pc0:C 0,Pcs:(Px:nat,Py:C x,C (succ x)),Px:nat,C x"),
+        "eq": new ASTParser().parse("Pu:lvl,Pa:Uu,a->a->Uu"),
+        "refl": new ASTParser().parse("Pu:lvl,Pa:U u,Px:a,eq u a x x"),
+        "Prod": new ASTParser().parse("Pu:lvl,Pv:Un,Pa:Uu,Pb:Uv,a->a->(Uu Uv)"),
     };
 
     constsDefs: Context = {
 
     };
-    getNewName(refName: string, excludeSet: Set<string>) {
+    static getNewName(refName: string, excludeSet: Set<string> | Context) {
         let n = refName + "'";
-        while (excludeSet.has(n)) {
-            n += "'";
+        if (excludeSet instanceof Set) {
+            while (excludeSet.has(n)) {
+                n += "'";
+            }
+        } else {
+            while (excludeSet[n]) {
+                n += "'";
+            }
         }
         return n;
     }
-    getFreeVars(ast: AST, res = new Set<string>, scope: string[] = []) {
+    static getFreeVars(ast: AST, res = new Set<string>, scope: string[] = []) {
         if (ast.type === "var" && !scope.includes(ast.name)) {
             res.add(ast.name);
         } else if (ast.type === "L" || ast.type === "P" || ast.type === "S") {
@@ -76,7 +99,7 @@ export class Core {
         }
         return res;
     }
-    replaceVar(ast: AST, name: string, dst: AST, fvDst = this.getFreeVars(dst)) {
+    static replaceVar(ast: AST, name: string, dst: AST, fvDst = this.getFreeVars(dst)) {
         if (ast.type === "var") {
             if (ast.name !== name) return;
             this.assign(ast, dst);
@@ -111,30 +134,58 @@ export class Core {
     error(ast: AST, msg: any) {
         ast.err = msg; throw msg;
     }
-    recheck(ast: AST) {
-        delete ast.checked;
-        delete ast.err;
-        if (ast.nodes) for (const n of ast.nodes) this.recheck(n);
+    checkType(ast: AST, context?: Context) {
+        ast = Core.clone(ast);
+        const inferIds: [number] = [0];
+        this.precheck(ast, inferIds);
+        const inffered: Context = {};
+        this.check(ast, context, inffered);
+        Core.replaceByMatch(ast.checked, inffered);
+        return ast.checked;
     }
-    check(ast: AST, context: Context) {
+    precheck(ast: AST, inferIds: [number]) {
+        delete ast.err;
+        if (ast.nodes) {
+            for (const n of ast.nodes) {
+                this.precheck(n, inferIds);
+            }
+        } else if (ast.type === "var" && ast.name === "_") {
+            ast.name = "?" + (inferIds[0]++);
+        }
+    }
+
+    mergeContext(added: Context, old: Context, envCtxt: Context) {
+        for (const [k, v] of Object.entries(added)) {
+            old[k] ??= v;
+            if (!this.equal(old[k], v, envCtxt, old, true)) {
+                return null;
+            }
+        }
+        return old;
+    }
+    check(ast: AST, context: Context, infered: Context) {
         if (ast.checked) return ast.checked;
         if (ast.type === "var") {
             ast.checked ??= context[ast.name];
             if (ast.checked) return ast.checked;
             ast.checked ??= this.checkConst(ast.name);
             if (ast.checked) return ast.checked;
+            if (ast.name.startsWith("?")) {
+                ast.checked = wrapVar(ast.name + ":");
+                return ast.checked;
+            }
         }
         if (ast.type === "L" || ast.type === "P" || ast.type === "S") {
             if (this.checkConst(ast.name)) this.error(ast.nodes[0], `参数变量${ast.name}不能是常量符号`);
             // #check domain -> U
             const domain = ast.nodes[0];
-            const Udomain = UniverseLevel.get(this.check(domain, context));
+            const Udomain = UniverseLevel.get(this.check(domain, context, infered));
             if (!Udomain) this.error(domain, `函数参数类型不合法`);
             // #check codomain
             const subCtxt = assignContext({ [ast.name]: domain }, context);
-            const codomain = this.check(ast.nodes[1], subCtxt);
+            const codomain = this.check(ast.nodes[1], subCtxt, infered);
             if (ast.type === "L") {
-                if (this.getFreeVars(codomain).has(ast.name)) {
+                if (Core.getFreeVars(codomain).has(ast.name)) {
                     // reffering
                     ast.checked = wrapLambda("P", ast.name, domain, codomain);
                 } else {
@@ -149,34 +200,37 @@ export class Core {
             return ast.checked;
         }
         if (ast.type === "->") {
-            const domain = this.check(ast.nodes[0], context);
+            const domain = this.check(ast.nodes[0], context, infered);
             const Udomain = UniverseLevel.get(domain);
             if (!Udomain) this.error(ast.nodes[0], `函数参数类型不合法`);
-            const codomain = this.check(ast.nodes[1], context);
+            const codomain = this.check(ast.nodes[1], context, infered);
             const Ucodomain = UniverseLevel.get(codomain);
             if (!Ucodomain) this.error(ast.nodes[1], `函数返回类型不合法`);
             ast.checked = UniverseLevel.merge(Ucodomain, Udomain);
             return ast.checked;
         }
         if (ast.type === "apply") {
-            const tfn = this.check(ast.nodes[0], context);
-            const tap = this.check(ast.nodes[1], context);
-            if (!this.equal(tfn.nodes[0], tap, context)) this.error(ast, "函数作用类型不匹配");
+            if (ast.name === "U") {
+                ast.checked = UniverseLevel.succ(ast);
+            }
+            const tfn = this.check(ast.nodes[0], context, infered);
+            const tap = this.check(ast.nodes[1], context, infered);
+            if (!this.equal(tfn.nodes[0], tap, context, infered)) this.error(ast, "函数作用类型不匹配");
             if (tfn.type === "->") {
                 // reffering
                 ast.checked = tfn.nodes[1];
             } else if (tfn.type === "P") {
-                const repl = this.clone(tfn.nodes[1]);
+                const repl = Core.clone(tfn.nodes[1]);
                 // reffering
-                this.replaceVar(repl, tfn.name, ast.nodes[1]);
-                this.reduce(repl);
+                Core.replaceVar(repl, tfn.name, ast.nodes[1]);
+                Core.reduce(repl);
                 ast.checked = repl;
             }
             return ast.checked;
         }
     }
     /** lambda reduce, def expands are not inclueded */
-    reduce(ast: AST): boolean {
+    static reduce(ast: AST): boolean {
         if (ast.type === "P") {
             // nondependenet func to ->
             const m1 = this.reduce(ast.nodes[0]);
@@ -221,35 +275,44 @@ export class Core {
         }
         return false;
     }
-    equal(a: AST, b: AST, context: Context, moveSemantic?: boolean) {
-        if (a === b || this.exactEqual(a, b)) return true;
+    equal(a: AST, b: AST, context: Context, infered: Context, moveSemantic?: boolean) {
+        if (a === b || Core.exactEqual(a, b)) return true;
+        if (a.name.startsWith("?")) {
+            const name = a.name;
+            Core.assign(a, b);
+            return this.mergeContext({ [name]: b }, infered, context);
+        } else if (b.name.startsWith("?")) {
+            const name = b.name;
+            Core.assign(b, a);
+            return this.mergeContext({ [name]: a }, infered, context);
+        }
         // fn alpha conversion
         if (a.type === b.type && (a.type === "L" || a.type === "P" || a.type === "S")) {
-            if (!this.equal(a.nodes[0], b.nodes[0], context)) return false;
-            if (a.name === b.name) return this.equal(a.nodes[1], b.nodes[1], assignContext({ [a.name]: a.nodes[0] }, context));
-            const tempB1 = this.clone(b.nodes[1]);
-            this.replaceVar(tempB1, b.name, wrapVar(a.name));
-            return this.equal(a.nodes[1], tempB1, assignContext({ [a.name]: a.nodes[0] }, context));
+            if (!this.equal(a.nodes[0], b.nodes[0], context, infered)) return false;
+            if (a.name === b.name) return this.equal(a.nodes[1], b.nodes[1], assignContext({ [a.name]: a.nodes[0] }, context), infered);
+            const tempB1 = Core.clone(b.nodes[1]);
+            Core.replaceVar(tempB1, b.name, wrapVar(a.name));
+            return this.equal(a.nodes[1], tempB1, assignContext({ [a.name]: a.nodes[0] }, context), infered);
         }
         // expand defs
-        const a1 = moveSemantic ? a : this.clone(a);
-        const b1 = moveSemantic ? b : this.clone(b);
+        const a1 = moveSemantic ? a : Core.clone(a);
+        const b1 = moveSemantic ? b : Core.clone(b);
         let modified = false;
-        modified ||= this.reduce(a1);
-        modified ||= this.reduce(b1);
+        modified ||= Core.reduce(a1);
+        modified ||= Core.reduce(b1);
         modified ||= this.expandDef(a1, context, this.expandStepsBetweenEqCheck);
         modified ||= this.expandDef(b1, context, this.expandStepsBetweenEqCheck);
-        if (modified) return this.equal(a1, b1, context, true);
+        if (modified) return this.equal(a1, b1, context, infered, true);
         // recurse
         if (a.type === b.type && a.name == b.name && a.nodes?.length === b.nodes?.length) {
             for (let i = 0; i < a.nodes.length; i++) {
-                if (!this.equal(a.nodes[i], b.nodes[i], context)) return false;
+                if (!this.equal(a.nodes[i], b.nodes[i], context, infered)) return false;
             }
             return true;
         }
         return false;
     }
-    exactEqual(ast1: AST, ast2: AST) {
+    static exactEqual(ast1: AST, ast2: AST) {
         if (ast1 === ast2) return true;
         if (ast1.type !== ast2.type) return false;
         if (ast1.name != ast2.name) return false; // undefined == null but !== null
@@ -271,6 +334,22 @@ class NatLiteral {
     }
 }
 class UniverseLevel {
+    static reduce(ast:AST){
+
+    }
+    static succ(ast: AST) {
+        if (ast.type === "var" && ast.name === "U") {
+            return wrapU("1");
+        }
+        if (ast.type === "apply" && ast.name === "U") {
+            if (NatLiteral.is(ast.nodes[1].name)) {
+                return wrapU(String(Number(ast.nodes[1].name) + 1));
+            }else{
+                return {type:"apply",name:"U",[wrapVar("succ"),ast]}
+            }
+        }
+        return null;
+    }
     /** if ast is U/Un return 1/n+1, else return 0 */
     static get(ast: AST): number {
         if (ast.type !== "var") return 0;

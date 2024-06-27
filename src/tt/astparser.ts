@@ -1,6 +1,6 @@
 export type AST = { type: string, name: string, nodes?: AST[] };
 export class ASTParser {
-    keywords = [":=", "->","~="];
+    keywords = [":=", "->", "~="];
     symChar = ".:,()PSLX~*";
     ast: AST;
     cursor: number = 0;
@@ -134,7 +134,17 @@ export class ASTParser {
             const fnbody = this.type();
             val = { type: "S", name: param, nodes: [paramType, fnbody] };
         } else if (this.acceptVar()) {
-            val = { type: "var", name: this.prevToken(1) };
+            const name = this.prevToken(1);
+            if (name.startsWith("U")&&name!="Ulvl") {
+                val = {
+                    type: "apply", name: "U", nodes: [
+                        { type: "var", name: "U" },
+                        { type: "var", name: name.slice(1) }
+                    ]
+                };
+            } else {
+                val = { type: "var", name: this.prevToken(1) };
+            }
         }
         return val;
     }

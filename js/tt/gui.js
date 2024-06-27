@@ -396,7 +396,7 @@ export class TTGui {
                 this.hott.unbeautify(astType);
                 floatTypeDiv.style.display = "block";
                 try {
-                    astType = new Core().check(astType, localCtxt);
+                    astType = new Core().checkType(astType, localCtxt);
                     // astType = this.hott.check(astType, localCtxt);
                     // console.log(localCtxt);
                     this.hott.beautify(astType, true);
