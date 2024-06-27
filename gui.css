@@ -258,7 +258,12 @@ div.hintbar {
 #tactic-errmsg {
     color: red;
 }
-
+#tactic-hint .highlighted{
+    color:orange;
+}
+#tactic-list .highlighted{
+    color:orange;
+}
 .hide {
     display: none;
 }

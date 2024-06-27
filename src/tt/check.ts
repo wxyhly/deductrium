@@ -185,10 +185,10 @@ export class HoTT {
         return this.succNatLiteral(num.slice(0, -1) || "0") + "0";
     }
     equal(ast1: AST, ast2: AST, context: Context) {
+        if (ast1 === ast2) return true;
         if (this.exactEqual(ast1, ast2)) return true;
         ast1 = this.clone(ast1); this.expandDefinition(ast1, context);
         ast2 = this.clone(ast2); this.expandDefinition(ast2, context);
-        if (ast1 === ast2) return true;
         // if (this.isNatLiteral(ast1) && ast2.type === "apply" && ast2.nodes[0].name === "succ") {
         //     return this.equal(this.predNatLiteral(ast1.name), ast2.nodes[1], context);
         // } else if (this.isNatLiteral(ast2) && ast1.type === "apply" && ast1.nodes[0].name === "succ") {

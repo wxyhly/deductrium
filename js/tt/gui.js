@@ -1,6 +1,7 @@
 import { Assist } from "./assist.js";
 import { ASTParser } from "./astparser.js";
 import { HoTT, HoTTFeatures } from "./check.js";
+import { Core } from "./core.js";
 const parser = new ASTParser;
 const constructors = new Set(["pair", "refl", "true", "0", "0b", "1b", "succ", "inl", "inr", "ua", "funext"]);
 const macro = new Set();
@@ -110,6 +111,7 @@ export class TTGui {
             if (this.mode.length === 1) {
                 this.mode = null;
             }
+            document.getElementById("tactic-autofill").innerHTML = "";
             document.getElementById("tactic-hint").innerHTML = "";
             document.getElementById("tactic-errmsg").innerText = "";
             document.getElementById("tactic-state").innerHTML = "";
@@ -138,6 +140,7 @@ export class TTGui {
                 const statediv = document.getElementById("tactic-state");
                 const val = input.value;
                 let assist = this.mode[0];
+                this.getHottDefCtxt(this.getInhabitatArray().length);
                 document.getElementById("tactic-errmsg").innerText = "";
                 while (hint.firstChild)
                     hint.removeChild(hint.firstChild);
@@ -150,6 +153,12 @@ export class TTGui {
                     }
                     else if (val.startsWith("apply")) {
                         assist.apply(val.slice(5));
+                    }
+                    else if (val === "simpl") {
+                        assist.simpl();
+                    }
+                    else if (val.startsWith("destruct")) {
+                        assist.destruct(val.slice(8));
                     }
                     else if (val.startsWith("reflexivity")) {
                         assist.reflexivity();
@@ -173,11 +182,13 @@ export class TTGui {
                         hint.innerHTML = "";
                         input.value = "";
                         statediv.innerHTML = "";
+                        document.getElementById("tactic-autofill").innerHTML = "";
                         return;
                     }
                     else {
                         throw "未知的证明策略";
                     }
+                    assist.markTargets();
                     hint.innerText = "";
                     this.mode.push(input.value);
                     input.value = "";
@@ -188,33 +199,61 @@ export class TTGui {
                             this.addSpan(statediv, m + " . ").className = "blocked";
                         }
                     }
-                    statediv.appendChild(document.createElement("hr"));
                     this.updateTacticStateDisplay(assist, statediv);
+                    this.autofillTactics(assist);
                 }
                 catch (e) {
                     document.getElementById("tactic-errmsg").innerText = e;
                 }
                 const astShow = this.hott.clone({ type: ":", name: "", nodes: [assist.elem, parser.parse(assist.theoremStr)] });
                 this.hott.beautify(astShow.nodes[0]);
-                hint.appendChild(this.ast2HTML("", astShow));
+                hint.appendChild(this.ast2HTML("", astShow, [], Object.fromEntries(assist.goal.map(g => [g.ast.name, g.type])), this.getInhabitatArray().length));
+                window.scrollTo(0, document.body.clientHeight);
             }
         });
+    }
+    autofillTactics(assist) {
+        const tactics = assist.autofillTactics();
+        const div = document.getElementById("tactic-autofill");
+        const inp = document.getElementById("tactic-input");
+        const exec = document.getElementById("tactic-begin");
+        div.innerHTML = tactics.length ? "推荐策略：<br>" : "";
+        for (const t of tactics) {
+            const btn = document.createElement("button");
+            div.appendChild(btn);
+            btn.innerText = t;
+            btn.addEventListener("click", () => {
+                inp.value = t;
+                if (!t.includes("??")) {
+                    exec.click();
+                }
+            });
+        }
     }
     updateTacticStateDisplay(assist, statediv) {
         if (!assist.goal.length) {
             this.addSpan(statediv, "无目标，请输入qed结束");
         }
+        let count = 0;
         for (const g of assist.goal) {
+            statediv.appendChild(document.createElement("hr"));
+            const scope = Object.keys(g.context).map(n => ({ type: "var", name: n }));
             for (const [k, v] of Object.entries(g.context)) {
-                this.addSpan(statediv, k + " : ");
                 const vc = this.hott.clone(v);
                 this.hott.beautify(vc);
-                statediv.appendChild(this.ast2HTML("", vc));
+                statediv.appendChild(this.ast2HTML("", {
+                    type: ":", name: "", nodes: [
+                        { type: "var", name: k }, vc
+                    ]
+                }, scope, g.context, this.getInhabitatArray().length));
                 statediv.appendChild(document.createElement("br"));
             }
-            statediv.appendChild(document.createElement("hr"));
-            this.addSpan(statediv, "目标：");
-            statediv.appendChild(this.ast2HTML("", g.type));
+            statediv.appendChild(document.createElement("br"));
+            this.addSpan(statediv, count++ ? "目标" + (count - 1) + "：" : "当前目标：");
+            const gtypeBeautified = this.hott.clone(g.type);
+            this.hott.beautify(gtypeBeautified);
+            statediv.appendChild(this.ast2HTML("", gtypeBeautified, scope, g.context, this.getInhabitatArray().length));
+            statediv.appendChild(document.createElement("br"));
         }
     }
     addSpan(parentSpan, text) {
@@ -357,7 +396,8 @@ export class TTGui {
                 this.hott.unbeautify(astType);
                 floatTypeDiv.style.display = "block";
                 try {
-                    astType = this.hott.check(astType, localCtxt);
+                    astType = new Core().check(astType, localCtxt);
+                    // astType = this.hott.check(astType, localCtxt);
                     // console.log(localCtxt);
                     this.hott.beautify(astType, true);
                 }
@@ -650,20 +690,23 @@ export class TTGui {
     }
     executeTactic(inputDom) {
         try {
+            this.getHottDefCtxt(this.getInhabitatArray().length);
             const ast = this.hott.parse(inputDom.value);
             if (!ast)
                 throw "空表达式";
             const type = this.hott.check(ast);
             if (type.name[0] !== "U")
                 throw "不是命题类型";
-            const assist = new Assist(inputDom.value);
+            const assist = new Assist(this.hott, inputDom.value);
             this.mode = [assist];
+            this.autofillTactics(assist);
             document.getElementById("tactic-remove").classList.remove("hide");
             document.getElementById("tactic-hint").innerText = "";
-            document.getElementById("tactic-hint").appendChild(this.ast2HTML("", { type: ":", name: "", nodes: [assist.elem, parser.parse(inputDom.value)] }));
+            document.getElementById("tactic-hint").appendChild(this.ast2HTML("", { type: ":", name: "", nodes: [assist.elem, parser.parse(inputDom.value)] }, [], Object.fromEntries(assist.goal.map(g => [g.ast.name, g.type])), this.getInhabitatArray().length));
             document.getElementById("tactic-input").classList.remove("hide");
             document.getElementById("tactic-input").focus();
             this.updateTacticStateDisplay(assist, document.getElementById("tactic-state"));
+            window.scrollTo(0, document.body.clientHeight);
         }
         catch (e) {
             document.getElementById("tactic-hint").innerText = "命题格式有误：" + e;
