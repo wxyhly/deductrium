@@ -1,29 +1,30 @@
-import { AST } from "./astparser.js";
-import { Context, HoTT } from "./check.js";
-let hott = new HoTT;
+import { AST, ASTParser } from "./astparser.js";
+import { Context, Core } from "./core.js";
+let core = new Core;
+let parser = new ASTParser;
 export class Assist {
     theorem: AST;
     theoremStr: string;
     goal: { context: Context, type: AST, ast: AST }[];
     elem: AST;
-    constructor(h: HoTT, target: AST | string) {
-        hott = h;
-        if (typeof target === "string") { this.theoremStr = target; target = hott.parse(target); }
-        this.theorem = hott.clone(target);
+    constructor(h: Core, target: AST | string) {
+        core = h;
+        if (typeof target === "string") { this.theoremStr = target; target = parser.parse(target); }
+        this.theorem = Core.clone(target);
         this.elem = { type: "var", name: "(?#0)" };
         this.goal = [{ context: {}, type: target, ast: this.elem }];
     }
     ls() {
-        console.log(this.goal.length + "个证明目标：");
-        const logGoal = (goal: { context: Context, type: AST, ast: AST }) => {
-            for (const [k, v] of Object.entries(goal.context)) {
-                console.log("  " + k + " : " + hott.print(v));
-            }
-            console.log("-------------------");
-            console.log(hott.print(goal.type));
-        }
-        this.goal.forEach(g => logGoal(g));
-        return this;
+        // console.log(this.goal.length + "个证明目标：");
+        // const logGoal = (goal: { context: Context, type: AST, ast: AST }) => {
+        //     for (const [k, v] of Object.entries(goal.context)) {
+        //         console.log("  " + k + " : " + core.print(v));
+        //     }
+        //     console.log("-------------------");
+        //     console.log(core.print(goal.type));
+        // }
+        // this.goal.forEach(g => logGoal(g));
+        // return this;
     }
     markTargets() {
         let count = 0;
@@ -36,7 +37,7 @@ export class Assist {
         const g = this.goal[0];
         if (!g) { return ["qed"]; }
         const type = g.type;
-        const introVar = (n: string) => g.context[type.name] ? hott.getNewName(n, new Set(Object.keys(g.context))) : type.name;
+        const introVar = (n: string) => g.context[type.name] ? Core.getNewName(n, new Set(Object.keys(g.context))) : type.name;
         if (type.type === "P") {
             tactics.push("intro " + introVar(type.name));
         } else if (type.name === "True") {
@@ -45,29 +46,29 @@ export class Assist {
         } else if (type.type === "->") {
             tactics.push("intro " + introVar("k"));
         } else {
-            //todo eq'''
-            const matchEq = hott.match(type, hott.parse("eq $1 $2 $3"))
-            if (matchEq && hott.equal(matchEq["$2"], matchEq["$3"], g.context)) {
+            let matchEq = Core.match(type, parser.parse("eq $1 $2"), /^\$/);
+            if (!matchEq) matchEq = Core.match(type, parser.parse("@eq $3 $4 $1 $2"), /^\$/);
+            if (matchEq && core.equal(matchEq["$1"], matchEq["$2"], g.context)) {
                 tactics.push("reflexivity");
                 return tactics;
             }
         }
-        const ntype = hott.clone(type); hott.expandDefinition(ntype, g.context);
-        if (!hott.exactEqual(type, ntype)) {
+        const ntype = Core.clone(type); core.expandDef(ntype);
+        if (!Core.exactEqual(type, ntype)) {
             tactics.push("simpl");
         }
         for (const [val, typ] of Object.entries(g.context)) {
             //todo eq'''
-            const matchEq = hott.match(typ, hott.parse("eq $1 $2 $3"))
+            const matchEq = Core.match(typ, parser.parse("eq $1 $2"), /^\$/)
             if (matchEq) {
                 tactics.push("rewrite " + val);
                 tactics.push("rewriteBack " + val);
             }
-            if (hott.equal(typ, type, g.context)) tactics.push("apply " + val);
+            if (core.equal(typ, type, g.context)) tactics.push("apply " + val);
             if (this.isIndType(typ)) {
                 tactics.push("destruct " + val);
             }
-            if (type.type === "->" && hott.equal(typ.nodes[1], type, g.context)) {
+            if (type.type === "->" && core.equal(typ.nodes[1], type, g.context)) {
                 tactics.push("apply " + val);
 
             }
@@ -92,11 +93,11 @@ export class Assist {
         }
         goal.context[s] = tartgetType.nodes[0];
         // goal.ast is refferd at outter level hole,  we fill the hole first
-        hott.assign(goal.ast, { "type": "L", name: s, nodes: [tartgetType.nodes[0], { type: "var", name: "(?#0)" }] });
-        // console.log(s + " : " + hott.print(tartgetType.nodes[0]));
-        const newtype = hott.clone(tartgetType.nodes[1]);
-        hott.replaceVar(newtype, goal.type.name, { type: "var", name: s })
-        hott.assign(goal.type, newtype);
+        Core.assign(goal.ast, { "type": "L", name: s, nodes: [tartgetType.nodes[0], { type: "var", name: "(?#0)" }] });
+        // console.log(s + " : " + core.print(tartgetType.nodes[0]));
+        const newtype = Core.clone(tartgetType.nodes[1]);
+        Core.replaceVar(newtype, goal.type.name, { type: "var", name: s })
+        Core.assign(goal.type, newtype);
         // then set goal.ast to refer the new smaller hole
         goal.ast = goal.ast.nodes[1];
         this.goal.unshift(goal);
@@ -108,17 +109,17 @@ export class Assist {
         return this;
     }
     apply(ast: AST | string) {
-        if (typeof ast === "string") { ast = hott.parse(ast); }
+        if (typeof ast === "string") { ast = parser.parse(ast); }
         const goal = this.goal.shift();
         if (!goal) throw "无证明目标，请使用qed命令结束证明";
-        const astType = hott.check(ast, goal.context);
-        if (hott.equal(astType, goal.type, goal.context)) {
-            hott.assign(goal.ast, ast);
+        const astType = core.check(ast, goal.context, false);
+        if (core.equal(astType, goal.type, goal.context)) {
+            Core.assign(goal.ast, ast);
             return this;
-        // todo: skip for dependent fn, it can throw error: var not defined in the scope of the fn.
-        } else if (astType.type === "P" && hott.equal(astType.nodes[1], goal.type, goal.context)) {
+            // todo: skip for dependent fn, it can throw error: var not defined in the scope of the fn.
+        } else if (astType.type === "P" && core.equal(astType.nodes[1], goal.type, goal.context)) {
             // goal.ast is refferd at outter level hole,  we fill the hole first
-            hott.assign(goal.ast, { type: "apply", name: "", nodes: [ast, { type: "var", name: "(?#0)" }] });
+            Core.assign(goal.ast, { type: "apply", name: "", nodes: [ast, { type: "var", name: "(?#0)" }] });
             // then set goal.ast to refer the new smaller hole
             goal.ast = goal.ast.nodes[1];
             goal.type = astType.nodes[0];
@@ -126,14 +127,14 @@ export class Assist {
             return this;
         } else {
             this.goal.unshift(goal);
-            throw "无法对类型" + hott.print(astType) + "使用apply策略作用于类型" + hott.print(goal.type);
+            throw "无法对类型" + parser.stringify(astType) + "使用apply策略作用于类型" + parser.stringify(goal.type);
         }
     }
     rewrite(eq: string | AST) {
-        if (typeof eq === "string") eq = hott.parse(eq);
+        if (typeof eq === "string") eq = parser.parse(eq);
         const goal = this.goal.shift();
         if (!goal) throw "无证明目标，请使用qed命令结束证明";
-        const matched = hott.match(hott.check(eq, goal.context), hott.parse("eq $1 $2 $3"));
+        const matched = Core.match(core.check(eq, goal.context, false), parser.parse("eq $1 $2 $3"), /^\$/);
         if (!matched) {
             this.goal.unshift(goal);
             throw "使用rewrite策略必须提供一个相等类型";
@@ -149,24 +150,24 @@ export class Assist {
         matched["$fn"] = fn;
         matched["$eq"] = eq;
         const ctxtSet = new Set(Object.keys(goal.context));
-        const x = hott.getNewName("x", ctxtSet);
-        const y = hott.getNewName("y", ctxtSet);
-        const m = hott.getNewName("m", ctxtSet);
-        let newAst = hott.parse(`ind_eq $1 (L${x}:$1.L${y}:$1.L${m}:eq $1 ${x} ${y}. P${m}:$fn ${y}, $fn ${x}) (L${x}:$1.L${m}:$fn ${x}.${m}) $2 $3 $eq`);
-        hott.replaceByMatch(newAst, matched);
+        const x = Core.getNewName("x", ctxtSet);
+        const y = Core.getNewName("y", ctxtSet);
+        const m = Core.getNewName("m", ctxtSet);
+        let newAst = parser.parse(`ind_eq $1 (L${x}:$1.L${y}:$1.L${m}:eq $1 ${x} ${y}. P${m}:$fn ${y}, $fn ${x}) (L${x}:$1.L${m}:$fn ${x}.${m}) $2 $3 $eq`);
+        Core.replaceByMatch(newAst, matched, /^\$/);
         newAst = { type: "apply", name: "", nodes: [newAst, { type: "var", name: "(?#0)" }] };
-        hott.assign(goal.ast, newAst);
+        Core.assign(goal.ast, newAst);
         goal.ast = goal.ast.nodes[1];
         goal.type = { type: "apply", name: "", nodes: [fn, matched["$3"]] };
-        hott.expandDefinition(goal.type, goal.context);
+        core.expandDef(goal.type);
         this.goal.unshift(goal);
         return this;
     }
     rewriteBack(eq: string | AST) {
-        if (typeof eq === "string") eq = hott.parse(eq);
+        if (typeof eq === "string") eq = parser.parse(eq);
         const goal = this.goal.shift();
         if (!goal) throw "无证明目标，请使用qed命令结束证明";
-        const matched = hott.match(hott.check(eq, goal.context), hott.parse("eq $1 $2 $3"));
+        const matched = Core.match(core.check(eq, goal.context, false), parser.parse("eq $1 $2 $3"), /^\$/);
         if (!matched) {
             this.goal.unshift(goal);
             throw "使用rewrite策略必须提供一个相等类型";
@@ -182,26 +183,26 @@ export class Assist {
         matched["$fn"] = fn;
         matched["$eq"] = eq;
         const ctxtSet = new Set(Object.keys(goal.context));
-        const x = hott.getNewName("x", ctxtSet);
-        const y = hott.getNewName("y", ctxtSet);
-        const m = hott.getNewName("m", ctxtSet);
-        let newAst = hott.parse(`ind_eq $1 (L${x}:$1.L${y}:$1.L${m}:eq $1 ${x} ${y}. P${m}:$fn ${x}, $fn ${y}) (L${y}:$1.L${m}:$fn ${y}.${m}) $2 $3 $eq`);
-        hott.replaceByMatch(newAst, matched);
+        const x = Core.getNewName("x", ctxtSet);
+        const y = Core.getNewName("y", ctxtSet);
+        const m = Core.getNewName("m", ctxtSet);
+        let newAst = parser.parse(`ind_eq $1 (L${x}:$1.L${y}:$1.L${m}:eq $1 ${x} ${y}. P${m}:$fn ${x}, $fn ${y}) (L${y}:$1.L${m}:$fn ${y}.${m}) $2 $3 $eq`);
+        Core.replaceByMatch(newAst, matched, /^\$/);
         newAst = { type: "apply", name: "", nodes: [newAst, { type: "var", name: "(?#0)" }] };
-        hott.assign(goal.ast, newAst);
+        Core.assign(goal.ast, newAst);
         goal.ast = goal.ast.nodes[1];
         goal.type = { type: "apply", name: "", nodes: [fn, matched["$2"]] };
-        hott.expandDefinition(goal.type, goal.context);
+        core.expandDef(goal.type);
         this.goal.unshift(goal);
         return this;
     }
-    genReplaceFn(ast: AST, search: AST, context: Context = {}, searchType = hott.check(search, context), searchFVs = hott.getFreeVars(search), newCtxt = context): AST {
-        const x = hott.getNewName("repl", new Set(Object.keys(context)));
-        if (hott.equal(ast, search, context)) {
+    genReplaceFn(ast: AST, search: AST, context: Context = {}, searchType = core.check(search, context, false), searchFVs = Core.getFreeVars(search), newCtxt = context): AST {
+        const x = Core.getNewName("repl", new Set(Object.keys(context)));
+        if (core.equal(ast, search, context)) {
             return { type: "L", name: x, nodes: [searchType, { type: "var", name: x }] };
         }
         if (ast.type === "var") {
-            return { type: "L", name: x, nodes: [searchType, hott.clone(ast)] };
+            return { type: "L", name: x, nodes: [searchType, Core.clone(ast)] };
         }
         if (ast.type === "apply") {
             const l1 = { type: "apply", name: "", nodes: [this.genReplaceFn(ast.nodes[0], search, context, searchType, searchFVs), { type: "var", name: x }] };
@@ -209,24 +210,24 @@ export class Assist {
             const fn = {
                 type: "L", name: x, nodes: [searchType, { type: "apply", name: "", nodes: [l1, l2] }]
             };
-            hott.expandDefinition(fn, newCtxt);
+            core.expandDef(fn);
             return fn;
         }
         if (ast.type === "L" || ast.type === "P" || ast.type === "S") {
-            const x = hott.getNewName("repl", new Set([ast.name, ...Object.keys(context)]));
+            const x = Core.getNewName("repl", new Set([ast.name, ...Object.keys(context)]));
             const l1 = { type: "apply", name: "", nodes: [this.genReplaceFn(ast.nodes[0], search, context, searchType, searchFVs), { type: "var", name: x }] };
             let l2: AST;
             if (searchFVs.has(ast.name)) {
                 l2 = ast.nodes[1];
             } else {
                 const ctxt = Object.assign({}, context);
-                if (hott.getFreeVars(ast.nodes[0]).has(ast.name)) {
+                if (Core.getFreeVars(ast.nodes[0]).has(ast.name)) {
                     // cancel dangerous loop quote by alpha conversion
                     // x:c, x: f(x) => x':c, x:f(x')
-                    const newVarname = hott.getNewName(ast.name, new Set(Object.keys(ctxt)));
+                    const newVarname = Core.getNewName(ast.name, new Set(Object.keys(ctxt)));
                     ctxt[newVarname] = ctxt[ast.name];
-                    const newtype = hott.clone(ast.nodes[0]);
-                    hott.replaceVar(newtype, ast.name, { type: "var", name: newVarname });
+                    const newtype = Core.clone(ast.nodes[0]);
+                    Core.replaceVar(newtype, ast.name, { type: "var", name: newVarname });
                     ctxt[ast.name] = newtype;
                 }
                 ctxt[ast.name] = ast.nodes[0];
@@ -237,35 +238,36 @@ export class Assist {
             const fn: AST = {
                 type: "L", name: x, nodes: [searchType, { type: ast.type, name: ast.name, nodes: [l1, l2] }]
             };
-            hott.expandDefinition(fn, newCtxt);
+            core.expandDef(fn);
             return fn;
         }
     }
     reflexivity() {
         const goal = this.goal.shift();
         if (!goal) throw "无证明目标，请使用qed命令结束证明";
-        const matched = hott.match(goal.type, hott.parse("eq $1 $2 $3"));
+        let matched = Core.match(goal.type, parser.parse("eq $1 $2"), /^\$/);
+        if (!matched) matched = Core.match(goal.type, parser.parse("@eq $3 $4 $1 $2"), /^\$/);
         if (!matched) {
             this.goal.unshift(goal);
             throw "无法对非相等类型使用reflexivity策略";
         }
-        if (!hott.equal(matched["$2"], matched["$3"], goal.context)) {
+        if (!core.equal(matched["$1"], matched["$2"], goal.context)) {
             this.goal.unshift(goal);
             throw "使用reflexivity策略失败：等式两边无法化简至相等";
         }
-        const newAst = hott.parse("refl $1 $2");
-        hott.replaceByMatch(newAst, matched);
-        hott.assign(goal.ast, newAst);
+        const newAst = parser.parse("refl");
+        Core.replaceByMatch(newAst, matched, /^\$/);
+        Core.assign(goal.ast, newAst);
         return this;
     }
     qed() {
         if (this.goal.length) throw "证明尚未完成";
-        hott.checkProof(this.elem, this.theorem);
+        core.checkType({ type: ":", name: "", nodes: [this.elem, this.theorem] });
     }
     simpl() {
         const goal = this.goal.shift();
         if (!goal) throw "无证明目标，请使用qed命令结束证明";
-        hott.expandDefinition(goal.type, goal.context);
+        core.expandDef(goal.type);
         this.goal.unshift(goal);
         return this;
     }
@@ -276,17 +278,17 @@ export class Assist {
         const goal = this.goal.shift();
         if (!goal) throw "无证明目标，请使用qed命令结束证明";
         const nast = { type: "var", name: param[0] };
-        const nType = hott.check(nast, goal.context);
+        const nType = core.check(nast, goal.context, false);
         if (!this.isIndType(nType)) { this.goal.unshift(); throw "只能解构归纳类型的变量"; }
-        const matched = { "$1": hott.clone(goal.type), "$nast": nast, "$typeN": nType };
+        const matched = { "$1": Core.clone(goal.type), "$nast": nast, "$typeN": nType };
         if (nType.name === "Bool") {
-            let newAst = hott.parse(`ind_Bool (L${n}:$typeN.$1) (?#0) (?#0) $nast`);
-            hott.replaceByMatch(newAst, matched);
-            hott.assign(goal.ast, newAst);
-            const type0b = hott.clone(goal.type);
-            const type1b = hott.clone(goal.type);
-            hott.replaceVar(type0b, n, { type: "var", name: "0b" });
-            hott.replaceVar(type1b, n, { type: "var", name: "1b" })
+            let newAst = parser.parse(`ind_Bool (L${n}:$typeN.$1) (?#0) (?#0) $nast`);
+            Core.replaceByMatch(newAst, matched, /^\$/);
+            Core.assign(goal.ast, newAst);
+            const type0b = Core.clone(goal.type);
+            const type1b = Core.clone(goal.type);
+            Core.replaceVar(type0b, n, { type: "var", name: "0b" });
+            Core.replaceVar(type1b, n, { type: "var", name: "1b" })
             goal.type = type0b;
             const anotherGoal = {
                 ast: goal.ast.nodes[0].nodes[1],
@@ -297,15 +299,15 @@ export class Assist {
             this.goal.unshift(goal);
             this.goal.unshift(anotherGoal);
         } else if (nType.name === "True") {
-            let newAst = hott.parse(`ind_True (L${n}:$typeN.$1) (?#0) $nast`);
-            hott.replaceByMatch(newAst, matched);
-            hott.assign(goal.ast, newAst);
-            hott.replaceVar(goal.type, n, { type: "var", name: "true" });
+            let newAst = parser.parse(`ind_True (L${n}:$typeN.$1) (?#0) $nast`);
+            Core.replaceByMatch(newAst, matched, /^\$/);
+            Core.assign(goal.ast, newAst);
+            Core.replaceVar(goal.type, n, { type: "var", name: "true" });
             goal.ast = goal.ast.nodes[0].nodes[1];
             this.goal.unshift(goal);
         } else if (nType.name === "False") {
-            let newAst = hott.parse(`ind_False (L${n}:$typeN.$1) $nast`);
-            hott.replaceByMatch(newAst, matched);
+            let newAst = parser.parse(`ind_False (L${n}:$typeN.$1) $nast`);
+            Core.replaceByMatch(newAst, matched, /^\$/);
         } else if (nType.name === "nat") {
             const fromParam1 = param[1];
             if (fromParam1 && goal.context[fromParam1]) {
@@ -317,22 +319,22 @@ export class Assist {
                 this.goal.unshift(goal);
                 throw "destruct引入了重复的变量名";
             }
-            const destructed = fromParam1 || hott.getNewName(n, new Set(Object.keys(goal.context)));
-            const induced = fromParam2 || hott.getNewName("H" + n, new Set(Object.keys(goal.context)));
-            let newAst = hott.parse(`ind_nat (L${n}:$typeN.$1) (?#0) (L${destructed}:nat.L${induced}:$indType.(?#0)) $nast`);
+            const destructed = fromParam1 || Core.getNewName(n, new Set(Object.keys(goal.context)));
+            const induced = fromParam2 || Core.getNewName("H" + n, new Set(Object.keys(goal.context)));
+            let newAst = parser.parse(`ind_nat (L${n}:$typeN.$1) (?#0) (L${destructed}:nat.L${induced}:$indType.(?#0)) $nast`);
 
-            const type0 = hott.clone(goal.type);
-            const typen = hott.clone(goal.type);
-            const typeSn = hott.clone(goal.type);
+            const type0 = Core.clone(goal.type);
+            const typen = Core.clone(goal.type);
+            const typeSn = Core.clone(goal.type);
 
-            hott.replaceVar(type0, n, { type: "var", name: "0" });
-            hott.replaceVar(typen, n, { type: "var", name: destructed });
-            hott.replaceVar(typeSn, n, { type: "apply", name: "", nodes: [{ type: "var", name: "succ" }, { type: "var", name: destructed }] });
+            Core.replaceVar(type0, n, { type: "var", name: "0" });
+            Core.replaceVar(typen, n, { type: "var", name: destructed });
+            Core.replaceVar(typeSn, n, { type: "apply", name: "", nodes: [{ type: "var", name: "succ" }, { type: "var", name: destructed }] });
 
             matched["$indType"] = typen;
 
-            hott.replaceByMatch(newAst, matched);
-            hott.assign(goal.ast, newAst);
+            Core.replaceByMatch(newAst, matched, /^\$/);
+            Core.assign(goal.ast, newAst);
             goal.type = type0;
             const anotherGoal = {
                 ast: goal.ast.nodes[0].nodes[1].nodes[1].nodes[1],

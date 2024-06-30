@@ -169,7 +169,7 @@ export class HoTT {
         throw "类型断言失败：“:” 左边表达式类型为" + this.print(t);
     }
     isNatLiteral(ast: AST) {
-        return ast.type === "var" && ast.name.match(/^[1-9][0-9]*$/);
+        return ast.type === "var" && (ast.name === "0" && ast.name.match(/^[1-9][0-9]*$/));
     }
     predNatLiteral(num: string): string {
         if (num === "0") throw "0 has no predicator";
@@ -309,7 +309,7 @@ export class HoTT {
             return res;
         }
         if (ast.type !== pattern.type) return null;
-        if (ast.name !== pattern.name) {
+        if (ast.name && ast.name !== pattern.name) {
             if (pattern.name.padEnd(ast.name.length, "'") !== ast.name) return null;
             res[".U"] = { type: "note", name: (ast.name.length - pattern.name.length).toString() };
         }

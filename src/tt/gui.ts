@@ -7,9 +7,9 @@ const constructors = new Set(["pair", "refl", "true", "0", "0b", "1b", "succ", "
 const macro = new Set<string>();
 const sysmacro = new Set(["add", "pred", "double", "mult", "power", "not"]);
 const initialTypeTerms = [
-    "#Universe",
-    "t::U : U'",
-    "c::(#typeof $1) : U",
+    // "#Universe",
+    // "t::Un : U(@succ n)",
+    // "c::(#typeof $1) : U",
     "#False",
     "t::False : U",
     "#True",
@@ -103,6 +103,7 @@ type definedConst = [AST, AST];
 export class TTGui {
     onStateChange = () => { };
     hott = new HoTT;
+    core = new Core;
     // gamecore = new HoTTGame;
     typeList = document.getElementById("type-list");
     inhabitList = document.getElementById("inhabit-list");
@@ -275,18 +276,24 @@ export class TTGui {
         const astStr = parser.stringify(ast);
         varnode.setAttribute("ast-string", astStr);
         if (ast.type === "var") {
-            const el = this.addSpan(varnode, ast.name);
+            let el: HTMLSpanElement;
+            if (ast.name.startsWith("U@")) {
+                el = this.addSpan(varnode, "U<sub>" + ast.name.slice(1) + "</sub>");
+                el.classList.add("universe");
+            } else {
+                el = this.addSpan(varnode, ast.name);
+            }
             const scopeStack = scopes.slice(0);
             const astname = ast.name.replace(/'+$/g, "");
             if (astname.match(/^[1-9][0-9]*$/)) {
                 el.classList.add("constant");
                 el.classList.add("constructors");
-            } else if (consts.has(astname.replace(/'+$/, "")) || ast.name.match(/^U'*/) || macro.has(astname.replace(/'+$/, ""))) {
+            } else if (consts.has(astname) || macro.has(astname)) {
                 el.classList.add("constant");
                 if (astname.startsWith("ind_")) el.classList.add("ind_fn");
                 if (constructors.has(astname)) el.classList.add("constructors");
                 if (macro.has(astname)) el.classList.add("macro");
-            } else {
+            } else if (!ast.name.startsWith("U@")) {
                 el.classList.add("freeVar");
             }
             if (scopeStack[0]?.type === "quantvar") {
@@ -311,39 +318,60 @@ export class TTGui {
             }
         } else {
             switch (ast.type) {
-                case ":": case ":=":
+                case ":": case ":=": case "===":
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], scopes, context, userLineNumber));
                     this.addSpan(varnode, " " + ast.type + " ");
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], scopes, context, userLineNumber));
                     break;
-                case "->": case "X": case ",": case "~": case "~=": case "*":
+                case "->": case "X":
+
+                    const b1 = !(["var"].includes(ast.nodes[0].type) || ast.nodes[0].nodes[0].name == "U");
+                    const b2 = !(["var", "->", "x"].includes(ast.nodes[1].type) || ast.nodes[1].nodes[0].name == "U");
+                    if (b1) this.addSpan(varnode, "(");
+                    varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], scopes, context, userLineNumber));
+                    if (b1) this.addSpan(varnode, ")");
+                    this.addSpan(varnode, ast.type === "X" ? "×" : "→");
+                    if (b2) this.addSpan(varnode, "(");
+                    varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], scopes, context, userLineNumber));
+                    if (b2) this.addSpan(varnode, ")");
+                    break;
+                case ",": case "~": case "~=": case "*":
                     this.addSpan(varnode, "(");
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], scopes, context, userLineNumber));
-                    this.addSpan(varnode, ast.type === "X" ? "×" : ast.type === "," ? "," : ast.type === "~" ? "~" : ast.type === "~=" ? "≃" : ast.type === "*" ? "∘" : "→");
+                    this.addSpan(varnode, ast.type === "," ? "," : ast.type === "~" ? "~" : ast.type === "~=" ? "≃" : ast.type === "*" ? "∘" : "→");
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], scopes, context, userLineNumber));
                     this.addSpan(varnode, ")");
                     break;
                 case "apply":
-                    this.addSpan(varnode, "(");
+                    if (ast.nodes[0].name === "U") {
+                        const sub = parser.stringify(ast.nodes[1]);
+                        this.addSpan(varnode, `U<sub>${sub.replaceAll(/@([0-9])/g, "$1")}</sub>`).classList.add("universe");
+                        break;
+                    }
+                    const br1 = !["apply", "var"].includes(ast.nodes[0].type);
+                    const br2 = !(["var"].includes(ast.nodes[1].type) || ast.nodes[1].nodes[0].name == "U");
+                    if (br1) this.addSpan(varnode, "(");
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], scopes, context, userLineNumber));
+                    if (br1) this.addSpan(varnode, ")");
                     this.addSpan(varnode, " ");
+                    if (br2) this.addSpan(varnode, "(");
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], scopes, context, userLineNumber));
-                    this.addSpan(varnode, ")");
+                    if (br2) this.addSpan(varnode, ")");
                     break;
                 case "L": case "P": case "S":
                     const outterLayers: HTMLSpanElement[] = [];
                     const newcontext = Object.assign({}, context);
                     const newType = this.hott.clone(ast.nodes[0]); this.hott.unbeautify(newType);
                     newcontext[ast.name] = newType;
-                    outterLayers.push(this.addSpan(varnode, "(" + ast.type.replaceAll("S", "Σ").replaceAll("L", "λ").replaceAll("P", "Π")));
-                    const varast = this.ast2HTML(idx, { type: "var", name: ast.name }, [{ type: "quantvar", name: "quantvar" }, ...scopes], newcontext, userLineNumber);
+                    outterLayers.push(this.addSpan(varnode, "" + ast.type.replaceAll("S", "Σ").replaceAll("L", "λ").replaceAll("P", "Π")));
+                    const varast = this.ast2HTML(idx, { type: "var", name: ast.name, checked: ast.nodes[0] }, [{ type: "quantvar", name: "quantvar" }, ...scopes], newcontext, userLineNumber);
                     varast.classList.add("boundedVar");
                     outterLayers.push(varnode.appendChild(varast));
                     outterLayers.push(this.addSpan(varnode, ":"));
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], scopes, context, userLineNumber));
                     outterLayers.push(this.addSpan(varnode, ast.type === "L" ? "." : ","));
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], [ast, ...scopes], newcontext, userLineNumber));
-                    outterLayers.push(this.addSpan(varnode, ")"));
+                    // outterLayers.push(this.addSpan(varnode, ")"));
 
                     // hightlight constrained vars
 
@@ -363,11 +391,13 @@ export class TTGui {
                         });
                     }
                     outterLayers[1].addEventListener('mouseover', ev => {
+                        varnode.classList.add("mediumlighted");
                         for (const node of constrainedVars) {
                             node.classList.add("highlighted");
                         }
                     });
                     outterLayers[1].addEventListener('mouseout', ev => {
+                        varnode.classList.remove("mediumlighted");
                         for (const node of constrainedVars) {
                             node.classList.remove("highlighted");
                         }
@@ -385,33 +415,29 @@ export class TTGui {
             const localCtxt = context;
             const localNumber = userLineNumber;
             node.addEventListener('mouseover', ev => {
+                varnode.classList.add("mediumlighted");
                 for (const node of spans) {
                     node.classList.add("highlighted");
                 }
                 floatTypeDiv.style.left = (ev.pageX - 4) + "px";
                 floatTypeDiv.style.top = (ev.pageY + 30) + "px";
                 this.getHottDefCtxt(localNumber);
-                let astType = this.hott.clone(ast);
-                this.hott.unbeautify(astType);
-
                 floatTypeDiv.style.display = "block";
-                try {
-                    astType = new Core().checkType(astType, localCtxt) as AST;
-                    // astType = this.hott.check(astType, localCtxt);
-                    // console.log(localCtxt);
-                    this.hott.beautify(astType, true);
-                } catch (e) {
-                    astType = { name: "", type: "" };
+                if (ast.checked) {
+                    if (scopes[0]?.type === "quantvar") {
+                        scopes = scopes.slice(1);
+                    }
+                    try { floatTypeDiv.appendChild(this.ast2HTML("", ast.checked, scopes, localCtxt, userLineNumber)); } catch (e) {
+                        floatTypeDiv.innerText = e;
+                    }
+                } else if (ast.err) {
+                    floatTypeDiv.appendChild(document.createTextNode(ast.err));
+                } else {
                     floatTypeDiv.style.display = "none";
-                }
-                if (scopes[0]?.type === "quantvar") {
-                    scopes = scopes.slice(1);
-                }
-                try { floatTypeDiv.appendChild(this.ast2HTML("", astType, scopes, localCtxt, userLineNumber)); } catch (e) {
-                    floatTypeDiv.innerText = e;
                 }
             });
             node.addEventListener('mouseout', ev => {
+                varnode.classList.remove("mediumlighted");
                 for (const node of spans) {
                     node.classList.remove("highlighted");
                 }
@@ -425,8 +451,7 @@ export class TTGui {
 
         let idx = 0;
         this.updateGuiList("", listTerms.map((ast, idx) => {
-            const prefix = listInfos[idx][0];
-            this.hott.beautify(ast, false);
+            try { this.core.checkType(ast) } catch (e) { };
             return ast;
         }), this.typeList, (p, idx) => true, (p, itInfo, it) => {
             itInfo[0].innerHTML = listInfos[idx++][1];
@@ -438,7 +463,8 @@ export class TTGui {
     getHottDefCtxt(input: HTMLInputElement | number) {
         macro.clear();
         for (const s of sysmacro) macro.add(s);
-        this.hott.beautifys = this.sysDefinedConsts.slice(0);
+        // this.hott.beautifys = this.sysDefinedConsts.slice(0);
+        this.core.state.userDefs = {};
         if (typeof input === "number") {
             for (let i = 0; i <= input; i++) {
                 const def = this.userDefinedConsts[i];
@@ -457,7 +483,8 @@ export class TTGui {
             }
             macro.add(def[0].name);
             if (arr[i] === input) { currentIdx = i; break; }
-            this.hott.beautifys.push(def);
+            // this.hott.beautifys.push(def);
+            this.core.state.userDefs[def[0].name] = def[1];
         }
         return currentIdx ?? arr.indexOf(input);
     }
@@ -487,7 +514,6 @@ export class TTGui {
                 return;
             }
             let ast: AST;
-            let astexpd: AST;
             let parseError = "";
             let error = "";
             try {
@@ -512,27 +538,28 @@ export class TTGui {
             let type: AST;
             if (ast) {
                 try {
-                    astexpd = this.hott.parse(input.value);
-                    if (astexpd.type === ":") {
-                        this.hott.checkProof(astexpd.nodes[0], astexpd.nodes[1]);
-                    } else if (astexpd.type === ":=") {
-                        if (astexpd.nodes[0].type !== "var") {
+                    // astexpd = this.hott.parse(input.value);
+                    if (ast.type === ":=") {
+                        if (ast.nodes[0].type !== "var") {
                             throw ":=符号左侧仅允许出现自定义常量";
                         }
-                        let redefined: boolean = true;
-                        const defname = input.value.split(":=")[0].trim();
-                        try {
-                            this.hott.check(this.hott.parse(defname));
-                        } catch (e) {
-                            if (e === "由于系统性能问题，递归大数字超时") throw e;
-                            redefined = false;
-                        }
-                        if (redefined) throw defname + "的定义重复";
-                        this.hott.check(astexpd.nodes[1]);
+                        const defname = ast.nodes[0].name;
+                        if (this.core.checkConst(defname)) throw defname + "的定义重复";
+                        const inferedAst = {} as AST;
+                        this.core.checkType(ast.nodes[1], inferedAst);
                         macro.add(defname);
-                        this.userDefinedConsts[currentIdx] = [astexpd.nodes[0], astexpd.nodes[1]];
+                        const defContent = ast.nodes[1];
+                        if (defContent.type === ":") {
+                            const type = defContent.nodes[1];
+                            inferedAst.nodes[0].checked = type;
+                            ast.nodes[0].checked = type;
+                            this.userDefinedConsts[currentIdx] = [ast.nodes[0], inferedAst.nodes[0]];
+                        } else {
+                            ast.nodes[0].checked = ast.nodes[1].checked;
+                            this.userDefinedConsts[currentIdx] = [ast.nodes[0], ast.nodes[1]];
+                        }
                     } else {
-                        type = this.hott.check(astexpd);
+                        type = this.core.checkType(ast);
                     }
                 } catch (e) {
                     error += e;
@@ -548,7 +575,10 @@ export class TTGui {
             if (ast && !error) {
                 if (ast.type[0] != ":") this.addSpan(div, " &nbsp; : &nbsp; ");
                 if (type) {
-                    this.hott.beautify(type);
+                    try {
+                        this.core.checkType(type);
+                    } catch (e) {
+                    }
                     div.appendChild(this.ast2HTML("", type, [], {}, currentIdx));
                 }
             }
@@ -670,11 +700,11 @@ export class TTGui {
     executeTactic(inputDom: HTMLInputElement) {
         try {
             this.getHottDefCtxt(this.getInhabitatArray().length);
-            const ast = this.hott.parse(inputDom.value);
+            const ast = parser.parse(inputDom.value);
             if (!ast) throw "空表达式";
-            const type = this.hott.check(ast);
-            if (type.name[0] !== "U") throw "不是命题类型";
-            const assist = new Assist(this.hott, inputDom.value);
+            const type = this.core.checkType(ast);
+            if (type.type !== "apply" || type.nodes[0].name !== "U") throw "不是命题类型";
+            const assist = new Assist(this.core, inputDom.value);
             this.mode = [assist];
             this.autofillTactics(assist);
             document.getElementById("tactic-remove").classList.remove("hide");

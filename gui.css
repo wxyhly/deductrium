@@ -41,6 +41,10 @@
     color: #595;
 }
 
+.universe {
+    color: rgb(107, 107, 107);
+}
+
 .replvar {
     color: brown;
 }
@@ -249,6 +253,10 @@ div.hintbar {
 
 .inhabitat input {
     width: calc(100% - 32px);
+}
+.mediumlighted{
+    background-color: rgba(0,0,0,0.1);
+    border-radius: 2px;
 }
 
 #tactic-input {

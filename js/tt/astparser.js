@@ -1,5 +1,5 @@
 export class ASTParser {
-    keywords = [":=", "->", "~="];
+    keywords = [":=", "->", "~=", "==="];
     symChar = ".:,()PSLX~*";
     ast;
     cursor = 0;
@@ -9,6 +9,9 @@ export class ASTParser {
         const nd = ast.nodes;
         if (ast.type === "->") {
             return `(${this.stringify(nd[0])}→${this.stringify(nd[1])})`;
+        }
+        if (ast.type === "===") {
+            return `(${this.stringify(nd[0])}===${this.stringify(nd[1])})`;
         }
         if (ast.type === "~") {
             return `(${this.stringify(nd[0])}~${this.stringify(nd[1])})`;
@@ -44,13 +47,25 @@ export class ASTParser {
         this.nextSym();
         const ret = this.type();
         if (this.tokens.length !== this.cursor - 1) {
-            if (this.token === ":" || this.token === ":=") {
+            if (this.token === ":" || this.token === "===" || this.token === ":=") {
                 const token = this.token;
                 this.nextSym();
                 const postfix = this.type();
                 if (!postfix)
                     throw "不完整的表达式";
                 if (this.tokens.length !== this.cursor - 1) {
+                    if (token === ":=" && this.token === ":") {
+                        // def := expr : type
+                        this.nextSym();
+                        const type = this.type();
+                        if (!type)
+                            throw "不完整的表达式";
+                        return {
+                            type: token, name: "", nodes: [ret, {
+                                    type: ":", name: "", nodes: [postfix, type]
+                                }]
+                        };
+                    }
                     throw "未知的语法错误";
                 }
                 return { type: token, name: "", nodes: [ret, postfix] };
@@ -144,11 +159,18 @@ export class ASTParser {
         }
         else if (this.acceptVar()) {
             const name = this.prevToken(1);
-            if (name.startsWith("U") && name != "Ulvl") {
+            if (name === "U") {
                 val = {
-                    type: "apply", name: "U", nodes: [
+                    type: "apply", name: "", nodes: [
+                        { type: "var", name: "U" }, { type: "var", name: "@0" }
+                    ]
+                };
+            }
+            else if (name.startsWith("U") && name !== "U@") {
+                val = {
+                    type: "apply", name: "", nodes: [
                         { type: "var", name: "U" },
-                        { type: "var", name: name.slice(1) }
+                        { type: "var", name: ("0123456789".includes(name[1]) ? "@" : "") + name.slice(1) }
                     ]
                 };
             }
@@ -191,7 +213,7 @@ export class ASTParser {
     }
     type() {
         let val = this.typeTerm();
-        while (this.token && this.token !== ")" && this.token !== ":" && this.token !== "." && this.token !== "," && this.token !== ":=") {
+        while (this.token && this.token !== ")" && this.token !== ":" && this.token !== "." && this.token !== "," && this.token !== ":=" && this.token !== "===") {
             val = { type: "apply", name: "", nodes: [val, this.typeTerm()] };
         }
         if (!val)
