@@ -160,6 +160,8 @@ export class Core {
             "@ind_True": parser.parse("Pu:U@,PC:True->Uu,Pc:C true,Px:True,C x"),
             "@ind_False": parser.parse("Pu:U@,PC:False->Uu,Px:False,C x"),
             "@ind_Bool": parser.parse("Pu:U@,PC:Bool->Uu,Pc0b:C 0b,Pc1b:C 1b,Px:Bool,C x"),
+            "@ind_eq2": parser.parse("Pu:U@,Pv:U@,Pa:Uu,PC:Px:a,Py:a,(@eq u a x y)->Uv,Pc:Px:a,C x x (@@refl u a x),Px:a,Py:a,Pm:@eq u a x y,C x y m"),
+            "@ind_eq": parser.parse("Pu:U@,Pv:U@,Pa:Uu,Px:a,PC:Py:a,(@eq u a x y)->Uv,Pc:C x (@@refl u a x),Py:a,Pm:@eq u a x y,C y m"),
             "@eq": parser.parse("Pu:U@,Pa:Uu,a->a->Uu"),
             "@@refl": parser.parse("Pu:U@,Pa:Uu,Px:a,@eq u a x x"),
             "@Prod": parser.parse("Pu:U@,Pv:Un,Pa:Uu,Pb:Uv,a->b->(U(@max u v))"),
@@ -174,9 +176,12 @@ export class Core {
             "ind_True": parser.parse("@ind_True _"),
             "ind_False": parser.parse("@ind_False _"),
             "ind_Bool": parser.parse("@ind_Bool _"),
-            "ind_eq": parser.parse("@ind_eq _"),
+            "ind_eq": parser.parse("@ind_eq _ _ _"),
+            "ind_eq2": parser.parse("@ind_eq2 _ _ _"),
             "not": parser.parse("La:U_.a->False"),
             "id": parser.parse("Lx:_.x"),
+            "add": parser.parse("ind_nat (Lx:nat.nat->nat) (Lx:nat.x) (Ly:nat.Lh:nat->nat.Lx:nat.succ (h x))"),
+            "mul": parser.parse("ind_nat (Lx:nat.nat->nat) (Lx:nat.0) (Ly:nat.Lh:nat->nat.Lx:nat.add (h x) x)"),
             "concat": parser.parse("Lf:_->_.Lg:_->_.Lx:_.g (f x)"),
         },
         userDefs: {},
@@ -301,7 +306,7 @@ export class Core {
                 ast.checked = UniverseLevel.succ(ast);
                 return ast.checked;
             }
-            if(parser.stringify(ast)==='((@pair ?0) ?1)'){
+            if (parser.stringify(ast) === '((@pair ?0) ?1)') {
                 console.log("oma");
             }
             let tfn = this.check(ast.nodes[0], context, ignoreErr);
@@ -365,7 +370,7 @@ export class Core {
     checkConst(n: string) {
         // sys types
         let res = this.state.sysTypes[n];
-        if(n==="pair"){
+        if (n === "pair") {
             console.log("oma");
         }
         if (res) return res;
@@ -420,6 +425,8 @@ export class Core {
         let modified = false;
         modified ||= Core.reduce(a1);
         modified ||= Core.reduce(b1);
+        modified ||= Compute.exec(a1);
+        modified ||= Compute.exec(b1);
         modified ||= this.expandDef(a1);
         modified ||= this.expandDef(b1);
         if (modified) return this.equal(a1, b1, context, true);
@@ -515,9 +522,6 @@ export class Core {
             const nast = this.preprocessInfered(res);
             Core.assign(ast, nast, true);
             return true;
-        }
-        if (ast.type === "apply") {
-            // ind match reduce
         }
         let modified = false;
         if (ast.nodes.length) {
@@ -631,6 +635,97 @@ class UniverseLevel {
         return false;
     }
 }
-class Compute {
+export class Compute {
+    static isApplyBrach(ast: AST) {
+        if (ast.type !== "apply") return false;
+        return ast.nodes[0].name !== "U";
+    }
+    static matchApply(ast: AST, root = true, res: AST[][] = []) {
+        if (!root) {
+            if (this.isApplyBrach(ast)) {
+                this.matchApply(ast.nodes[1], true, res);
+                this.matchApply(ast.nodes[0], false, res);
+                res[0][0] = ast;
+                res[0].push(ast.nodes[1]);
+            } else {
+                if (ast.nodes?.length === 2) {
+                    this.matchApply(ast.nodes[0], true, res);
+                    this.matchApply(ast.nodes[1], true, res);
+                }
+                res.unshift([ast, ast]);
+            }
+        } else {
+            if (this.isApplyBrach(ast)) {
+                this.matchApply(ast.nodes[1], true, res);
+                this.matchApply(ast.nodes[0], false, res);
+                res[0][0] = ast;
+                res[0].push(ast.nodes[1]);
+            } else {
+                if (ast.nodes?.length === 2) {
+                    this.matchApply(ast.nodes[0], true, res);
+                    this.matchApply(ast.nodes[1], true, res);
+                }
+            }
+        }
+        return res;
+    }
+    static exec(ast: AST, mode?: number) {
+        const applyRes = this.matchApply(ast, true).reverse();
+        let modified = false;
+        for (const matched of applyRes) {
+            if (matched[1]?.type !== "var") continue;
+            const fn = matched[1].name;
+            const ast = matched[0];
+            // indTrue _ c true := c
+            if (fn === "ind_True" && matched.length > 4 && matched[4].name === "true") {
+                Core.assign(ast, matched[3], true);
+                modified = true;
+            }
+            // indBool _ c0 c1 0b||1b := c0||c1
+            else if (fn === "ind_Bool" && matched.length > 5) {
+                if (matched[5].name === "0b") {
+                    Core.assign(ast, matched[3], true);
+                    modified = true;
+                } else if (matched[5].name === "1b") {
+                    Core.assign(ast, matched[4], true);
+                    modified = true;
+                }
+            }
+            
+            // indBool _ c0 c1 0b||1b := c0||c1
+            else if (fn === "ind_eq" && matched.length > 5) {
+                if (matched[5].name === "0b") {
+                    Core.assign(ast, matched[3], true);
+                    modified = true;
+                } else if (matched[5].name === "1b") {
+                    Core.assign(ast, matched[4], true);
+                    modified = true;
+                }
+            }
 
+            // add 1 2 := 1+2
+            else if (fn === "add" && matched.length > 3 && matched[2].type === "var" && matched[3].type === "var") {
+                try {
+                    const bint = BigInt(matched[2].name) + BigInt(matched[3].name);
+                    Core.assign(ast, wrapVar(String(bint)), true);
+                    modified = true;
+                } catch (e) { }
+            } else if (fn === "mul" && matched.length > 3 && matched[2].type === "var" && matched[3].type === "var") {
+                // mul 1 2 := 1+2
+                try {
+                    const bint = BigInt(matched[2].name) * BigInt(matched[3].name);
+                    Core.assign(ast, wrapVar(String(bint)), true);
+                    modified = true;
+                } catch (e) { }
+            } else if (fn === "double" && matched.length > 3 && matched[2].type === "var" && matched[3].type === "var") {
+                // mul 1 2 := 1+2
+                try {
+                    const bint = BigInt(matched[2].name) * 2n;
+                    Core.assign(ast, wrapVar(String(bint)), true);
+                    modified = true;
+                } catch (e) { }
+            }
+        }
+        return modified;
+    }
 }
