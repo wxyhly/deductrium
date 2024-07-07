@@ -1,6 +1,6 @@
 export class ASTParser {
-    keywords = [":=", "->", "~=", "==="];
-    symChar = ".:,()PSLX~*";
+    keywords = [":=", "->", "~=", "===", "@ind_Sum", "ind_Sum", "@Sum", "Sum", "@ind_Prod", "ind_Prod", "@Prod", "Prod"];
+    symChar = ".:,()PSLX~*+";
     ast;
     cursor = 0;
     tokens;
@@ -104,7 +104,7 @@ export class ASTParser {
         if (word !== "") {
             arr.push(word);
         }
-        this.tokens = arr.map(token => token.startsWith("#keyword") ? this.keywords[token.slice(8)] : token);
+        this.tokens = arr.map(token => token.startsWith("#keyword") ? this.keywords[token.slice(8)] : token.replace("：", ":"));
     }
     prevToken(index) {
         return this.tokens[this.cursor - index - 1];
@@ -159,14 +159,15 @@ export class ASTParser {
         }
         else if (this.acceptVar()) {
             const name = this.prevToken(1);
-            if (name === "U") {
+            const isapply = this.prevToken(0);
+            if (name === "U" && isapply !== "(") {
                 val = {
                     type: "apply", name: "", nodes: [
                         { type: "var", name: "U" }, { type: "var", name: "@0" }
                     ]
                 };
             }
-            else if (name.startsWith("U") && name !== "U@") {
+            else if (name.startsWith("U") && name !== "U@" && isapply !== "(") {
                 val = {
                     type: "apply", name: "", nodes: [
                         { type: "var", name: "U" },
@@ -198,11 +199,20 @@ export class ASTParser {
         }
         return val;
     }
+    typeTerm0() {
+        let val = this.typeTerm1();
+        while (this.token === "+") {
+            const token = this.token;
+            this.nextSym();
+            val = { type: token, name: "", nodes: [val, this.typeTerm1()] };
+        }
+        return val;
+    }
     typeTerm() {
-        const arr = [this.typeTerm1()];
+        const arr = [this.typeTerm0()];
         while (this.token === "->") {
             this.nextSym();
-            arr.push(this.typeTerm1());
+            arr.push(this.typeTerm0());
         }
         let val = arr.pop();
         let val1;

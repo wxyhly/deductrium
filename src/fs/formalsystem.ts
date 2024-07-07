@@ -11,6 +11,7 @@ const assert = new AssertionSystem;
 export class FormalSystem {
     deductions: { [key: string]: Deduction } = {};
     metaRules: { [key: string]: MetaRule } = {};
+    fastmetarules = "";
     disabledMetaRules = [];
     deductionReplNameRule: RegExp = /^\$/g;
     localNameRule: RegExp = /^\#/g;
@@ -205,18 +206,19 @@ export class FormalSystem {
     generateDeductionAndName(name: string, tokens: string[], cursor = 0): [string, Deduction, number] {
         if (this.deductions[name]) return [name, this.deductions[name], cursor + 1];
         let n: string; let n2: string; let d: Deduction; let c: number;
+        const unlocked = this.fastmetarules;
         switch (tokens[cursor]) {
-            case "<": [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
+            case "<": if (!unlocked.includes("<")) throw "null";[n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
                 return [tokens[cursor] + n, this.deductions[this.metaInvDeductTheorem(n, "元定理生成*")], c];
-            case ">": [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
+            case ">": if (!unlocked.includes(">")) throw "null"; [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
                 return [tokens[cursor] + n, this.deductions[this.metaDeductTheorem(n, "元定理生成*")], c];
-            case "c": [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
+            case "c": if (!unlocked.includes("c")) throw "null"; [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
                 return [tokens[cursor] + n, this.deductions[this.metaConditionTheorem(n, "元定理生成*")], c];
-            case "v": [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
+            case "v": if (!unlocked.includes("v")) throw "null"; [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
                 return [tokens[cursor] + n, this.deductions[this.metaConditionUniversalTheorem(n, "元定理生成*")], c];
-            case "u": [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
+            case "u": if (!unlocked.includes("u")) throw "null"; [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
                 return [tokens[cursor] + n, this.deductions[this.metaUniversalTheorem(n, "元定理生成*")], c];
-            case ":":
+            case ":": if (!unlocked.includes(":")) throw "null";
                 [n, d, cursor] = this.generateDeductionAndName(name, tokens, cursor + 1);
                 [n2, d, cursor] = this.generateDeductionAndName(name, tokens, cursor);
                 return [":" + n + "," + n2, this.deductions[this.metaCombineTheorem(n, n2, "元定理生成*")], c];
@@ -862,7 +864,7 @@ export class FormalSystem {
                     deductionIdx: prefix + idx, conditionIdxs: [],
                     replaceValues: [...Vs, ...d.replaceNames.map(str => matched[str])]
                 });
-            } catch (e) {       }
+            } catch (e) { }
             if (!a.nodes?.length || a.nodes?.length !== b.nodes?.length) {
                 throw "元推理函数中替换函数##crp执行失败";
             }

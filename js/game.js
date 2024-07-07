@@ -43,15 +43,20 @@ export class Game {
     destructedGates = 0;
     parcours = 1;
     consumed = 0;
+    creative = false;
     constructor() {
-        this.fsGui = new FSGui(document.getElementById("prop-list"), document.getElementById("deduct-list"), document.getElementById("meta-list"), document.getElementById("action-input"), document.getElementById("hint"), document.getElementById("display-p-layer"), document.querySelectorAll(".cmd-btns button"));
+        const gamemode = window.location.search === "?creative" ? "creative" : "survival";
+        if (gamemode === "creative") {
+            this.creative = true;
+        }
+        this.fsGui = new FSGui(document.getElementById("prop-list"), document.getElementById("deduct-list"), document.getElementById("meta-list"), document.getElementById("action-input"), document.getElementById("hint"), document.getElementById("display-p-layer"), document.querySelectorAll(".cmd-btns button"), this.creative);
         document.querySelectorAll("#panel>button").forEach((btn, idx) => {
             btn.onclick = () => {
                 document.querySelectorAll("#panel>div").forEach(a => a.classList.remove("show"));
                 document.getElementById("panel-" + idx).classList.add("show");
             };
         });
-        this.ttGui = new TTGui;
+        this.ttGui = new TTGui(this.creative);
         this.hyperGui = new HyperGui();
         const astmgr = new ASTMgr;
         this.hyperGui.world.onPassGate = (hash, tile) => {
@@ -172,6 +177,8 @@ export class Game {
                 case "mdt": return this.unlockMetarule("dt");
                 case "mcpt": return this.unlockMetarule("cpt");
                 case "mifft": return this.unlockMetarule("ifft");
+                case "mvt": return this.unlockMetarule("vt");
+                case "mcvt": return this.unlockMetarule("cvt");
                 case "highlightd": return this.hyperGui.world.highLightGetD = true;
                 case "type": return document.getElementById("type-btn").classList.remove("hide");
             }
@@ -185,7 +192,7 @@ export class Game {
         };
         const progressBtns = Array.from(document.querySelectorAll(".progress-btns button"));
         const txtarea = document.getElementById("progress-txtarea");
-        const gameSaveLoad = new GameSaveLoad();
+        const gameSaveLoad = new GameSaveLoad(gamemode);
         progressBtns[0].addEventListener("click", () => gameSaveLoad.save(this, txtarea));
         progressBtns[1].addEventListener("click", () => {
             const str = prompt("请粘贴进度代码：");
@@ -194,11 +201,11 @@ export class Game {
             }
             else {
                 gameSaveLoad.load(this, str);
-                window.location.href = "?";
+                window.location.href = window.location.href || "?";
             }
         });
         progressBtns[2].addEventListener("click", () => gameSaveLoad.reset());
-        const saves = localStorage.getItem("deductrium-save");
+        const saves = localStorage.getItem(gameSaveLoad.storageKey);
         // autosave while updated within a time interval
         this.hyperGui.world.onStateChange = this.ttGui.onStateChange = this.fsGui.onStateChange = () => gameSaveLoad.stateChange(this);
         if (saves)
@@ -225,6 +232,15 @@ export class Game {
     }
     unlockMetarule(name) {
         this.fsGui.metarules.push(name);
+        this.fsGui.formalSystem.fastmetarules += {
+            "cdt": "c",
+            "dt": ">",
+            "idt": "<",
+            "cvt": "v",
+            "vt": "u",
+            "cmt": ":",
+            "q": "v",
+        }[name] || "";
         this.fsGui.updateMetaRuleList(true);
         document.getElementById("metarule-subpanel").classList.remove("hide");
     }

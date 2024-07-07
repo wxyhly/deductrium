@@ -6,6 +6,7 @@ const assert = new AssertionSystem;
 export class FormalSystem {
     deductions = {};
     metaRules = {};
+    fastmetarules = "";
     disabledMetaRules = [];
     deductionReplNameRule = /^\$/g;
     localNameRule = /^\#/g;
@@ -221,23 +222,36 @@ export class FormalSystem {
         let n2;
         let d;
         let c;
+        const unlocked = this.fastmetarules;
         switch (tokens[cursor]) {
             case "<":
+                if (!unlocked.includes("<"))
+                    throw "null";
                 [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
                 return [tokens[cursor] + n, this.deductions[this.metaInvDeductTheorem(n, "元定理生成*")], c];
             case ">":
+                if (!unlocked.includes(">"))
+                    throw "null";
                 [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
                 return [tokens[cursor] + n, this.deductions[this.metaDeductTheorem(n, "元定理生成*")], c];
             case "c":
+                if (!unlocked.includes("c"))
+                    throw "null";
                 [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
                 return [tokens[cursor] + n, this.deductions[this.metaConditionTheorem(n, "元定理生成*")], c];
             case "v":
+                if (!unlocked.includes("v"))
+                    throw "null";
                 [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
                 return [tokens[cursor] + n, this.deductions[this.metaConditionUniversalTheorem(n, "元定理生成*")], c];
             case "u":
+                if (!unlocked.includes("u"))
+                    throw "null";
                 [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
                 return [tokens[cursor] + n, this.deductions[this.metaUniversalTheorem(n, "元定理生成*")], c];
             case ":":
+                if (!unlocked.includes(":"))
+                    throw "null";
                 [n, d, cursor] = this.generateDeductionAndName(name, tokens, cursor + 1);
                 [n2, d, cursor] = this.generateDeductionAndName(name, tokens, cursor);
                 return [":" + n + "," + n2, this.deductions[this.metaCombineTheorem(n, n2, "元定理生成*")], c];

@@ -52,7 +52,7 @@ export class LocalDraw {
             this.lineTo(Hvec.fastLerp(p1, p2, k / this.lineStep, precalc));
         }
     }
-    drawPolygon(p, mat) {
+    drawPolygon(p, mat, debug) {
         const center = mat.apply(new Hvec);
         if (center.z > 1e3)
             return;
@@ -66,7 +66,8 @@ export class LocalDraw {
         }
         this.ctxt.fill();
         this.ctxt.beginPath();
-        this.drawLine(mat.apply(new Hvec(1, 0, 0.4)).normalize(), mat.apply(new Hvec(1, 0, 0.7)).normalize(), true);
+        if (debug)
+            this.drawLine(mat.apply(new Hvec(1, 0, 0.4)).normalize(), mat.apply(new Hvec(1, 0, 0.7)).normalize(), true);
         this.ctxt.stroke();
     }
     drawHoroRect(hr, mat) {

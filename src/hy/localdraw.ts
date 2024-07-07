@@ -21,7 +21,7 @@ export class LocalDraw {
     }
     drawPlayer() {
         this.ctxt.beginPath();
-        this.ctxt.arc(this.canvas.width / 2, this.canvas.height / 2,10, 0, Math.PI * 2);
+        this.ctxt.arc(this.canvas.width / 2, this.canvas.height / 2, 10, 0, Math.PI * 2);
         this.ctxt.fill();
     }
     moveTo(p: Hvec) {
@@ -40,17 +40,17 @@ export class LocalDraw {
         const arr = text.split("\n");
         const middle = (arr.length - 1) / 2;
         for (const [id, row] of arr.entries()) {
-            this.ctxt.fillText(row, p.x * scale + this.canvas.width / 2, p.y * scale + this.canvas.height / 2 + fs * ((id - middle)*1.3 + 1 / 4));
+            this.ctxt.fillText(row, p.x * scale + this.canvas.width / 2, p.y * scale + this.canvas.height / 2 + fs * ((id - middle) * 1.3 + 1 / 4));
         }
     }
-    drawLine(p1: Hvec, p2: Hvec,lineTo?:boolean) {
+    drawLine(p1: Hvec, p2: Hvec, lineTo?: boolean) {
         const precalc = Hvec.precalcLerp(p1, p2);
         for (let k = 0; k <= this.lineStep; k++) {
-            if (!k&&!lineTo) { this.moveTo(p1); continue; }
+            if (!k && !lineTo) { this.moveTo(p1); continue; }
             this.lineTo(Hvec.fastLerp(p1, p2, k / this.lineStep, precalc));
         }
     }
-    drawPolygon(p: Polygon, mat: Rotor) {
+    drawPolygon(p: Polygon, mat: Rotor, debug: boolean) {
         const center = mat.apply(new Hvec);
         if (center.z > 1e3) return;
         this.ctxt.beginPath();
@@ -58,12 +58,12 @@ export class LocalDraw {
         const r = Rotor.rotate(Math.PI * 2 / p.p);
         for (let i = 0; i < p.p; i++) {
             let pb = r.apply(pa);
-            this.drawLine(mat.apply(pa), mat.apply(pb),true);
+            this.drawLine(mat.apply(pa), mat.apply(pb), true);
             pa = pb;
         }
         this.ctxt.fill();
         this.ctxt.beginPath();
-        this.drawLine(mat.apply(new Hvec(1,0,0.4)).normalize(), mat.apply(new Hvec(1,0,0.7)).normalize(),true);
+        if (debug) this.drawLine(mat.apply(new Hvec(1, 0, 0.4)).normalize(), mat.apply(new Hvec(1, 0, 0.7)).normalize(), true);
         this.ctxt.stroke();
     }
     drawHoroRect(hr: HoroRect, mat: Rotor) {
@@ -82,7 +82,7 @@ export class LocalDraw {
             }
         }
         let p2 = new Hvec(Math.cosh(len), 0, -Math.sinh(len));
-        this.drawLine(mat.mul(new Rotor(1, w_2, 0, w_2)).apply(p), mat.mul(new Rotor(1, w_2, 0, w_2)).apply(p2),true);
+        this.drawLine(mat.mul(new Rotor(1, w_2, 0, w_2)).apply(p), mat.mul(new Rotor(1, w_2, 0, w_2)).apply(p2), true);
         first = false;
         for (let k = -this.horocycleStep; k <= this.horocycleStep; k++) {
             const angle = w_2 * k / this.horocycleStep;

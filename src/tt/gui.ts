@@ -2,21 +2,13 @@ import { Assist } from "./assist.js";
 import { AST, ASTParser } from "./astparser.js";
 import { Context, HoTT, HoTTFeatures } from "./check.js";
 import { Core } from "./core.js";
+import { TypeRule, initTypeSystem } from "./initial.js";
 const parser = new ASTParser;
-const constructors = new Set(["pair", "refl", "true", "0", "0b", "1b", "succ", "inl", "inr", "ua", "funext"]);
+const constructors = new Set<string>();
+const destructors = new Set<string>();
 const macro = new Set<string>();
-const sysmacro = new Set(["add", "pred", "double", "mult", "power", "not"]);
-const initialTypeTerms = [
-    // "#Universe",
-    // "t::Un : U(@succ n)",
-    // "c::(#typeof $1) : U",
-    "#False",
-    "t::False : U",
-    "#True",
-    "t::True : U",
-    "c::true : True",
+const sysmacro = new Set<string>();
 
-];
 const list = [
 
     "#pair",
@@ -83,38 +75,40 @@ let info = "";
 let listTerms: AST[] = [];
 let listInfos: [string, string][] = [];
 let consts = new Set<string>;
-function addTerm(list: string[], previnfo?: string) {
-    for (const str of list) {
-        if (str[0] === "#") { info = str.slice(1); continue; }
-        const [prefix, value] = str.split("::");
-        const ast = parser.parse(value);
-        if (ast.nodes[0].type === "var") consts.add(ast.nodes[0].name);
-        if (previnfo) {
-            const insertPos = listInfos.map(v => v[1]).lastIndexOf(previnfo) + 1;
-            listTerms.splice(insertPos, 0, ast);
-            listInfos.splice(insertPos, 0, [prefix, info]);
-        } else {
-            listTerms.push(ast);
-            listInfos.push([prefix, info]);
-        }
-    }
-}
+// function addTerm(list: string[], previnfo?: string) {
+//     for (const str of list) {
+//         if (str[0] === "#") { info = str.slice(1); continue; }
+//         const [prefix, value] = str.split("::");
+//         const ast = parser.parse(value);
+//         if (ast.nodes[0].type === "var") consts.add(ast.nodes[0].name);
+//         if (previnfo) {
+//             const insertPos = listInfos.map(v => v[1]).lastIndexOf(previnfo) + 1;
+//             listTerms.splice(insertPos, 0, ast);
+//             listInfos.splice(insertPos, 0, [prefix, info]);
+//         } else {
+//             listTerms.push(ast);
+//             listInfos.push([prefix, info]);
+//         }
+//     }
+// }
 type definedConst = [AST, AST];
+const allrules = initTypeSystem();
 export class TTGui {
     onStateChange = () => { };
-    hott = new HoTT;
     core = new Core;
     // gamecore = new HoTTGame;
     typeList = document.getElementById("type-list");
     inhabitList = document.getElementById("inhabit-list");
+    // tactic mode
     mode = null;
+    // "_" for infered, "@" for original
+    inferDisplayMode = "_";
     userDefinedConsts: definedConst[] = [];
     sysDefinedConsts: definedConst[] = [];
 
-    constructor() {
-        this.sysDefinedConsts = this.hott.beautifys.slice(0);
-        addTerm(initialTypeTerms);
-        this.updateTypeList();
+    constructor(creative: boolean) {
+
+        this.updateTypeList(new Set(creative ? allrules.map(r => r.id) : []));
         this.updateInhabitList();
         document.getElementById("add-btn").addEventListener("click", () => {
             this.updateInhabitList();
@@ -184,7 +178,7 @@ export class TTGui {
                         this.updateInhabitList();
                         const output = this.inhabitList.querySelector(".wrapper:last-of-type input") as HTMLInputElement;
                         output.focus();
-                        output.value = this.hott.print(assist.elem) + ":" + assist.theoremStr;
+                        output.value = parser.stringify(assist.elem) + ":" + assist.theoremStr;
                         output.blur();
                         input.classList.add("hide");
                         document.getElementById("tactic-remove").classList.add("hide");
@@ -213,8 +207,8 @@ export class TTGui {
                 } catch (e) {
                     document.getElementById("tactic-errmsg").innerText = e;
                 }
-                const astShow = this.hott.clone({ type: ":", name: "", nodes: [assist.elem, parser.parse(assist.theoremStr)] });
-                this.hott.beautify(astShow.nodes[0]);
+                const astShow = Core.clone({ type: ":", name: "", nodes: [assist.elem, parser.parse(assist.theoremStr)] });
+                // this.hott.beautify(astShow.nodes[0]);
                 hint.appendChild(this.ast2HTML("", astShow, [], Object.fromEntries(assist.goal.map(g => [g.ast.name, g.type])), this.getInhabitatArray().length));
 
                 window.scrollTo(0, document.body.clientHeight);
@@ -250,7 +244,7 @@ export class TTGui {
             const scope = Object.keys(g.context).map(n => ({ type: "var", name: n } as AST));
 
             for (const [k, v] of Object.entries(g.context)) {
-                const vc = this.hott.clone(v); this.hott.beautify(vc);
+                const vc = Core.clone(v); //this.hott.beautify(vc);
                 statediv.appendChild(this.ast2HTML("", {
                     type: ":", name: "", nodes: [
                         { type: "var", name: k }, vc]
@@ -259,8 +253,8 @@ export class TTGui {
             }
             statediv.appendChild(document.createElement("br"));
             this.addSpan(statediv, count++ ? "目标" + (count - 1) + "：" : "当前目标：");
-            const gtypeBeautified = this.hott.clone(g.type);
-            this.hott.beautify(gtypeBeautified);
+            const gtypeBeautified = Core.clone(g.type);
+            // this.hott.beautify(gtypeBeautified);
             statediv.appendChild(this.ast2HTML("", gtypeBeautified, scope, g.context, this.getInhabitatArray().length));
             statediv.appendChild(document.createElement("br"));
         }
@@ -277,7 +271,10 @@ export class TTGui {
         varnode.setAttribute("ast-string", astStr);
         if (ast.type === "var") {
             let el: HTMLSpanElement;
-            if (ast.name.startsWith("U@")) {
+            if (ast.name.startsWith("@") && isFinite(Number(ast.name.slice(1)))) {
+                el = this.addSpan(varnode, "<sub>" + ast.name + "</sub>");
+                el.classList.add("universe");
+            } else if (ast.name.startsWith("U@")) {
                 el = this.addSpan(varnode, "U<sub>" + ast.name.slice(1) + "</sub>");
                 el.classList.add("universe");
             } else {
@@ -285,15 +282,12 @@ export class TTGui {
             }
             const scopeStack = scopes.slice(0);
             const astname = ast.name.replace(/'+$/g, "");
-            if (astname.match(/^[1-9][0-9]*$/)) {
-                el.classList.add("constant");
-                el.classList.add("constructors");
-            } else if (consts.has(astname) || macro.has(astname)) {
-                el.classList.add("constant");
-                if (astname.startsWith("ind_")) el.classList.add("ind_fn");
-                if (constructors.has(astname)) el.classList.add("constructors");
-                if (macro.has(astname)) el.classList.add("macro");
-            } else if (!ast.name.startsWith("U@")) {
+            if (astname.match(/^[1-9][0-9]*$/)) el.classList.add("constructors");
+            else if (destructors.has(astname)) el.classList.add("ind_fn");
+            else if (constructors.has(astname)) el.classList.add("constructors");
+            else if (consts.has(astname)) el.classList.add("constant");
+            else if (macro.has(astname) || sysmacro.has(astname)) el.classList.add("macro");
+            else if (!ast.name.startsWith("U@")) {
                 el.classList.add("freeVar");
             }
             if (scopeStack[0]?.type === "quantvar") {
@@ -361,7 +355,7 @@ export class TTGui {
                 case "L": case "P": case "S":
                     const outterLayers: HTMLSpanElement[] = [];
                     const newcontext = Object.assign({}, context);
-                    const newType = this.hott.clone(ast.nodes[0]); this.hott.unbeautify(newType);
+                    const newType = Core.clone(ast.nodes[0]); //this.hott.unbeautify(newType);
                     newcontext[ast.name] = newType;
                     outterLayers.push(this.addSpan(varnode, "" + ast.type.replaceAll("S", "Σ").replaceAll("L", "λ").replaceAll("P", "Π")));
                     const varast = this.ast2HTML(idx, { type: "var", name: ast.name, checked: ast.nodes[0] }, [{ type: "quantvar", name: "quantvar" }, ...scopes], newcontext, userLineNumber);
@@ -447,18 +441,80 @@ export class TTGui {
         }
         return varnode;
     }
-    updateTypeList() {
+    updateTypeList(terms: Set<string>) {
+        const list = this.typeList;
+        consts.clear();
+        while (list.lastChild) {
+            list.removeChild(list.lastChild);
+        }
+        for (const rule of allrules) {
+            if (!terms.has(rule.id)) continue;
 
-        let idx = 0;
-        this.updateGuiList("", listTerms.map((ast, idx) => {
-            try { this.core.checkType(ast) } catch (e) { };
-            return ast;
-        }), this.typeList, (p, idx) => true, (p, itInfo, it) => {
-            itInfo[0].innerHTML = listInfos[idx++][1];
-        }, true, listTerms.map((ast, idx) => {
-            const prefix = listInfos[idx][0];
-            return prefix === "t" ? "type" : prefix === "c" ? "cons" : prefix === "e" ? "elim" : prefix === "p" ? "comp" : prefix === "d" ? "def" : "??";
-        }));
+            // register in core
+
+            if (rule.ast.type === ":") {
+                const vname = rule.ast.nodes[0].name;
+                this.core.state.sysTypes[vname] = Core.clone(rule.ast.nodes[1]);
+            }
+            if (rule.ast.type === ":=") {
+                const vname = rule.ast.nodes[0].name;
+                this.core.state.sysDefs[vname] = Core.clone(rule.ast.nodes[1]);
+            }
+
+            // register in gui highlight, only ignore ====
+
+            if (rule.ast.type === "var" || rule.ast.type === ":" || rule.ast.type === ":=") {
+                const vname = rule.ast.type === "var" ? rule.ast.name : rule.ast.nodes[0].name;
+                if (rule.postfix === "类型") consts.add(vname);
+                if (rule.postfix === "构造") constructors.add(vname);
+                if (rule.postfix === "解构") destructors.add(vname);
+                if (rule.postfix === "定义") sysmacro.add(vname);
+            }
+            if (rule.inferMode === "@" && this.inferDisplayMode === "_") continue;
+            if (rule.inferMode === "_" && this.inferDisplayMode === "@") continue;
+
+            // register in gui type list
+
+            const itIdx = document.createElement("div");
+            list.appendChild(itIdx);
+            itIdx.classList.add("idx");
+            itIdx.style.width = "30px";
+            itIdx.innerText = rule.postfix;
+
+            const itVal = document.createElement("div");
+            list.appendChild(itVal);
+            itVal.classList.add("val");
+            if (rule.ast.type === ":=") {
+                try { this.core.checkType(rule.ast.nodes[1]); } catch (e) { console.log(e); }
+                rule.ast.checked = rule.ast.nodes[0].checked = rule.ast.nodes[1].checked;
+            } else if (rule.ast.type === "===") {
+                try {
+                    this.core.checkType(rule.ast.nodes[0]);
+                    this.core.checkType(rule.ast.nodes[1], null, this.core.state.inferValues);
+                    rule.ast.checked = rule.ast.nodes[0].checked;
+                } catch (e) { console.log(e); }
+            } else {
+                try { this.core.checkType(rule.ast); } catch (e) { console.log(e); }
+            }
+            if (rule.ast.type === "var") {
+                try { this.core.checkType(rule.ast.checked, null, this.core.state.inferValues); } catch (e) { console.log(e); }
+                itVal.appendChild(this.ast2HTML("", { type: ":", nodes: [rule.ast, rule.ast.checked], name: "" }));
+            } else {
+                itVal.appendChild(this.ast2HTML("", rule.ast));
+            }
+            const infoArr = [];
+            for (let i = 0; i < 6; i++) {
+                const itInfo = document.createElement("div");
+                list.appendChild(itInfo);
+                itInfo.className = "info";
+                infoArr.push(itInfo);
+                if (!i) itInfo.innerText = rule.prefix;
+            }
+            itVal.addEventListener("click", () => {
+                // const inserted = this.cmd.astparser.stringify(p.value);
+                // this.cmd.onClickSubAst(pname, inserted);
+            });
+        }
     }
     getHottDefCtxt(input: HTMLInputElement | number) {
         macro.clear();
@@ -470,7 +526,7 @@ export class TTGui {
                 const def = this.userDefinedConsts[i];
                 if (!def) continue;
                 macro.add(def[0].name);
-                if (i !== input) this.hott.beautifys.push(def);
+                // if (i !== input) this.hott.beautifys.push(def);
             }
             return input;
         }
@@ -534,7 +590,7 @@ export class TTGui {
                 div.removeChild(div.firstChild);
             }
 
-            this.hott.startTimer();
+            // this.hott.startTimer();
             let type: AST;
             if (ast) {
                 try {
@@ -576,13 +632,13 @@ export class TTGui {
                 if (ast.type[0] != ":") this.addSpan(div, " &nbsp; : &nbsp; ");
                 if (type) {
                     try {
-                        this.core.checkType(type);
+                        this.core.checkType(type, null, this.core.state.inferValues);
                     } catch (e) {
                     }
                     div.appendChild(this.ast2HTML("", type, [], {}, currentIdx));
                 }
             }
-            this.hott.stopTimer();
+            // this.hott.stopTimer();
 
             if (nextInput) {
                 nextInput.onblur({} as any);
@@ -618,31 +674,31 @@ export class TTGui {
     }
     // find whether user has inhabitat of given type
     queryType(typeStr: string) {
-        const ref = this.hott.parse(typeStr);
-        for (const e of this.getInhabitatArray()) {
-            if (!e.classList.contains("hide")) {
-                e.onblur({} as any);
-            }
-            if (e.parentElement.classList.contains("error")) continue;
-            let ast: AST;
-            try {
-                ast = parser.parse(e.value);
-            } catch (e) {
-                continue;
-            }
-            if (!ast) continue;
-            try {
-                ast = this.hott.parse(e.value);
-                if (ast.type === ":") {
-                    if (this.hott.equal(ast.nodes[1], ref, {})) return true;
-                } else {
-                    if (this.hott.equal(this.hott.check(ast), ref, {})) return true;
-                }
-            } catch (e) {
-                continue;
-            }
-        }
-        return false;
+        // const ref = this.hott.parse(typeStr);
+        // for (const e of this.getInhabitatArray()) {
+        //     if (!e.classList.contains("hide")) {
+        //         e.onblur({} as any);
+        //     }
+        //     if (e.parentElement.classList.contains("error")) continue;
+        //     let ast: AST;
+        //     try {
+        //         ast = parser.parse(e.value);
+        //     } catch (e) {
+        //         continue;
+        //     }
+        //     if (!ast) continue;
+        //     try {
+        //         ast = this.hott.parse(e.value);
+        //         if (ast.type === ":") {
+        //             if (this.hott.equal(ast.nodes[1], ref, {})) return true;
+        //         } else {
+        //             if (this.hott.equal(this.hott.check(ast), ref, {})) return true;
+        //         }
+        //     } catch (e) {
+        //         continue;
+        //     }
+        // }
+        // return false;
     }
     private updateGuiList<T extends AST>(
         prefix: string, logicArray: T[] | { [name: string]: T }, list: HTMLElement,
@@ -725,56 +781,56 @@ export class TTGui {
         return Array.from(document.querySelectorAll<HTMLInputElement>(".inhabitat .wrapper input"));
     }
     unlock(str: string) {
-        switch (str) {
-            case "fnLP": addTerm([
-                "#lambda",
-                "t::P$1:$2,$3 : U",
-                "c::L$1:$2.$3 : P$1:$2,#typeof $3",
-            ]); break;
-            case "applyFn": addTerm([
-                "#lambda",
-                "e::(L$1:$2.$3) $4 : #typeof $3",
-                "p::(L$1:$2.$3) $4 := #replace $3 $1 $4",
-            ]); break;
-            case "notFn": addTerm([
-                "#not",
-                "d::not:=Lx:U.x->False",
-            ]); break;
-            case "Eq": addTerm([
-                "#eq",
-                "t::eq : Pa:U,Px:a,Py:a,U",
-                "c::refl : Pa:U,Px:a,eq a x x",
-            ]); break;
-            case "Nat": addTerm([
-                "#nat",
-                "t::nat : U",
-                "c::0 : nat",
-                "c::succ : Px:nat,nat",
-            ]); break;
-            case "Bool": addTerm([
-                "#Bool",
-                "t::Bool : U",
-                "c::0b : Bool",
-                "c::1b : Bool",
-            ]); break;
-            case "indBool": addTerm([
-                "#Bool",
-                "e::ind_Bool: PC:Pm:Bool,U,Pc1:C 0b,Pc2:C 1b, Pm:Bool, C m",
-                "p::ind_Bool $1 $2 $3 0b:=$2",
-                "p::ind_Bool $1 $2 $3 1b:=$3",
-            ], "Bool"); break;
-            case "indTrue": addTerm([
-                "#True",
-                "e::ind_True:PC:Pm:True,U,Pc:C true, Pm:True, C m",
-                "p::ind_True $1 $2 true:=$2",
-            ], "True"); break;
-            case "indFalse": addTerm([
-                "#False",
-                "e::ind_False: PC:Pm:False,U,Pm:False, C m",
-            ], "False"); break;
-            case "simplFn": this.hott.features.add(HoTTFeatures.SimplFnType); break;
-        }
-        this.updateTypeList();
+        // switch (str) {
+        //     case "fnLP": addTerm([
+        //         "#lambda",
+        //         "t::P$1:$2,$3 : U",
+        //         "c::L$1:$2.$3 : P$1:$2,#typeof $3",
+        //     ]); break;
+        //     case "applyFn": addTerm([
+        //         "#lambda",
+        //         "e::(L$1:$2.$3) $4 : #typeof $3",
+        //         "p::(L$1:$2.$3) $4 := #replace $3 $1 $4",
+        //     ]); break;
+        //     case "notFn": addTerm([
+        //         "#not",
+        //         "d::not:=Lx:U.x->False",
+        //     ]); break;
+        //     case "Eq": addTerm([
+        //         "#eq",
+        //         "t::eq : Pa:U,Px:a,Py:a,U",
+        //         "c::refl : Pa:U,Px:a,eq a x x",
+        //     ]); break;
+        //     case "Nat": addTerm([
+        //         "#nat",
+        //         "t::nat : U",
+        //         "c::0 : nat",
+        //         "c::succ : Px:nat,nat",
+        //     ]); break;
+        //     case "Bool": addTerm([
+        //         "#Bool",
+        //         "t::Bool : U",
+        //         "c::0b : Bool",
+        //         "c::1b : Bool",
+        //     ]); break;
+        //     case "indBool": addTerm([
+        //         "#Bool",
+        //         "e::ind_Bool: PC:Pm:Bool,U,Pc1:C 0b,Pc2:C 1b, Pm:Bool, C m",
+        //         "p::ind_Bool $1 $2 $3 0b:=$2",
+        //         "p::ind_Bool $1 $2 $3 1b:=$3",
+        //     ], "Bool"); break;
+        //     case "indTrue": addTerm([
+        //         "#True",
+        //         "e::ind_True:PC:Pm:True,U,Pc:C true, Pm:True, C m",
+        //         "p::ind_True $1 $2 true:=$2",
+        //     ], "True"); break;
+        //     case "indFalse": addTerm([
+        //         "#False",
+        //         "e::ind_False: PC:Pm:False,U,Pm:False, C m",
+        //     ], "False"); break;
+        //     case "simplFn": this.hott.features.add(HoTTFeatures.SimplFnType); break;
+        // }
+        // this.updateTypeList();
         this.getInhabitatArray().forEach(e => e.onblur({} as any));
     }
 }

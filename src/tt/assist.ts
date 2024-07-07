@@ -37,14 +37,14 @@ export class Assist {
         const g = this.goal[0];
         if (!g) { return ["qed"]; }
         const type = g.type;
-        const introVar = (n: string) => g.context[type.name] ? Core.getNewName(n, new Set(Object.keys(g.context))) : type.name;
+        const introVar = (n: string) => !type.name||g.context[type.name] ? Core.getNewName(n, new Set(Object.keys(g.context))) : type.name;
         if (type.type === "P") {
             tactics.push("intro " + introVar(type.name));
         } else if (type.name === "True") {
             tactics.push("apply true");
             return tactics;
         } else if (type.type === "->") {
-            tactics.push("intro " + introVar("k"));
+            tactics.push("intro " + introVar("h"));
         } else {
             let matchEq = Core.match(type, parser.parse("eq $1 $2"), /^\$/);
             if (!matchEq) matchEq = Core.match(type, parser.parse("@eq $3 $4 $1 $2"), /^\$/);
@@ -68,9 +68,8 @@ export class Assist {
             if (this.isIndType(typ)) {
                 tactics.push("destruct " + val);
             }
-            if (type.type === "->" && core.equal(typ.nodes[1], type, g.context)) {
+            if (typ.type === "->" && core.equal(typ.nodes[1], type, g.context)) {
                 tactics.push("apply " + val);
-
             }
         }
         return tactics;
@@ -87,7 +86,7 @@ export class Assist {
         if (!goal) throw "无证明目标，请使用qed命令结束证明";
         if (Object.keys(goal.context).includes(s)) { this.goal.unshift(goal); throw "无法重复intro相同变量名"; }
         const tartgetType = goal.type;
-        if (tartgetType.type !== "P") {
+        if (tartgetType.type !== "P" && tartgetType.type !== "->") {
             this.goal.unshift(goal);
             throw "intro 只能作用于函数类型";
         }
@@ -134,7 +133,7 @@ export class Assist {
         if (typeof eq === "string") eq = parser.parse(eq);
         const goal = this.goal.shift();
         if (!goal) throw "无证明目标，请使用qed命令结束证明";
-        const matched = Core.match(core.check(eq, goal.context, false), parser.parse("eq $1 $2 $3"), /^\$/);
+        const matched = Core.match(core.check(eq, goal.context, false), parser.parse("eq $2 $3"), /^\$/);
         if (!matched) {
             this.goal.unshift(goal);
             throw "使用rewrite策略必须提供一个相等类型";
@@ -153,7 +152,7 @@ export class Assist {
         const x = Core.getNewName("x", ctxtSet);
         const y = Core.getNewName("y", ctxtSet);
         const m = Core.getNewName("m", ctxtSet);
-        let newAst = parser.parse(`ind_eq $1 (L${x}:$1.L${y}:$1.L${m}:eq $1 ${x} ${y}. P${m}:$fn ${y}, $fn ${x}) (L${x}:$1.L${m}:$fn ${x}.${m}) $2 $3 $eq`);
+        let newAst = parser.parse(`ind_eq (L${y}:_.L${m}:eq ${x} ${y}. P${m}:$fn ${y}, $fn ${x}) (L${m}:$fn ${x}.${m}) $2 $3 $eq`);
         Core.replaceByMatch(newAst, matched, /^\$/);
         newAst = { type: "apply", name: "", nodes: [newAst, { type: "var", name: "(?#0)" }] };
         Core.assign(goal.ast, newAst);

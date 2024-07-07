@@ -3,6 +3,7 @@ import { LocalDraw } from "./localdraw.js";
 import { TileBlockType, blockMap, initMap, nameMap } from "./maploader.js";
 import { Polygon } from "./tiling.js";
 export class HWorld {
+    debugDraw = false;
     localDraw;
     localCamMat = new Rotor;
     currentTile = [];
@@ -30,18 +31,22 @@ export class HWorld {
         ctxt.textAlign = "center";
         ctxt.fillStyle = "rgb(0,0,255)";
         for (const [s, r] of this.atlasTile.rotors) {
-            const block = this.getBlock(s); //if (!block) continue;
+            const block = this.getBlock(s);
+            if (!block && !this.debugDraw)
+                continue;
             if (this.highLightGetD && block?.text?.match(/^获取(.+)推理素$/))
                 ctxt.fillStyle = "rgb(255,255,0)";
             else
                 ctxt.fillStyle = ["rgb(255,255,255)", "rgb(220,220,220)", "rgb(250,160,20)", "rgb(200,255,20)"][block?.type ?? 1];
-            this.localDraw.drawPolygon(this.atlasTile, this.localCamMat.mul(r));
+            this.localDraw.drawPolygon(this.atlasTile, this.localCamMat.mul(r), this.debugDraw);
         }
         for (const [s, r] of this.atlasTile.rotors) {
             const block = this.getBlock(s);
             if (!block) {
-                ctxt.fillStyle = "rgb(0,0,0)";
-                this.localDraw.textTo(this.localCamMat.mul(r).apply(new Hvec), s);
+                if (this.debugDraw) {
+                    ctxt.fillStyle = "rgb(0,0,0)";
+                    this.localDraw.textTo(this.localCamMat.mul(r).apply(new Hvec), s);
+                }
                 continue;
             }
             ctxt.fillStyle = ["rgb(0,80,0)", "rgb(60,60,255)", "rgb(33,38,255)", "rgb(255,0,0)"][block.type];

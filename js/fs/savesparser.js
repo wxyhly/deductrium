@@ -12,6 +12,10 @@ const replaceArr1 = Object.entries(dict);
 const replaceArr2 = replaceArr1.slice(0).reverse();
 const astparser = new ASTParser;
 export class SavesParser {
+    creative = false;
+    constructor(creative) {
+        this.creative = creative;
+    }
     serializeDeductionStep(s) {
         return [
             s.deductionIdx, s.conditionIdxs,
@@ -29,7 +33,7 @@ export class SavesParser {
     deserializeProposition(v) {
         return {
             value: astparser.parse(v[0]),
-            from: this.deserializeDeductionStep(v[1])
+            from: v[1] ? this.deserializeDeductionStep(v[1]) : null
         };
     }
     serializeDeduction(deduction) {
@@ -76,7 +80,7 @@ export class SavesParser {
         return { fs, arrD };
     }
     deserialize(gui, str) {
-        const fsArrD = initFormalSystem();
+        const fsArrD = initFormalSystem(this.creative);
         const fsdata = this.deserializeArr(fsArrD.fs, JSON.parse(this.deserializeStr(str)));
         gui.formalSystem = fsdata.fs;
         gui.deductions = fsdata.arrD;

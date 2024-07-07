@@ -18,7 +18,7 @@ export class FSGui {
     onStateChange = () => { };
     isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
     cmd;
-    constructor(propositionList, deductionList, metaRuleList, actionInput, hintText, displayPLayerSelect, cmdBtns) {
+    constructor(propositionList, deductionList, metaRuleList, actionInput, hintText, displayPLayerSelect, cmdBtns, creative) {
         this.propositionList = propositionList;
         this.metaRuleList = metaRuleList;
         this.deductionList = deductionList;
@@ -26,7 +26,7 @@ export class FSGui {
         this.hintText = hintText;
         this.cmdBtns = cmdBtns;
         this.cmd = new FSCmd(this);
-        const { fs, arrD } = initFormalSystem();
+        const { fs, arrD } = initFormalSystem(creative);
         this.formalSystem = fs;
         this.deductions = arrD;
         cmdBtns.forEach(btn => {
@@ -55,8 +55,18 @@ export class FSGui {
                 }
             });
         });
+        if (creative) {
+            this.initCreative();
+        }
         this.updateMetaRuleList();
         this.updateDeductionList();
+    }
+    initCreative() {
+        this.metarules = Object.keys(this.formalSystem.metaRules);
+        this.formalSystem.fastmetarules = "cvu><:";
+        document.getElementById("metarule-subpanel").classList.remove("hide");
+        document.getElementById("macro-btns").classList.remove("hide");
+        document.getElementById("hyp-btn").classList.remove("hide");
     }
     prettyPrint(s) {
         return s.replace(/<>/g, "↔").replace(/>/g, "→").replace(/</g, "⊂").replace(/@/g, "∈")

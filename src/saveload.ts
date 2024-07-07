@@ -4,6 +4,19 @@ import { SavesParser as HySavesParser } from "./hy/savesparser.js";
 import { SavesParser as TtSavesParser } from "./tt/savesparser.js";
 const splittor = "-(=)-";
 export class GameSaveLoad {
+    storageKey = "deductrium-save";
+    constructor(gamemode: "survival" | "creative") {
+        if (gamemode === "creative") {
+            this.storageKey = "deductrium-creative-save";
+            document.getElementById("gamemode").innerText = "[创造模式]";
+            const panels = document.querySelectorAll("#panel>button") as NodeListOf<HTMLButtonElement>;
+            panels[0].classList.add("hide");
+            panels[1].classList.remove("hide");
+            panels[2].classList.remove("hide");
+            panels[3].classList.remove("hide");
+            panels[3].click();
+        }
+    }
     stateChangeTimer: number | boolean = false;
     timeOut = 3000;
     stateChange(game: Game) {
@@ -21,9 +34,9 @@ export class GameSaveLoad {
             this.deserialize(game, globaldata);
             new HySavesParser().deserialize(game.hyperGui.world, hydata);
             game.hyperGui.needUpdate = true;
-            new FsSavesParser().deserialize(game.fsGui, fsdata);
+            new FsSavesParser(game.creative).deserialize(game.fsGui, fsdata);
             new TtSavesParser().deserialize(game.ttGui, ttdata);
-            localStorage.setItem("deductrium-save", str);
+            localStorage.setItem(this.storageKey, str);
         } catch (e) {
             if (!skipRollback) {
                 alert("进度代码格式错误：" + e);
@@ -39,15 +52,15 @@ export class GameSaveLoad {
         const ttdata = new TtSavesParser().serialize(game.ttGui);
         const globaldata = this.serialize(game);
         const data = [globaldata, hydata, fsdata, ttdata].join(splittor);
-        localStorage.setItem("deductrium-save", data);
+        localStorage.setItem(this.storageKey, data);
         if (!dom) return data;
         dom.value = data;
         dom.focus();
     }
     reset() {
         if (confirm("确定要放弃所有游戏进度吗？")) {
-            localStorage.removeItem("deductrium-save");
-            window.location.href = "?";
+            localStorage.removeItem(this.storageKey);
+            window.location.href = window.location.href || "?";
         }
     }
     serialize(game: Game) {

@@ -23,8 +23,6 @@ function assignContext(added, oldContext) {
     return Object.assign(Object.assign({}, oldContext), added);
 }
 export class Core {
-    /** this parameter affect performance for definitional equal checking */
-    expandStepsBetweenEqCheck = 1;
     static assign(ast, value, moveSemantic) {
         const v = moveSemantic ? value : this.clone(value);
         ast.type = v.type;
@@ -142,29 +140,31 @@ export class Core {
             "U@:": wrapVar("U@:"),
             "@max": parser.parse("U@->U@->U@"),
             "@succ": parser.parse("U@->U@"),
-            "nat": parser.parse("U"),
-            "Bool": parser.parse("U"),
-            "0b": parser.parse("Bool"),
-            "1b": parser.parse("Bool"),
-            "True": parser.parse("U"),
-            "true": wrapVar("True"),
-            "succ": parser.parse("nat->nat"),
-            "False": parser.parse("U"),
-            "@ind_nat": parser.parse("Pu:U@,PC:nat->Uu,Pc0:C 0,Pcs:(Px:nat,Py:C x,C (succ x)),Px:nat,C x"),
-            "@ind_True": parser.parse("Pu:U@,PC:True->Uu,Pc:C true,Px:True,C x"),
-            "@ind_False": parser.parse("Pu:U@,PC:False->Uu,Px:False,C x"),
-            "@ind_Bool": parser.parse("Pu:U@,PC:Bool->Uu,Pc0b:C 0b,Pc1b:C 1b,Px:Bool,C x"),
-            "@ind_eq2": parser.parse("Pu:U@,Pv:U@,Pa:Uu,PC:Px:a,Py:a,(@eq u a x y)->Uv,Pc:Px:a,C x x (@@refl u a x),Px:a,Py:a,Pm:@eq u a x y,C x y m"),
-            "@ind_eq": parser.parse("Pu:U@,Pv:U@,Pa:Uu,Px:a,PC:Py:a,(@eq u a x y)->Uv,Pc:C x (@@refl u a x),Py:a,Pm:@eq u a x y,C y m"),
-            "@eq": parser.parse("Pu:U@,Pa:Uu,a->a->Uu"),
-            "@@refl": parser.parse("Pu:U@,Pa:Uu,Px:a,@eq u a x x"),
-            "@Prod": parser.parse("Pu:U@,Pv:Un,Pa:Uu,Pb:Uv,a->b->(U(@max u v))"),
-            "@pair": parser.parse("Pu:U@,Pv:U@,Pa:Uu,Pb:Px:a,Uv,  Pxa:a,Pxb:b xa, Sx:a,b x"),
+            // "nat": parser.parse("U"),
+            // "Bool": parser.parse("U"),
+            // "0b": parser.parse("Bool"),
+            // "1b": parser.parse("Bool"),
+            // "True": parser.parse("U"),
+            // "true": wrapVar("True"),
+            // "succ": parser.parse("nat->nat"),
+            // "False": parser.parse("U"),
+            // "@ind_nat": parser.parse("Pu:U@,PC:nat->Uu,Pc0:C 0,Pcs:(Px:nat,Py:C x,C (succ x)),Px:nat,C x"),
+            // "@ind_True": parser.parse("Pu:U@,PC:True->Uu,Pc:C true,Px:True,C x"),
+            // "@ind_False": parser.parse("Pu:U@,PC:False->Uu,Px:False,C x"),
+            // "@ind_Bool": parser.parse("Pu:U@,PC:Bool->Uu,Pc0b:C 0b,Pc1b:C 1b,Px:Bool,C x"),
+            // "@ind_eq2": parser.parse("Pu:U@,Pv:U@,Pa:Uu,PC:Px:a,Py:a,(@eq u a x y)->Uv,Pc:Px:a,C x x (@refl u a x),Px:a,Py:a,Pm:@eq u a x y,C x y m"),
+            // "@ind_eq": parser.parse("Pu:U@,Pv:U@,Pa:Uu,Px:a,PC:Py:a,(@eq u a x y)->Uv,Pc:C x (@refl u a x),Py:a,Pm:@eq u a x y,C y m"),
+            // "@eq": parser.parse("Pu:U@,Pa:Uu,a->a->Uu"),
+            // "@refl": parser.parse("Pu:U@,Pa:Uu,Px:a,@eq u a x x"),
+            // "@Prod": parser.parse("Pu:U@,Pv:Un,Pa:Uu,Pb:Uv,a->b->(U(@max u v))"),
+            // "@pair": parser.parse("Pu:U@,Pv:U@,Pa:Uu,Pb:Px:a,Uv,  Pxa:a,Pxb:b xa, Sx:a,b x"),
+            // "funext": parser.parse("Pf:_,Pg:_,(homotopy f g)->(eq f g)"),
+            // "ua":parser.parse(""),
         },
         sysDefs: {
             "eq": parser.parse("@eq _ _"),
-            "refl": parser.parse("@@refl _ _ _"),
-            "@refl": parser.parse("@@refl _ _"),
+            "rfl": parser.parse("@refl _ _ _"),
+            "refl": parser.parse("@refl _ _"),
             "pair": parser.parse("@pair _ _ _"),
             "ind_nat": parser.parse("@ind_nat _"),
             "ind_True": parser.parse("@ind_True _"),
@@ -176,7 +176,6 @@ export class Core {
             "id": parser.parse("Lx:_.x"),
             "add": parser.parse("ind_nat (Lx:nat.nat->nat) (Lx:nat.x) (Ly:nat.Lh:nat->nat.Lx:nat.succ (h x))"),
             "mul": parser.parse("ind_nat (Lx:nat.nat->nat) (Lx:nat.0) (Ly:nat.Lh:nat->nat.Lx:nat.add (h x) x)"),
-            "concat": parser.parse("Lf:_->_.Lg:_->_.Lx:_.g (f x)"),
         },
         userDefs: {},
         errormsg: []
@@ -187,10 +186,10 @@ export class Core {
         if (stop)
             throw msg;
     }
-    checkType(ast, outast) {
+    checkType(ast, outast, infered) {
         let errmsg;
-        this.state.inferId = 0;
-        this.state.inferValues = {};
+        this.state.inferId = infered ? Object.keys(infered).length : 0;
+        this.state.inferValues = infered ?? {};
         this.state.errormsg = [];
         const nast = this.preprocessInfered(ast);
         try {
@@ -227,13 +226,15 @@ export class Core {
         else if (ast.type === "var") {
             if (ast.name === "_")
                 ast.name = "?" + (this.state.inferId++);
+            // if (ast.name[0] === "?") ast.name = "?" + (this.state.inferId++);
         }
         return ast;
     }
     /** assign information in new ast to original ast and finish type checking */
     afterCheckType(nast, ast) {
         if (nast.checked) {
-            while (Core.replaceByMatch(nast.checked, this.state.inferValues, /^\?/))
+            let maxReplacement = Object.keys(this.state.inferValues).length + 1;
+            while (maxReplacement-- && Core.replaceByMatch(nast.checked, this.state.inferValues, /^\?/))
                 ;
         }
         ast.checked = nast.checked;
@@ -242,8 +243,10 @@ export class Core {
             for (let i = 0; i < ast.nodes.length; i++) {
                 this.afterCheckType(nast.nodes[i], ast.nodes[i]);
             }
-        if (ast.checked)
+        if (ast.checked) {
             Core.reduce(ast.checked);
+            Compute.hideinfferd(ast.checked);
+        }
     }
     /** dgb */
     showInfered() {
@@ -263,6 +266,9 @@ export class Core {
                 return ast.checked;
             // const in environment
             ast.checked ??= this.checkConst(ast.name);
+            if (ast.name === "ind_True" && !ast.checked) {
+                this.checkConst(ast.name);
+            }
             if (ast.checked)
                 return ast.checked;
             // a variable to be infered
@@ -279,6 +285,9 @@ export class Core {
             // }
             // #check domain -> U
             const domain = ast.nodes[0];
+            if (parser.stringify(ast) === "(((ind_eq x) (λy:nat.(λm':((eq x) y).((eq (((inv y) x) (((inv x) y) m'))) m')))) refl)") {
+                console.log("oma");
+            }
             const Udomain = UniverseLevel.get(this.check(domain, context, ignoreErr));
             if (Udomain === false)
                 this.error(domain, `函数参数类型不合法`, ignoreErr);
@@ -371,6 +380,11 @@ export class Core {
                 this.error(ast, "定义相等断言失败", ignoreErr);
                 return;
             }
+            const assertionT = this.equal(ast.nodes[0].checked, ast.nodes[1].checked, context);
+            if (!assertionT) {
+                this.error(ast, "定义相等断言失败", ignoreErr);
+                return;
+            }
             ast.checked = ast.nodes[0].checked;
             return ast.checked;
         }
@@ -381,9 +395,6 @@ export class Core {
     checkConst(n) {
         // sys types
         let res = this.state.sysTypes[n];
-        if (n === "pair") {
-            console.log("oma");
-        }
         if (res)
             return res;
         // sys/user Defs
@@ -460,6 +471,20 @@ export class Core {
             }
             return true;
         }
+        if (a.name.startsWith("@") && b.type === "apply" && b.nodes[0].name === "@succ") {
+            try {
+                const i = BigInt(a.name.slice(1)) - 1n;
+                return this.equal(wrapVar("@" + i), b.nodes[1], context, moveSemantic);
+            }
+            catch (e) { }
+        }
+        else if (b.name.startsWith("@") && a.type === "apply" && a.nodes[0].name === "@succ") {
+            try {
+                const i = BigInt(b.name.slice(1)) - 1n;
+                return this.equal(wrapVar("@" + i), a.nodes[1], context, moveSemantic);
+            }
+            catch (e) { }
+        }
         return false;
     }
     mergeInfered(added, context) {
@@ -497,7 +522,7 @@ export class Core {
             }
             else if (fn.name === "U") {
                 // universe level reduce
-                UniverseLevel.reduce(ast);
+                return UniverseLevel.reduce(ast);
             }
             else {
                 const m1 = this.reduce(ast.nodes[0]);
@@ -575,7 +600,7 @@ class UniverseLevel {
         if (ast.type === "apply" && ast.nodes[0].name === "U") {
             if (ast.nodes[1].type !== "apply")
                 return false;
-            UniverseLevel.reduceLvl(ast.nodes[1]);
+            return UniverseLevel.reduceLvl(ast.nodes[1]);
         }
         return false;
     }
@@ -602,6 +627,17 @@ class UniverseLevel {
             throw "未知的全类层级运算";
         const modified1 = this.reduceLvl(ast.nodes[0].nodes[1]);
         const modified2 = this.reduceLvl(ast.nodes[1]);
+        // max(a,0)=a
+        if (ast.nodes[0].nodes[1].name === "@0") {
+            Core.assign(ast, ast.nodes[1], true);
+            return true;
+        }
+        // max(0,a)=a
+        if (ast.nodes[1].name === "@0") {
+            Core.assign(ast, ast.nodes[0].nodes[1], true);
+            return true;
+        }
+        // max(a,a)=a
         if (Core.exactEqual(ast.nodes[0].nodes[1], ast.nodes[1])) {
             Core.assign(ast, ast.nodes[1], true);
             return true;
@@ -712,70 +748,179 @@ export class Compute {
         }
         return res;
     }
-    static exec(ast, mode) {
+    static exec(ast) {
         const applyRes = this.matchApply(ast, true).reverse();
         let modified = false;
+        let tempReduce = []; // [&AST, oldAST]
         for (const matched of applyRes) {
             if (matched[1]?.type !== "var")
                 continue;
             const fn = matched[1].name;
-            const ast = matched[0];
+            let ast = matched[0];
+            // temporal reduce, for later matching (e.g. ind_eq ... @refl)
+            // @@ref u nat 1 := refl
+            if (fn === "@refl" && matched.length > 4) {
+                tempReduce.push([ast, Core.clone(ast)]);
+                Core.assign(ast, wrapVar("rfl"), true);
+                continue;
+            }
+            if (fn === "refl" && matched.length > 2) {
+                tempReduce.push([ast, Core.clone(ast)]);
+                Core.assign(ast, wrapVar("rfl"), true);
+                continue;
+            }
             // indTrue _ c true := c
             if (fn === "ind_True" && matched.length > 4 && matched[4].name === "true") {
+                let tail = matched.length - 5;
+                while (tail--)
+                    ast = ast.nodes[0];
                 Core.assign(ast, matched[3], true);
                 modified = true;
+                continue;
             }
             // indBool _ c0 c1 0b||1b := c0||c1
-            else if (fn === "ind_Bool" && matched.length > 5) {
+            if (fn === "ind_Bool" && matched.length > 5) {
                 if (matched[5].name === "0b") {
+                    let tail = matched.length - 6;
+                    while (tail--)
+                        ast = ast.nodes[0];
                     Core.assign(ast, matched[3], true);
                     modified = true;
+                    continue;
                 }
                 else if (matched[5].name === "1b") {
+                    let tail = matched.length - 6;
+                    while (tail--)
+                        ast = ast.nodes[0];
                     Core.assign(ast, matched[4], true);
                     modified = true;
+                    continue;
                 }
             }
-            // indBool _ c0 c1 0b||1b := c0||c1
-            else if (fn === "ind_eq" && matched.length > 5) {
-                if (matched[5].name === "0b") {
-                    Core.assign(ast, matched[3], true);
-                    modified = true;
-                }
-                else if (matched[5].name === "1b") {
+            // indEqa A _ c a refla := 
+            if (fn === "ind_eq" && matched.length > 6) {
+                if (Core.exactEqual(matched[2], matched[5]) && matched[6].name === "rfl") {
+                    let tail = matched.length - 7;
+                    while (tail--)
+                        ast = ast.nodes[0];
                     Core.assign(ast, matched[4], true);
                     modified = true;
+                    continue;
                 }
             }
-            // add 1 2 := 1+2
-            else if (fn === "add" && matched.length > 3 && matched[2].type === "var" && matched[3].type === "var") {
+            if (fn === "add" && matched.length > 3) {
+                // add 1 2 := 1+2
+                if (matched[2].type === "var" && matched[3].type === "var") {
+                    try {
+                        const bint = BigInt(matched[2].name) + BigInt(matched[3].name);
+                        Core.assign(ast, wrapVar(String(bint)), true);
+                        modified = true;
+                        continue;
+                    }
+                    catch (e) { }
+                }
+                // add x 0 := x
+                if (matched[3].name === "0" && matched[3].type === "var") {
+                    try {
+                        Core.assign(ast, matched[2], true);
+                        modified = true;
+                        continue;
+                    }
+                    catch (e) { }
+                }
+                const dstrct = matched[3];
+                // add x (succ y)
+                if (dstrct.type === "apply" && dstrct.nodes[0].name === "succ") {
+                    try {
+                        // remove inner succ
+                        Core.assign(dstrct, dstrct.nodes[1], true);
+                        // add outter succ
+                        Core.assign(ast, wrapApply(wrapVar("succ"), ast)); // when wrap, soor move
+                        modified = true;
+                        continue;
+                    }
+                    catch (e) { }
+                }
+            }
+            if (fn === "succ" && matched.length > 2 && matched[2].type === "var") {
                 try {
-                    const bint = BigInt(matched[2].name) + BigInt(matched[3].name);
-                    Core.assign(ast, wrapVar(String(bint)), true);
+                    const bint = BigInt(matched[2].name);
+                    Core.assign(ast, wrapVar(String(bint + 1n)), true);
                     modified = true;
+                    continue;
                 }
                 catch (e) { }
             }
-            else if (fn === "mul" && matched.length > 3 && matched[2].type === "var" && matched[3].type === "var") {
+            if (fn === "pred" && matched.length > 2 && matched[2].type === "var") {
+                if (matched[2].name === "0") {
+                    Core.assign(ast, wrapVar("0"), true);
+                    modified = true;
+                    continue;
+                }
+                else
+                    try {
+                        const bint = BigInt(matched[2].name);
+                        Core.assign(ast, wrapVar(String(bint - 1n)), true);
+                        modified = true;
+                        continue;
+                    }
+                    catch (e) { }
+            }
+            if (fn === "mul" && matched.length > 3 && matched[2].type === "var" && matched[3].type === "var") {
                 // mul 1 2 := 1+2
                 try {
                     const bint = BigInt(matched[2].name) * BigInt(matched[3].name);
                     Core.assign(ast, wrapVar(String(bint)), true);
                     modified = true;
-                }
-                catch (e) { }
-            }
-            else if (fn === "double" && matched.length > 3 && matched[2].type === "var" && matched[3].type === "var") {
-                // mul 1 2 := 1+2
-                try {
-                    const bint = BigInt(matched[2].name) * 2n;
-                    Core.assign(ast, wrapVar(String(bint)), true);
-                    modified = true;
+                    continue;
                 }
                 catch (e) { }
             }
         }
+        for (const [ptr_AST, oldAST] of tempReduce) {
+            Core.assign(ptr_AST, oldAST, true);
+        }
         return modified;
+    }
+    static hideinfferd(ast) {
+        const applyRes = this.matchApply(ast, true).reverse();
+        for (const matched of applyRes) {
+            if (matched[1]?.type !== "var")
+                continue;
+            const fn = matched[1].name;
+            let ast = matched[0];
+            // temporal reduce, for later matching (e.g. ind_eq ... @@refl)
+            // @@ref u nat 1:= @refl 1
+            if (fn === "@refl" && matched.length > 3) {
+                let tail = matched.length - 4;
+                while (tail--)
+                    ast = ast.nodes[0];
+                const type = ast.checked;
+                Core.assign(ast, wrapVar("refl"), true);
+                ast.checked = type;
+                continue;
+            }
+            // @indTrue _ := indTrue
+            if ((fn === "@ind_True" || fn === "@ind_Bool" || fn === "@ind_False") && matched.length > 2) {
+                let tail = matched.length - 3;
+                while (tail--)
+                    ast = ast.nodes[0];
+                const type = ast.checked;
+                Core.assign(ast, wrapVar(fn.slice(1)), true);
+                ast.checked = type;
+                continue;
+            }
+            // @eq _ A x y := eq x y
+            if (fn === "@eq" && matched.length > 3) {
+                let tail = matched.length - 4;
+                while (tail--)
+                    ast = ast.nodes[0];
+                const type = ast.checked;
+                Core.assign(ast, wrapVar("eq"), true);
+                ast.checked = type;
+                continue;
+            }
+        }
     }
 }
 //# sourceMappingURL=core.js.map

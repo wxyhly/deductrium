@@ -4,7 +4,7 @@ import { SavesParser } from "./savesparser.js";
 const astparser = new ASTParser;
 let deductionFrom = "";
 
-export function initFormalSystem() {
+export function initFormalSystem(creative:boolean) {
     const fs = new FormalSystem;
     function addMetaRule(key: string, str: string, condIdxs: number[], replNames: string[]) {
         fs.addMetaRule(key, astparser.parse(str), condIdxs, replNames, deductionFrom);
@@ -144,7 +144,7 @@ export function initFormalSystem() {
     const fns = ["Union", "Pow", "Pair", "S"];
     const sp = new SavesParser();
     sp.deserializeArr(fs, [consts, fns, sysAxioms, null]);
+    if(creative) return sp.deserializeArr(fs, [[], [], intMacros, Object.keys(sysAxioms)]);
     return sp.deserializeArr(fs, [[], [], intMacros, ["mp", "a1", "a2"]]);
-    // return sp.deserializeArr(fs, [[], [], intMacros, Object.keys(sysAxioms)]);
 
 }
