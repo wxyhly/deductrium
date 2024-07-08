@@ -5,7 +5,6 @@ export function initTypeSystem() {
     let localId = {};
     const ruleList = [];
     function addRule(postfix, astStr) {
-        const oldTypeName = typeName;
         const ast = parser.parse(astStr);
         let inferMode = "";
         if (postfix[0] === "@" || postfix[0] === "_") {
@@ -14,11 +13,6 @@ export function initTypeSystem() {
         }
         localId[typeName] ??= 0;
         ruleList.push({ prefix: typeName, ast, id: typeName + (localId[typeName]++), postfix, inferMode });
-        // if (ast.type === ":") {
-        //     core.state.sysTypes[ast.nodes[0].name] = ast.nodes[1];
-        // } else if (ast.type === ":=") {
-        //     core.state.sysDefs[ast.nodes[0].name] = ast.nodes[1];
-        // }
     }
     typeName = "True";
     addRule("类型", "True:U");
@@ -75,30 +69,35 @@ export function initTypeSystem() {
     addRule("计算", "ind_eq2 ?C ?crfl ?x ?x (refl ?x) === ?crfl ?x");
     typeName = "Prod";
     addRule("@类型", "@Prod : Pu:U@,Pv:U@,Pa:Uu,Pb:a->Uv,(U(@max u v))");
-    addRule("@类型", "?A X ?B := @Prod _ _ ?A (Lx:?A.?B)");
     addRule("@类型", "Sx:?A,?B x := @Prod _ _ ?A (Lx:?A.?B x)");
-    addRule("_类型", "?A X ?B");
+    addRule("@类型", "?A X ?B := @Prod _ _ ?A (Lx:?A.?B)");
     addRule("_类型", "Sx:?A,?B x");
-    addRule("@构造", "@pair : Pu:U@,Pv:U@,Pa:Uu,Pb:a->Uv,Pxa:a,Pxb:b xa,@Prod u v a b");
+    addRule("_类型", "?A X ?B := Sx:?A,?B");
+    addRule("@构造", "@pair : Pu:U@,Pv:U@,Pa:Uu,Pb:a->Uv,Pxa:a,Pxb:b xa,Sx:a,b x");
     addRule("@构造", "pair := @pair _ _ _");
     addRule("_构造", "pair");
-    addRule("@构造", "(?a,?b) := @pair _ _ _ (Lx:?a：.?b：) ?a ?b");
-    addRule("_构造", "(?a,?b)");
-    addRule("@解构", "@ind_Prod : Pu:U@,Pv:U@,Pw:U@,Pa:Uu,Pb:a->Uv,PC:(@Prod u v a b)->Uw,(Pxa:a,Pxb:b xa,(C (pair b xa xb)))->(Px:@Prod u v a b,C x)");
-    addRule("@解构", "ind_Prod := @ind_Prod _ _ _ _ _");
+    addRule("构造", "(?a,?b) := pair (Lx:?a：.?b：) ?a ?b");
+    addRule("@解构", "@ind_Prod : Pu:U@,Pv:U@,Pw:U@,Pa:Uu,Pb:a->Uv,PC:(Sx:a,b x)->Uw,(Pxa:a,Pxb:b xa,(C (pair b xa xb)))->(Px:Sx:a,b x,C x)");
+    addRule("@解构", "ind_Prod := @ind_Prod _ _ _ _");
     addRule("_解构", "ind_Prod");
-    addRule("计算", "ind_Prod ?C ?c (pair ?b ?xa ?xb) === ?c ?xa ?xb");
+    addRule("计算", "ind_Prod ?b ?C ?c (pair ?b ?xa ?xb) === ?c ?xa ?xb");
+    addRule("定义", "@pr0:=La:U_.Lb:U_.ind_Prod (Lx:a.b) (Lx:aXb.a) (Lx:a.Ly:b.x)");
+    addRule("定义", "pr0:=@pr0 _ _");
+    addRule("定义", "@prd1:=La:U_.Lb:a->U_.ind_Prod b (Lm:Sz:a,b z.b (pr0 m)) (Lxa:a.Lxb:b xa.xb)");
+    addRule("定义", "prd1:=@prd1 _ ");
+    addRule("定义", "@pr1:=La:U_.Lb:U_.ind_Prod (Lx:a.b) (Lm:aXb.b) (Lxa:a.Lxb:b.xb)");
+    addRule("定义", "pr1:=@pr1 _ _");
     typeName = "Sum";
     addRule("@类型", "@Sum : Pu:U@,Pv:U@,Uu->Uv->(U(@max u v))");
     addRule("@类型", "?A + ?B := @Sum _ _ ?A ?B");
     addRule("_类型", "?A + ?B");
-    addRule("@构造", "@inl : Pu:U@,Pv:U@,Pa:Uu,Pb:Uv,Pxa:a,@Sum u v a b");
+    addRule("@构造", "@inl : Pu:U@,Pv:U@,Pa:Uu,Pb:Uv,Pxa:a,a + b");
     addRule("@构造", "inl := @inl _ _ _ _");
     addRule("_构造", "inl");
-    addRule("@构造", "@inr : Pu:U@,Pv:U@,Pa:Uu,Pb:Uv,Pxb:b,@Sum u v a b");
+    addRule("@构造", "@inr : Pu:U@,Pv:U@,Pa:Uu,Pb:Uv,Pxb:b,a + b");
     addRule("@构造", "inr := @inr _ _ _ _");
     addRule("_构造", "inr");
-    addRule("@解构", "@ind_Sum : Pu:U@,Pv:U@,Pw:U@,Pa:Uu,Pb:Uv,PC:(@Sum u v a b)->Uw,(Pxa:a,(C (inl xa)))->(Pxb:b,(C (inr xb)))->(Px:@Sum u v a b,C x)");
+    addRule("@解构", "@ind_Sum : Pu:U@,Pv:U@,Pw:U@,Pa:Uu,Pb:Uv,PC:(a + b)->Uw,(Pxa:a,(C (inl xa)))->(Pxb:b,(C (inr xb)))->(Px:a + b,C x)");
     addRule("@解构", "ind_Sum := @ind_Sum _ _ _ _ _");
     addRule("_解构", "ind_Sum");
     addRule("计算", "ind_Sum ?C ?cinl ?cinr (inl ?xa) === ?cinl ?xa");

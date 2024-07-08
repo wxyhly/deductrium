@@ -19,6 +19,9 @@ export class ASTParser {
         if (ast.type === "*") {
             return `(${this.stringify(nd[0])}∘${this.stringify(nd[1])})`;
         }
+        if (ast.type === ",") {
+            return `(${this.stringify(nd[0])},${this.stringify(nd[1])})`;
+        }
         if (ast.type === "~=") {
             return `(${this.stringify(nd[0])}≃${this.stringify(nd[1])})`;
         }

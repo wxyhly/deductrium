@@ -105,24 +105,37 @@ export class Core {
         }
         return res;
     }
-    static replaceVar(ast, name, dst, fvDst = this.getFreeVars(dst)) {
+    replaceVar(ast, name, dst, fvDst = Core.getFreeVars(dst)) {
         if (ast.type === "var") {
-            if (ast.name !== name)
+            let nast = ast;
+            let length = Object.keys(this.state.inferValues).length + 1;
+            while (nast.name[0] === "?" && length-- && nast.name !== name) {
+                const temp = this.state.inferValues[nast.name];
+                if (!temp)
+                    break;
+                nast = temp;
+            }
+            if (nast.type !== "var") {
+                this.replaceVar(nast, name, dst, fvDst);
+                Core.assign(ast, nast);
                 return;
-            this.assign(ast, dst);
+            }
+            if (ast.name !== name && nast.name !== name)
+                return;
+            Core.assign(ast, dst);
         }
         else if (ast.type === "L" || ast.type === "P" || ast.type === "S") {
             this.replaceVar(ast.nodes[0], name, dst, fvDst);
             if (ast.name === name)
                 return; // bounded
-            const fvSrcBody = this.getFreeVars(ast.nodes[1]);
+            const fvSrcBody = Core.getFreeVars(ast.nodes[1]);
             if (!fvSrcBody.has(name))
                 return; // not bounded, but not found
             if (!fvDst.has(ast.name)) {
                 this.replaceVar(ast.nodes[1], name, dst, fvDst);
             }
             else {
-                const newName = this.getNewName(ast.name, new Set([...fvSrcBody, ...fvDst]));
+                const newName = Core.getNewName(ast.name, new Set([...fvSrcBody, ...fvDst]));
                 this.replaceVar(ast.nodes[1], ast.name, { type: "var", name: newName }, fvDst);
                 this.replaceVar(ast.nodes[1], name, dst, fvDst);
                 ast.name = newName;
@@ -244,7 +257,7 @@ export class Core {
                 this.afterCheckType(nast.nodes[i], ast.nodes[i]);
             }
         if (ast.checked) {
-            Core.reduce(ast.checked);
+            this.reduce(ast.checked);
             Compute.hideinfferd(ast.checked);
         }
     }
@@ -352,10 +365,16 @@ export class Core {
             else if (tfn.type === "P") {
                 const repl = Core.clone(tfn.nodes[1]);
                 // reffering
-                Core.replaceVar(repl, tfn.name, ast.nodes[1]);
-                Core.reduce(repl);
+                this.replaceVar(repl, tfn.name, ast.nodes[1]);
+                this.reduce(repl);
                 ast.checked = repl;
             }
+            return ast.checked;
+        }
+        if (ast.type === "X" || ast.type === "," || ast.type === "+") {
+            this.check(ast.nodes[0], context, ignoreErr);
+            this.check(ast.nodes[1], context, ignoreErr);
+            ast.checked = this.check(this.desugar(ast), context, ignoreErr);
             return ast.checked;
         }
         // Type assertion
@@ -391,6 +410,31 @@ export class Core {
         if (ast.type === ":=") {
             return ast.nodes[0].checked;
         }
+    }
+    desugar(ast) {
+        if (ast.type === "X") {
+            const nast = this.preprocessInfered(parser.parse("@Prod _ _ ?A (Lx:?A.?B)"), true);
+            nast.nodes[0].nodes[1] = ast.nodes[0];
+            nast.nodes[1].nodes[0] = ast.nodes[0];
+            nast.nodes[1].nodes[1] = ast.nodes[1];
+            return nast;
+        }
+        else if (ast.type === "+") {
+            const nast = this.preprocessInfered(parser.parse("@Sum _ _ ?A ?B"), true);
+            nast.nodes[0].nodes[1] = ast.nodes[0];
+            nast.nodes[1] = ast.nodes[1];
+            return nast;
+        }
+        else if (ast.type === ",") {
+            const nast = this.preprocessInfered(parser.parse("@pair _ _ _ (Lx:?a：.?b：) ?a ?b"), true);
+            const dfn = nast.nodes[0].nodes[0].nodes[1];
+            dfn.nodes[0] = ast.nodes[0].checked;
+            dfn.nodes[1] = ast.nodes[1].checked;
+            nast.nodes[0].nodes[1] = ast.nodes[0];
+            nast.nodes[1] = ast.nodes[1];
+            return nast;
+        }
+        throw "cannnot reached";
     }
     checkConst(n) {
         // sys types
@@ -438,6 +482,34 @@ export class Core {
                 return true;
             }
         }
+        // -> may not be real nondependent prod type, since it may infer bounded var
+        if ((a.type === "X" && b.type === "S") || (b.type === "X" && a.type === "S")) {
+            if (this.equal(a.nodes[0], b.nodes[0], context) &&
+                this.equal(a.nodes[1], b.nodes[1], assignContext({ [a.name || b.name]: a.nodes[0] }, context))) {
+                a.name = a.name || b.name;
+                b.name = b.name || a.name;
+                a.type = "S";
+                b.type = "S";
+                return true;
+            }
+        }
+        if ((a.type === "," && b.type === "apply") || (b.type === "," && a.type === "apply")) {
+            const xa = a.type === "," ? a : b;
+            let xb = b.type === "," ? a : b;
+            if (this.equal(xa.nodes[1], xb.nodes[1], context) &&
+                xb.nodes[0].type === "apply" &&
+                this.equal(xa.nodes[0], xb.nodes[0].nodes[1], context)) {
+                let level = 0;
+                while (xb.nodes && xb.nodes[0]) {
+                    xb = xb.nodes[0];
+                    level++;
+                }
+                if (xb.name === "pair" && level === 3)
+                    return true;
+                if (xb.name === "@pair" && level === 6)
+                    return true;
+            }
+        }
         // fn alpha conversion
         if (a.type === b.type && (a.type === "L" || a.type === "P" || a.type === "S")) {
             if (!this.equal(a.nodes[0], b.nodes[0], context))
@@ -445,15 +517,18 @@ export class Core {
             if (a.name === b.name)
                 return this.equal(a.nodes[1], b.nodes[1], assignContext({ [a.name]: a.nodes[0] }, context));
             const tempB1 = Core.clone(b.nodes[1]);
-            Core.replaceVar(tempB1, b.name, wrapVar(a.name));
+            this.replaceVar(tempB1, b.name, wrapVar(a.name));
             return this.equal(a.nodes[1], tempB1, assignContext({ [a.name]: a.nodes[0] }, context));
+        }
+        if (Object.keys(this.state.inferValues).length > 512) {
+            return false; // two many infereds, something bad happens
         }
         // expand defs
         const a1 = moveSemantic ? a : Core.clone(a);
         const b1 = moveSemantic ? b : Core.clone(b);
         let modified = false;
-        modified ||= Core.reduce(a1);
-        modified ||= Core.reduce(b1);
+        modified ||= this.reduce(a1);
+        modified ||= this.reduce(b1);
         modified ||= Compute.exec(a1);
         modified ||= Compute.exec(b1);
         modified ||= this.expandDef(a1);
@@ -485,6 +560,9 @@ export class Core {
             }
             catch (e) { }
         }
+        if (context["*"]) {
+            return Core.exactEqual(UniverseLevel.reduceLvl(a), UniverseLevel.reduceLvl(b));
+        }
         return false;
     }
     mergeInfered(added, context) {
@@ -497,15 +575,27 @@ export class Core {
         return true;
     }
     /** lambda reduce, def expands are not inclueded */
-    static reduce(ast) {
+    reduce(ast) {
         if (ast.type === "P") {
             // nondependenet func to ->
             const m1 = this.reduce(ast.nodes[0]);
             const m2 = this.reduce(ast.nodes[1]);
             const codomain = ast.nodes[1];
-            if (!this.getFreeVars(codomain).has(ast.name)) {
+            if (!Core.getFreeVars(codomain).has(ast.name)) {
                 ast.name = "";
                 ast.type = "->";
+                return true;
+            }
+            return m1 || m2;
+        }
+        else if (ast.type === "S") {
+            // nondependenet func to ->
+            const m1 = this.reduce(ast.nodes[0]);
+            const m2 = this.reduce(ast.nodes[1]);
+            const codomain = ast.nodes[1];
+            if (!Core.getFreeVars(codomain).has(ast.name)) {
+                ast.name = "";
+                ast.type = "X";
                 return true;
             }
             return m1 || m2;
@@ -514,9 +604,9 @@ export class Core {
             const [fn, ap] = ast.nodes;
             if (fn.type === "L") {
                 // beta-reduction
-                const nt1 = this.clone(fn.nodes[1]);
+                const nt1 = Core.clone(fn.nodes[1]);
                 this.replaceVar(nt1, fn.name, ap);
-                this.assign(ast, nt1, true);
+                Core.assign(ast, nt1, true);
                 this.reduce(ast);
                 return true;
             }
@@ -532,9 +622,9 @@ export class Core {
         }
         else if (ast.type === "L") {
             const [domain, body] = ast.nodes;
-            if (body.type === "apply" && body.nodes[1].name === ast.name && !this.getFreeVars(body.nodes[0]).has(ast.name)) {
+            if (body.type === "apply" && body.nodes[1].name === ast.name && !Core.getFreeVars(body.nodes[0]).has(ast.name)) {
                 // iota-reduction (func uniqueless)
-                this.assign(ast, body.nodes[0], true);
+                Core.assign(ast, body.nodes[0], true);
                 this.reduce(ast);
                 return true;
             }
@@ -548,6 +638,22 @@ export class Core {
             const m1 = this.reduce(ast.nodes[0]);
             const m2 = this.reduce(ast.nodes[1]);
             return m1 || m2;
+        }
+        else if (ast.name[0] === "?") {
+            let nast = ast;
+            let length = Object.keys(this.state.inferValues).length + 1;
+            while (nast.name[0] === "?" && length) {
+                const temp = this.state.inferValues[nast.name];
+                if (!temp)
+                    break;
+                // if(temp.name < nast.name) break; // stop infer, something bad will happen
+                nast = temp;
+                length--;
+            }
+            if (length && nast !== ast) { // modified, and ignore loop quot
+                Core.assign(ast, nast);
+                return true;
+            }
         }
         return false;
     }
@@ -769,6 +875,15 @@ export class Compute {
                 Core.assign(ast, wrapVar("rfl"), true);
                 continue;
             }
+            // temporal reduce, for later matching (e.g. ind_Prod ... @pair)
+            if (fn === "@pair" && matched.length > 4) {
+                let tail = matched.length - 5;
+                while (tail--)
+                    ast = ast.nodes[0];
+                tempReduce.push([ast, Core.clone(ast)]);
+                Core.assign(ast, wrapVar("pair"), true);
+                continue;
+            }
             // indTrue _ c true := c
             if (fn === "ind_True" && matched.length > 4 && matched[4].name === "true") {
                 let tail = matched.length - 5;
@@ -777,6 +892,31 @@ export class Compute {
                 Core.assign(ast, matched[3], true);
                 modified = true;
                 continue;
+            }
+            if (fn === "@ind_True" && matched.length > 5 && matched[5].name === "true") {
+                let tail = matched.length - 6;
+                while (tail--)
+                    ast = ast.nodes[0];
+                Core.assign(ast, matched[4], true);
+                modified = true;
+                continue;
+            }
+            // ind_Prod _ C c (pair _ a b) := c
+            if (fn === "ind_Prod" && matched.length > 5) {
+                const val = matched[5];
+                let tail = matched.length - 6;
+                while (tail--)
+                    ast = ast.nodes[0];
+                if (val.type === ",") {
+                    Core.assign(ast, wrapApply(matched[4], val.nodes[0], val.nodes[1]), true);
+                    modified = true;
+                    continue;
+                }
+                else if (val.type === "apply" && val.nodes[0].type === "apply" && val.nodes[0].nodes[0].type === "apply" && val.nodes[0].nodes[0].nodes[0].name === "pair") {
+                    Core.assign(ast, wrapApply(matched[4], val.nodes[0].nodes[1], val.nodes[1]), true);
+                    modified = true;
+                    continue;
+                }
             }
             // indBool _ c0 c1 0b||1b := c0||c1
             if (fn === "ind_Bool" && matched.length > 5) {
@@ -793,6 +933,24 @@ export class Compute {
                     while (tail--)
                         ast = ast.nodes[0];
                     Core.assign(ast, matched[4], true);
+                    modified = true;
+                    continue;
+                }
+            }
+            if (fn === "@ind_Bool" && matched.length > 6) {
+                if (matched[6].name === "0b") {
+                    let tail = matched.length - 7;
+                    while (tail--)
+                        ast = ast.nodes[0];
+                    Core.assign(ast, matched[4], true);
+                    modified = true;
+                    continue;
+                }
+                else if (matched[6].name === "1b") {
+                    let tail = matched.length - 7;
+                    while (tail--)
+                        ast = ast.nodes[0];
+                    Core.assign(ast, matched[5], true);
                     modified = true;
                     continue;
                 }

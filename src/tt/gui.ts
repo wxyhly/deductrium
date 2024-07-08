@@ -75,22 +75,6 @@ let info = "";
 let listTerms: AST[] = [];
 let listInfos: [string, string][] = [];
 let consts = new Set<string>;
-// function addTerm(list: string[], previnfo?: string) {
-//     for (const str of list) {
-//         if (str[0] === "#") { info = str.slice(1); continue; }
-//         const [prefix, value] = str.split("::");
-//         const ast = parser.parse(value);
-//         if (ast.nodes[0].type === "var") consts.add(ast.nodes[0].name);
-//         if (previnfo) {
-//             const insertPos = listInfos.map(v => v[1]).lastIndexOf(previnfo) + 1;
-//             listTerms.splice(insertPos, 0, ast);
-//             listInfos.splice(insertPos, 0, [prefix, info]);
-//         } else {
-//             listTerms.push(ast);
-//             listInfos.push([prefix, info]);
-//         }
-//     }
-// }
 type definedConst = [AST, AST];
 const allrules = initTypeSystem();
 export class TTGui {
@@ -102,7 +86,7 @@ export class TTGui {
     // tactic mode
     mode = null;
     // "_" for infered, "@" for original
-    inferDisplayMode = "_";
+    inferDisplayMode = "@";
     userDefinedConsts: definedConst[] = [];
     sysDefinedConsts: definedConst[] = [];
 
@@ -317,14 +301,15 @@ export class TTGui {
                     this.addSpan(varnode, " " + ast.type + " ");
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], scopes, context, userLineNumber));
                     break;
-                case "->": case "X":
+                case "->": case "X": case "+":
 
-                    const b1 = !(["var"].includes(ast.nodes[0].type) || ast.nodes[0].nodes[0].name == "U");
+                    const b1 = !((ast.type === "+" && ast.nodes[0].type === "X") || ["var"].includes(ast.nodes[0].type) || ast.nodes[0].nodes[0].name == "U");
+
                     const b2 = !(["var", "->", "x"].includes(ast.nodes[1].type) || ast.nodes[1].nodes[0].name == "U");
                     if (b1) this.addSpan(varnode, "(");
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], scopes, context, userLineNumber));
                     if (b1) this.addSpan(varnode, ")");
-                    this.addSpan(varnode, ast.type === "X" ? "×" : "→");
+                    this.addSpan(varnode, ast.type === "X" ? "×" : ast.type === "+" ? "+" : "→");
                     if (b2) this.addSpan(varnode, "(");
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], scopes, context, userLineNumber));
                     if (b2) this.addSpan(varnode, ")");
@@ -456,14 +441,14 @@ export class TTGui {
                 const vname = rule.ast.nodes[0].name;
                 this.core.state.sysTypes[vname] = Core.clone(rule.ast.nodes[1]);
             }
-            if (rule.ast.type === ":=") {
+            if (rule.ast.type === ":=" && rule.ast.nodes[0].type === "var") {
                 const vname = rule.ast.nodes[0].name;
                 this.core.state.sysDefs[vname] = Core.clone(rule.ast.nodes[1]);
             }
 
             // register in gui highlight, only ignore ====
 
-            if (rule.ast.type === "var" || rule.ast.type === ":" || rule.ast.type === ":=") {
+            if (rule.ast.type === "var" || rule.ast.type === ":" || (rule.ast.type === ":=" && rule.ast.nodes[0].type === "var")) {
                 const vname = rule.ast.type === "var" ? rule.ast.name : rule.ast.nodes[0].name;
                 if (rule.postfix === "类型") consts.add(vname);
                 if (rule.postfix === "构造") constructors.add(vname);

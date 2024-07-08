@@ -64,7 +64,7 @@ export class TTGui {
     // tactic mode
     mode = null;
     // "_" for infered, "@" for original
-    inferDisplayMode = "_";
+    inferDisplayMode = "@";
     userDefinedConsts = [];
     sysDefinedConsts = [];
     constructor(creative) {
@@ -298,14 +298,15 @@ export class TTGui {
                     break;
                 case "->":
                 case "X":
-                    const b1 = !(["var"].includes(ast.nodes[0].type) || ast.nodes[0].nodes[0].name == "U");
+                case "+":
+                    const b1 = !((ast.type === "+" && ast.nodes[0].type === "X") || ["var"].includes(ast.nodes[0].type) || ast.nodes[0].nodes[0].name == "U");
                     const b2 = !(["var", "->", "x"].includes(ast.nodes[1].type) || ast.nodes[1].nodes[0].name == "U");
                     if (b1)
                         this.addSpan(varnode, "(");
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], scopes, context, userLineNumber));
                     if (b1)
                         this.addSpan(varnode, ")");
-                    this.addSpan(varnode, ast.type === "X" ? "×" : "→");
+                    this.addSpan(varnode, ast.type === "X" ? "×" : ast.type === "+" ? "+" : "→");
                     if (b2)
                         this.addSpan(varnode, "(");
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], scopes, context, userLineNumber));
@@ -445,12 +446,12 @@ export class TTGui {
                 const vname = rule.ast.nodes[0].name;
                 this.core.state.sysTypes[vname] = Core.clone(rule.ast.nodes[1]);
             }
-            if (rule.ast.type === ":=") {
+            if (rule.ast.type === ":=" && rule.ast.nodes[0].type === "var") {
                 const vname = rule.ast.nodes[0].name;
                 this.core.state.sysDefs[vname] = Core.clone(rule.ast.nodes[1]);
             }
             // register in gui highlight, only ignore ====
-            if (rule.ast.type === "var" || rule.ast.type === ":" || rule.ast.type === ":=") {
+            if (rule.ast.type === "var" || rule.ast.type === ":" || (rule.ast.type === ":=" && rule.ast.nodes[0].type === "var")) {
                 const vname = rule.ast.type === "var" ? rule.ast.name : rule.ast.nodes[0].name;
                 if (rule.postfix === "类型")
                     consts.add(vname);
