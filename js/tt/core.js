@@ -1,7 +1,7 @@
 import { ASTParser } from "./astparser.js";
 const parser = new ASTParser;
 // sugars begin
-function wrapVar(v) {
+export function wrapVar(v) {
     return { type: "var", name: v };
 }
 function wrapU(v) {
@@ -10,7 +10,7 @@ function wrapU(v) {
 function wrapLambda(type, param, paramType, body) {
     return { type, name: param, nodes: [paramType, body] };
 }
-function wrapApply(...terms) {
+export function wrapApply(...terms) {
     let ast = terms.shift();
     let ast1;
     while (ast1 = terms.shift()) {
@@ -199,14 +199,14 @@ export class Core {
         if (stop)
             throw msg;
     }
-    checkType(ast, outast, infered) {
+    checkType(ast, context = {}, outast, infered) {
         let errmsg;
         this.state.inferId = infered ? Object.keys(infered).length : 0;
         this.state.inferValues = infered ?? {};
         this.state.errormsg = [];
         const nast = this.preprocessInfered(ast);
         try {
-            this.check(nast, {}, false);
+            this.check(nast, context, false);
         }
         catch (e) {
             errmsg = e;
@@ -215,7 +215,7 @@ export class Core {
         if (this.state.errormsg.length)
             throw this.state.errormsg[0].msg;
         if (errmsg)
-            errmsg;
+            throw errmsg;
         if (outast) {
             Core.assign(outast, nast);
             while (Core.replaceByMatch(outast, this.state.inferValues, /^\?/))
@@ -356,6 +356,8 @@ export class Core {
             const tap = this.check(ast.nodes[1], context, ignoreErr);
             if (!tfn || !tap)
                 return;
+            if (!tfn.nodes)
+                this.error(ast, "非函数尝试作用", ignoreErr);
             if (!this.equal(tfn.nodes[0], tap, context))
                 this.error(ast, "函数作用类型不匹配", ignoreErr);
             else if (tfn.type === "->") {
@@ -966,6 +968,61 @@ export class Compute {
                     continue;
                 }
             }
+            // indnat C 0 s num
+            if (fn === "ind_nat" && matched.length > 5) {
+                // indnat C c0 cs 0 = c0
+                if (matched[5].name === "0") {
+                    let tail = matched.length - 6;
+                    while (tail--)
+                        ast = ast.nodes[0];
+                    Core.assign(ast, matched[3], true);
+                    modified = true;
+                    continue;
+                }
+                // indnat C c0 cs (succ ?) = cs ? indnat C c0 cs (?)
+                if (matched[5].type === "apply" && matched[5].nodes[0].name === "succ") {
+                    let tail = matched.length - 6;
+                    while (tail--)
+                        ast = ast.nodes[0];
+                    const cn = matched[5].nodes[1];
+                    Core.assign(ast, wrapApply(matched[4], cn, wrapApply(matched[1], matched[2], matched[3], matched[4], cn)), true);
+                    modified = true;
+                    continue;
+                }
+                // indnat C c0 cs num = cs ? indnat C c0 cs (?)
+                try {
+                    let b = BigInt(matched[5].name);
+                    let tail = matched.length - 6;
+                    while (tail--)
+                        ast = ast.nodes[0];
+                    let c0 = matched[3];
+                    let cs = matched[4];
+                    if (cs.type === "L" && cs.nodes[1].type === "L" && !Core.getFreeVars(cs.nodes[1].nodes[1]).has(cs.nodes[1].name)) {
+                        Core.assign(ast, wrapApply(matched[4], wrapVar(String(b - 1n)), wrapVar("??")), true);
+                        modified = true;
+                        continue;
+                    }
+                    let expandDepth = 2;
+                    // indnat C c0 cs 5 = cs 4 (cs 3 (cs 2 (cs 1(c0))))
+                    let nast = ast;
+                    while (true) {
+                        expandDepth--;
+                        if (b === 0n) {
+                            Core.assign(nast, c0);
+                            break;
+                        }
+                        Core.assign(nast, wrapApply(cs, wrapVar(String(b)), wrapVar("??")));
+                        nast = nast.nodes[1];
+                        b--;
+                        if (!expandDepth) {
+                            Core.assign(nast, wrapApply(matched[1], matched[2], c0, cs, wrapVar(String(b))));
+                        }
+                    }
+                    modified = true;
+                    continue;
+                }
+                catch (e) { }
+            }
             if (fn === "add" && matched.length > 3) {
                 // add 1 2 := 1+2
                 if (matched[2].type === "var" && matched[3].type === "var") {
@@ -1025,7 +1082,7 @@ export class Compute {
                     catch (e) { }
             }
             if (fn === "mul" && matched.length > 3 && matched[2].type === "var" && matched[3].type === "var") {
-                // mul 1 2 := 1+2
+                // mul 1 2 := 1*2
                 try {
                     const bint = BigInt(matched[2].name) * BigInt(matched[3].name);
                     Core.assign(ast, wrapVar(String(bint)), true);

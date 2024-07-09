@@ -3,7 +3,7 @@ const parser = new ASTParser;
 
 // sugars begin
 
-function wrapVar(v: string): AST {
+export function wrapVar(v: string): AST {
     return { type: "var", name: v };
 }
 function wrapU(v: string): AST {
@@ -12,7 +12,7 @@ function wrapU(v: string): AST {
 function wrapLambda(type: string, param: string, paramType: AST, body: AST): AST {
     return { type, name: param, nodes: [paramType, body] };
 }
-function wrapApply(...terms: AST[]): AST {
+export function wrapApply(...terms: AST[]): AST {
     let ast = terms.shift();
     let ast1: AST;
     while (ast1 = terms.shift()) {
@@ -203,20 +203,20 @@ export class Core {
         ast.err = msg;
         if (stop) throw msg;
     }
-    checkType(ast: AST, outast?: AST, infered?: Context) {
+    checkType(ast: AST, context: Context = {}, outast?: AST, infered?: Context) {
         let errmsg: any;
         this.state.inferId = infered ? Object.keys(infered).length : 0;
         this.state.inferValues = infered ?? {};
         this.state.errormsg = [];
         const nast = this.preprocessInfered(ast);
         try {
-            this.check(nast, {}, false);
+            this.check(nast, context, false);
         } catch (e) {
             errmsg = e;
         }
         this.afterCheckType(nast, ast);
         if (this.state.errormsg.length) throw this.state.errormsg[0].msg;
-        if (errmsg) errmsg;
+        if (errmsg) throw errmsg;
         if (outast) {
             Core.assign(outast, nast);
             while (Core.replaceByMatch(outast, this.state.inferValues, /^\?/));
@@ -339,6 +339,7 @@ export class Core {
             }
             const tap = this.check(ast.nodes[1], context, ignoreErr);
             if (!tfn || !tap) return;
+            if (!tfn.nodes) this.error(ast, "非函数尝试作用", ignoreErr);
             if (!this.equal(tfn.nodes[0], tap, context)) this.error(ast, "函数作用类型不匹配", ignoreErr);
             else if (tfn.type === "->") {
                 // reffering
@@ -497,7 +498,7 @@ export class Core {
             this.replaceVar(tempB1, b.name, wrapVar(a.name));
             return this.equal(a.nodes[1], tempB1, assignContext({ [a.name]: a.nodes[0] }, context));
         }
-        if (Object.keys(this.state.inferValues).length > 512) { 
+        if (Object.keys(this.state.inferValues).length > 512) {
             return false; // two many infereds, something bad happens
         }
         // expand defs
@@ -560,17 +561,17 @@ export class Core {
                 return true;
             }
             return m1 || m2;
-        }else if (ast.type === "S") {
-                // nondependenet func to ->
-                const m1 = this.reduce(ast.nodes[0]);
-                const m2 = this.reduce(ast.nodes[1]);
-                const codomain = ast.nodes[1];
-                if (!Core.getFreeVars(codomain).has(ast.name)) {
-                    ast.name = "";
-                    ast.type = "X";
-                    return true;
-                }
-                return m1 || m2;
+        } else if (ast.type === "S") {
+            // nondependenet func to ->
+            const m1 = this.reduce(ast.nodes[0]);
+            const m2 = this.reduce(ast.nodes[1]);
+            const codomain = ast.nodes[1];
+            if (!Core.getFreeVars(codomain).has(ast.name)) {
+                ast.name = "";
+                ast.type = "X";
+                return true;
+            }
+            return m1 || m2;
         } else if (ast.type === "apply") {
             const [fn, ap] = ast.nodes;
             if (fn.type === "L") {
@@ -891,6 +892,55 @@ export class Compute {
                     modified = true; continue;
                 }
             }
+
+            // indnat C 0 s num
+            if (fn === "ind_nat" && matched.length > 5) {
+                // indnat C c0 cs 0 = c0
+                if (matched[5].name === "0") {
+                    let tail = matched.length - 6;
+                    while (tail--) ast = ast.nodes[0];
+                    Core.assign(ast, matched[3], true);
+                    modified = true; continue;
+                }
+                // indnat C c0 cs (succ ?) = cs ? indnat C c0 cs (?)
+                if (matched[5].type === "apply" && matched[5].nodes[0].name === "succ") {
+                    let tail = matched.length - 6;
+                    while (tail--) ast = ast.nodes[0];
+                    const cn = matched[5].nodes[1];
+
+                    Core.assign(ast, wrapApply(matched[4], cn, wrapApply(matched[1], matched[2], matched[3], matched[4], cn)), true);
+                    modified = true; continue;
+                }
+                // indnat C c0 cs num = cs ? indnat C c0 cs (?)
+                try {
+                    let b = BigInt(matched[5].name);
+                    let tail = matched.length - 6;
+                    while (tail--) ast = ast.nodes[0];
+
+                    let c0 = matched[3];
+                    let cs = matched[4];
+                    if (cs.type === "L" && cs.nodes[1].type === "L" && !Core.getFreeVars(cs.nodes[1].nodes[1]).has(cs.nodes[1].name)) {
+                        Core.assign(ast, wrapApply(matched[4], wrapVar(String(b - 1n)), wrapVar("??")), true);
+                        modified = true; continue;
+                    }
+                    let expandDepth = 2;
+                    // indnat C c0 cs 5 = cs 4 (cs 3 (cs 2 (cs 1(c0))))
+                    let nast = ast;
+                    while (true) {
+                        expandDepth--;
+                        if (b === 0n) {
+                            Core.assign(nast, c0); break;
+                        }
+                        Core.assign(nast, wrapApply(cs, wrapVar(String(b)), wrapVar("??")));
+                        nast = nast.nodes[1];
+                        b--;
+                        if (!expandDepth) {
+                            Core.assign(nast, wrapApply(matched[1], matched[2], c0, cs, wrapVar(String(b))));
+                        }
+                    }
+                    modified = true; continue;
+                } catch (e) { }
+            }
             if (fn === "add" && matched.length > 3) {
                 // add 1 2 := 1+2
                 if (matched[2].type === "var" && matched[3].type === "var") {
@@ -938,7 +988,7 @@ export class Compute {
             }
 
             if (fn === "mul" && matched.length > 3 && matched[2].type === "var" && matched[3].type === "var") {
-                // mul 1 2 := 1+2
+                // mul 1 2 := 1*2
                 try {
                     const bint = BigInt(matched[2].name) * BigInt(matched[3].name);
                     Core.assign(ast, wrapVar(String(bint)), true);

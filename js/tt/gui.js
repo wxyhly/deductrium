@@ -93,7 +93,7 @@ export class TTGui {
             if (this.mode?.length > 1) {
                 this.mode.pop();
                 const newmode = this.mode.slice(1);
-                input.value = this.mode[0].theoremStr;
+                input.value = parser.stringify(this.mode[0].theorem);
                 this.executeTactic(input);
                 for (const m of newmode) {
                     input.value = m;
@@ -103,85 +103,7 @@ export class TTGui {
             }
         });
         document.getElementById("tactic-begin").addEventListener("click", () => {
-            const hint = document.getElementById("tactic-hint");
-            if (!this.mode) {
-                hint.innerText = "请在定理列表中点选待证命题";
-                this.mode = "tactic-begin";
-            }
-            if (this.mode instanceof Array) {
-                const statediv = document.getElementById("tactic-state");
-                const val = input.value;
-                let assist = this.mode[0];
-                this.getHottDefCtxt(this.getInhabitatArray().length);
-                document.getElementById("tactic-errmsg").innerText = "";
-                while (hint.firstChild)
-                    hint.removeChild(hint.firstChild);
-                try {
-                    if (val.startsWith("intros")) {
-                        assist.intros(val.slice(6));
-                    }
-                    else if (val.startsWith("intro")) {
-                        assist.intro(val.slice(5));
-                    }
-                    else if (val.startsWith("apply")) {
-                        assist.apply(val.slice(5));
-                    }
-                    else if (val === "simpl") {
-                        assist.simpl();
-                    }
-                    else if (val.startsWith("destruct")) {
-                        assist.destruct(val.slice(8));
-                    }
-                    else if (val.startsWith("reflexivity")) {
-                        assist.reflexivity();
-                    }
-                    else if (val.startsWith("rewriteBack")) {
-                        assist.rewriteBack(val.slice(11));
-                    }
-                    else if (val.startsWith("rewrite")) {
-                        assist.rewrite(val.slice(7));
-                    }
-                    else if (val.startsWith("qed")) {
-                        assist.qed();
-                        this.updateInhabitList();
-                        const output = this.inhabitList.querySelector(".wrapper:last-of-type input");
-                        output.focus();
-                        output.value = parser.stringify(assist.elem) + ":" + assist.theoremStr;
-                        output.blur();
-                        input.classList.add("hide");
-                        document.getElementById("tactic-remove").classList.add("hide");
-                        this.mode = null;
-                        hint.innerHTML = "";
-                        input.value = "";
-                        statediv.innerHTML = "";
-                        document.getElementById("tactic-autofill").innerHTML = "";
-                        return;
-                    }
-                    else {
-                        throw "未知的证明策略";
-                    }
-                    assist.markTargets();
-                    hint.innerText = "";
-                    this.mode.push(input.value);
-                    input.value = "";
-                    input.focus();
-                    statediv.innerHTML = "";
-                    for (const m of this.mode) {
-                        if (typeof m === "string") {
-                            this.addSpan(statediv, m + " . ").className = "blocked";
-                        }
-                    }
-                    this.updateTacticStateDisplay(assist, statediv);
-                    this.autofillTactics(assist);
-                }
-                catch (e) {
-                    document.getElementById("tactic-errmsg").innerText = e;
-                }
-                const astShow = Core.clone({ type: ":", name: "", nodes: [assist.elem, parser.parse(assist.theoremStr)] });
-                // this.hott.beautify(astShow.nodes[0]);
-                hint.appendChild(this.ast2HTML("", astShow, [], Object.fromEntries(assist.goal.map(g => [g.ast.name, g.type])), this.getInhabitatArray().length));
-                window.scrollTo(0, document.body.clientHeight);
-            }
+            this.addTactic();
         });
     }
     autofillTactics(assist) {
@@ -199,6 +121,11 @@ export class TTGui {
                 if (!t.includes("??")) {
                     exec.click();
                 }
+                else {
+                    inp.focus();
+                    inp.selectionStart = t.indexOf("??");
+                    inp.selectionEnd = inp.selectionStart + 2;
+                }
             });
         }
     }
@@ -206,25 +133,32 @@ export class TTGui {
         if (!assist.goal.length) {
             this.addSpan(statediv, "无目标，请输入qed结束");
         }
-        let count = 0;
-        for (const g of assist.goal) {
+        for (let count = assist.goal.length - 1; count >= 0; count--) {
+            const g = assist.goal[count];
             statediv.appendChild(document.createElement("hr"));
+            const goalDiv = document.createElement("div");
             const scope = Object.keys(g.context).map(n => ({ type: "var", name: n }));
             for (const [k, v] of Object.entries(g.context)) {
-                const vc = Core.clone(v); //this.hott.beautify(vc);
-                statediv.appendChild(this.ast2HTML("", {
+                const vc = Core.clone(v);
+                const ast = {
                     type: ":", name: "", nodes: [
                         { type: "var", name: k }, vc
                     ]
-                }, scope, g.context, this.getInhabitatArray().length));
-                statediv.appendChild(document.createElement("br"));
+                };
+                this.core.checkType(ast, g.context);
+                goalDiv.appendChild(this.ast2HTML("", ast, scope, g.context, this.getInhabitatArray().length));
+                goalDiv.appendChild(document.createElement("br"));
             }
-            statediv.appendChild(document.createElement("br"));
-            this.addSpan(statediv, count++ ? "目标" + (count - 1) + "：" : "当前目标：");
-            const gtypeBeautified = Core.clone(g.type);
-            // this.hott.beautify(gtypeBeautified);
-            statediv.appendChild(this.ast2HTML("", gtypeBeautified, scope, g.context, this.getInhabitatArray().length));
-            statediv.appendChild(document.createElement("br"));
+            goalDiv.appendChild(document.createElement("br"));
+            this.addSpan(goalDiv, count ? "目标" + (count) + "：" : "当前目标：");
+            this.core.checkType(g.type, g.context);
+            goalDiv.appendChild(this.ast2HTML("", g.type, scope, g.context, this.getInhabitatArray().length));
+            if (count) {
+                goalDiv.style.opacity = "0.5";
+                goalDiv.style.backgroundColor = "#DDD";
+            }
+            goalDiv.appendChild(document.createElement("br"));
+            statediv.appendChild(goalDiv);
         }
     }
     addSpan(parentSpan, text) {
@@ -487,7 +421,7 @@ export class TTGui {
             else if (rule.ast.type === "===") {
                 try {
                     this.core.checkType(rule.ast.nodes[0]);
-                    this.core.checkType(rule.ast.nodes[1], null, this.core.state.inferValues);
+                    this.core.checkType(rule.ast.nodes[1], {}, null, this.core.state.inferValues);
                     rule.ast.checked = rule.ast.nodes[0].checked;
                 }
                 catch (e) {
@@ -504,7 +438,7 @@ export class TTGui {
             }
             if (rule.ast.type === "var") {
                 try {
-                    this.core.checkType(rule.ast.checked, null, this.core.state.inferValues);
+                    this.core.checkType(rule.ast.checked, {}, null, this.core.state.inferValues);
                 }
                 catch (e) {
                     console.log(e);
@@ -533,7 +467,6 @@ export class TTGui {
         macro.clear();
         for (const s of sysmacro)
             macro.add(s);
-        // this.hott.beautifys = this.sysDefinedConsts.slice(0);
         this.core.state.userDefs = {};
         if (typeof input === "number") {
             for (let i = 0; i <= input; i++) {
@@ -541,7 +474,7 @@ export class TTGui {
                 if (!def)
                     continue;
                 macro.add(def[0].name);
-                // if (i !== input) this.hott.beautifys.push(def);
+                this.core.state.userDefs[def[0].name] = def[1];
             }
             return input;
         }
@@ -563,7 +496,6 @@ export class TTGui {
                 currentIdx = i;
                 break;
             }
-            // this.hott.beautifys.push(def);
             this.core.state.userDefs[def[0].name] = def[1];
         }
         return currentIdx ?? arr.indexOf(input);
@@ -611,11 +543,9 @@ export class TTGui {
             while (div.firstChild) {
                 div.removeChild(div.firstChild);
             }
-            // this.hott.startTimer();
             let type;
             if (ast) {
                 try {
-                    // astexpd = this.hott.parse(input.value);
                     if (ast.type === ":=") {
                         if (ast.nodes[0].type !== "var") {
                             throw ":=符号左侧仅允许出现自定义常量";
@@ -624,7 +554,7 @@ export class TTGui {
                         if (this.core.checkConst(defname))
                             throw defname + "的定义重复";
                         const inferedAst = {};
-                        this.core.checkType(ast.nodes[1], inferedAst);
+                        this.core.checkType(ast.nodes[1], {}, inferedAst);
                         macro.add(defname);
                         const defContent = ast.nodes[1];
                         if (defContent.type === ":") {
@@ -657,14 +587,13 @@ export class TTGui {
                     this.addSpan(div, " &nbsp; : &nbsp; ");
                 if (type) {
                     try {
-                        this.core.checkType(type, null, this.core.state.inferValues);
+                        this.core.checkType(type, {}, null, this.core.state.inferValues);
                     }
                     catch (e) {
                     }
                     div.appendChild(this.ast2HTML("", type, [], {}, currentIdx));
                 }
             }
-            // this.hott.stopTimer();
             if (nextInput) {
                 nextInput.onblur({});
             }
@@ -781,6 +710,12 @@ export class TTGui {
             const ast = parser.parse(inputDom.value);
             if (!ast)
                 throw "空表达式";
+            if (ast.type === "===")
+                throw "不是命题类型";
+            if (ast.type === ":=")
+                throw "不是命题类型";
+            if (ast.type === ":")
+                throw "已断言该类型有值";
             const type = this.core.checkType(ast);
             if (type.type !== "apply" || type.nodes[0].name !== "U")
                 throw "不是命题类型";
@@ -789,7 +724,7 @@ export class TTGui {
             this.autofillTactics(assist);
             document.getElementById("tactic-remove").classList.remove("hide");
             document.getElementById("tactic-hint").innerText = "";
-            document.getElementById("tactic-hint").appendChild(this.ast2HTML("", { type: ":", name: "", nodes: [assist.elem, parser.parse(inputDom.value)] }, [], Object.fromEntries(assist.goal.map(g => [g.ast.name, g.type])), this.getInhabitatArray().length));
+            document.getElementById("tactic-hint").appendChild(this.ast2HTML("", { type: ":", name: "", nodes: [assist.elem, ast] }, [], Object.fromEntries(assist.goal.map(g => [g.ast.name, g.type])), this.getInhabitatArray().length));
             document.getElementById("tactic-input").classList.remove("hide");
             document.getElementById("tactic-input").focus();
             this.updateTacticStateDisplay(assist, document.getElementById("tactic-state"));
@@ -798,6 +733,70 @@ export class TTGui {
         catch (e) {
             document.getElementById("tactic-hint").innerText = "命题格式有误：" + e;
             this.mode = null;
+        }
+    }
+    addTactic() {
+        const input = document.getElementById("tactic-input");
+        const hint = document.getElementById("tactic-hint");
+        if (!this.mode) {
+            hint.innerText = "请在定理列表中点选待证命题";
+            this.mode = "tactic-begin";
+        }
+        if (this.mode instanceof Array) {
+            const statediv = document.getElementById("tactic-state");
+            const val = input.value.trim();
+            const cmdPosPtr = val.indexOf(" ");
+            const cmd = cmdPosPtr === -1 ? val : val.slice(0, cmdPosPtr);
+            const param = cmdPosPtr === -1 ? null : val.slice(cmdPosPtr);
+            let assist = this.mode[0];
+            this.getHottDefCtxt(this.getInhabitatArray().length);
+            document.getElementById("tactic-errmsg").innerText = "";
+            while (hint.firstChild)
+                hint.removeChild(hint.firstChild);
+            try {
+                if (cmd === "qed") {
+                    assist.qed();
+                    this.updateInhabitList();
+                    const output = this.inhabitList.querySelector(".wrapper:last-of-type input");
+                    output.focus();
+                    output.value = parser.stringify(assist.elem) + ":" + parser.stringify(assist.theorem);
+                    output.blur();
+                    input.classList.add("hide");
+                    document.getElementById("tactic-remove").classList.add("hide");
+                    this.mode = null;
+                    hint.innerHTML = "";
+                    input.value = "";
+                    statediv.innerHTML = "";
+                    document.getElementById("tactic-autofill").innerHTML = "";
+                    return;
+                }
+                else if (assist[cmd])
+                    assist[cmd](param);
+                else {
+                    throw "未知的证明策略";
+                }
+                assist.markTargets();
+                hint.innerText = "";
+                this.mode.push(input.value);
+                input.value = "";
+                input.focus();
+                statediv.innerHTML = "";
+                for (const m of this.mode) {
+                    if (typeof m === "string") {
+                        this.addSpan(statediv, m + " . ").className = "blocked";
+                    }
+                }
+                this.updateTacticStateDisplay(assist, statediv);
+                this.autofillTactics(assist);
+            }
+            catch (e) {
+                document.getElementById("tactic-errmsg").innerText = e;
+            }
+            const astShow = { type: ":", name: "", nodes: [assist.elem, assist.theorem] };
+            this.core.checkType(astShow);
+            assist.markTargets();
+            hint.appendChild(this.ast2HTML("", astShow, [], Object.fromEntries(assist.goal.map(g => [g.ast.name, g.type])), this.getInhabitatArray().length));
+            window.scrollTo(0, document.body.clientHeight);
         }
     }
     getInhabitatArray() {

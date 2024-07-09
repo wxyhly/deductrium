@@ -26,7 +26,6 @@ export function initTypeSystem() {
 
     typeName = "False";
     addRule("类型", "False:U");
-    addRule("构造", "true:False");
     addRule("@解构", "@ind_False : Pu:U@,PC:False->Uu,Px:False,C x");
     addRule("@解构", "ind_False := @ind_False _");
     addRule("_解构", "ind_False");
@@ -52,10 +51,10 @@ export function initTypeSystem() {
     addRule("@解构", "ind_nat := @ind_nat _");
     addRule("_解构", "ind_nat");
     addRule("计算", "ind_nat ?C ?c0 ?csucc 0 === ?c0");
-    addRule("计算", "ind_nat ?C ?c0 ?csucc (succ ?cn) === ?csucc ?cn (ind_nat ?C ?c0 ?csucc ?cn)");
+    addRule("计算", "ind_nat ?C ?c0 ?csucc (succ ?n) === ?csucc ?n (ind_nat ?C ?c0 ?csucc ?n)");
     typeName = "(nat)";
-    addRule("定义", "add:=ind_nat (Lx:nat.nat->nat) (Lx:nat.x) (Ly:nat.Lh:nat->nat.Lx:nat.succ (h x))");
-    addRule("定义", "mul:=ind_nat (Lx:nat.nat->nat) (Lx:nat.0) (Ly:nat.Lh:nat->nat.Lx:nat.add (h x) x)");
+    addRule("定义", "add:=Lx:nat.Ly:nat.ind_nat (Lx:nat.nat->nat) (Lx:nat.x) (Ly:nat.Lh:nat->nat.Lx:nat.succ (h x))y x");
+    addRule("定义", "mul:=Lx:nat.Ly:nat.ind_nat (Lx:nat.nat->nat) (Lx:nat.0) (Ly:nat.Lh:nat->nat.Lx:nat.add (h x) x)y x");
 
 
     typeName = "eq";
@@ -75,6 +74,17 @@ export function initTypeSystem() {
     addRule("_解构", "ind_eq2");
     addRule("计算", "ind_eq ?x ?C ?crfl ?x (refl ?x) === ?crlf");
     addRule("计算", "ind_eq2 ?C ?crfl ?x ?x (refl ?x) === ?crfl ?x");
+    typeName = "(eq)";
+    addRule("定义", "@ap:=La:U_.Lb:U_.Lx:a.Ly:a.Lf:a->b.Lp:eq x y.ind_eq x (Ly:a.Lm:eq x y.eq (f x) (f y)) rfl y p");
+    addRule("定义", "ap:=@ap _ _ _ _");
+    addRule("定义", "@trans:=La:U_.Lx:a.Ly:a.Lb:a->U_.ind_eq x (Ly:a.Lm:eq x y.(b x)->(b y)) (Lx:b x.x) y");
+    addRule("定义", "trans:=@trans _ _ _");
+    addRule("定义", "@apd:=La:U_.Lx:a.Ly:a.Lb:a->U_.Lf:Px:a,b x.Lp:eq x y.ind_eq x (Ly:a.Lp:eq x y. eq (@trans a x y b p (f x)) (f y)) (refl (f x)) y p");
+    addRule("定义", "apd:=@apd _ _ _");
+    addRule("定义", "@inveq:=La:U_.Lx:a.ind_eq x (Ly:a.Lm:eq x y.eq y x) rfl");
+    addRule("定义", "inveq:=@inveq _ _ _");
+    addRule("定义", "@compeq:=La:U_.Lx:a.Ly:a.Lz:a.ind_eq x (Ly:a.Lm:eq x y.(eq y z)->(eq x z)) (Lm:eq x z.m) y");
+    addRule("定义", "compeq:=@compeq _ _ _ _");
 
 
     typeName = "Prod";
@@ -114,44 +124,5 @@ export function initTypeSystem() {
     addRule("计算", "ind_Sum ?C ?cinl ?cinr (inl ?xa) === ?cinl ?xa");
     addRule("计算", "ind_Sum ?C ?cinl ?cinr (inr ?xb) === ?cinr ?xb");
 
-
-    // state: State = {
-    //     sysTypes: {
-    //         "nat": parser.parse("U"),
-    //         "Bool": parser.parse("U"),
-    //         "0b": parser.parse("Bool"),
-    //         "1b": parser.parse("Bool"),
-    //         "True": parser.parse("U"),
-    //         "true": wrapVar("True"),
-    //         "succ": parser.parse("nat->nat"),
-    //         "False": parser.parse("U"),
-    //         "@ind_nat": parser.parse("Pu:U@,PC:nat->Uu,Pc0:C 0,Pcs:(Px:nat,Py:C x,C (succ x)),Px:nat,C x"),
-    //         "@ind_True": parser.parse("Pu:U@,PC:True->Uu,Pc:C true,Px:True,C x"),
-    //         "@ind_False": parser.parse("Pu:U@,PC:False->Uu,Px:False,C x"),
-    //         "@ind_Bool": parser.parse("Pu:U@,PC:Bool->Uu,Pc0b:C 0b,Pc1b:C 1b,Px:Bool,C x"),
-    //         "@ind_eq2": parser.parse("Pu:U@,Pv:U@,Pa:Uu,PC:Px:a,Py:a,(@eq u a x y)->Uv,Pc:Px:a,C x x (@refl u a x),Px:a,Py:a,Pm:@eq u a x y,C x y m"),
-    //         "@ind_eq": parser.parse("Pu:U@,Pv:U@,Pa:Uu,Px:a,PC:Py:a,(@eq u a x y)->Uv,Pc:C x (@refl u a x),Py:a,Pm:@eq u a x y,C y m"),
-    //         "@eq": parser.parse("Pu:U@,Pa:Uu,a->a->Uu"),
-    //         "@refl": parser.parse("Pu:U@,Pa:Uu,Px:a,@eq u a x x"),
-    //         "@Prod": parser.parse("Pu:U@,Pv:Un,Pa:Uu,Pb:Uv,a->b->(U(@max u v))"),
-    //         "@pair": parser.parse("Pu:U@,Pv:U@,Pa:Uu,Pb:Px:a,Uv,  Pxa:a,Pxb:b xa, Sx:a,b x"),
-    //         "funext": parser.parse("Pf:_,Pg:_,(homotopy f g)->(eq f g)"),
-    //         // "ua":parser.parse(""),
-    //     },
-    //     sysDefs: {
-    //         "eq": parser.parse("@eq _ _"),
-    //         "rfl": parser.parse("@refl _ _ _"),
-    //         "refl": parser.parse("@refl _ _"),
-    //         "pair": parser.parse("@pair _ _ _"),
-    //         "ind_nat": parser.parse("@ind_nat _"),
-    //         "ind_True": parser.parse("@ind_True _"),
-    //         "ind_False": parser.parse("@ind_False _"),
-    //         "ind_Bool": parser.parse("@ind_Bool _"),
-    //         "ind_eq": parser.parse("@ind_eq _ _ _"),
-    //         "ind_eq2": parser.parse("@ind_eq2 _ _ _"),
-    //     },
-    //     userDefs: {},
-    //     errormsg: []
-    // };
     return ruleList;
 }

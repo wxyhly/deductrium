@@ -1,6 +1,6 @@
 export type AST = { type: string, name: string, nodes?: AST[], checked?: AST, err?: any };
 export class ASTParser {
-    keywords = [":=", "->", "~=", "===","@ind_Sum","ind_Sum","@Sum","Sum","@ind_Prod","ind_Prod","@Prod","Prod"];
+    keywords = [":=", "->", "~=", "===", "@ind_Sum", "ind_Sum", "@Sum", "Sum", "@ind_Prod", "ind_Prod", "@Prod", "Prod"];
     symChar = ".:,()PSLX~*+";
     ast: AST;
     cursor: number = 0;
@@ -10,7 +10,7 @@ export class ASTParser {
         const nd = ast.nodes;
         if (ast.type === "->") {
             return `(${this.stringify(nd[0])}→${this.stringify(nd[1])})`;
-        }if (ast.type === "===") {
+        } if (ast.type === "===") {
             return `(${this.stringify(nd[0])}===${this.stringify(nd[1])})`;
         }
         if (ast.type === "~") {
@@ -21,6 +21,9 @@ export class ASTParser {
         }
         if (ast.type === ",") {
             return `(${this.stringify(nd[0])},${this.stringify(nd[1])})`;
+        }
+        if (ast.type === "+") {
+            return `(${this.stringify(nd[0])}+${this.stringify(nd[1])})`;
         }
         if (ast.type === "~=") {
             return `(${this.stringify(nd[0])}≃${this.stringify(nd[1])})`;
@@ -102,7 +105,7 @@ export class ASTParser {
         if (word !== "") {
             arr.push(word);
         }
-        this.tokens = arr.map(token => token.startsWith("#keyword") ? this.keywords[token.slice(8)] : token.replace("：",":"));
+        this.tokens = arr.map(token => token.startsWith("#keyword") ? this.keywords[token.slice(8)] : token.replace("：", ":"));
     }
     private prevToken(index: number) {
         return this.tokens[this.cursor - index - 1];
@@ -132,7 +135,7 @@ export class ASTParser {
             const param = this.prevToken(1);
             this.expectSym(":");
             const paramType = this.type();
-            this.expectSym(".");
+            if (!(this.acceptSym(".") || this.acceptSym(","))) throw "Lambda未匹配“.”号";
             const fnbody = this.type();
             val = { type: "L", name: param, nodes: [paramType, fnbody] };
         } else if (this.acceptSym("P")) {
@@ -140,7 +143,7 @@ export class ASTParser {
             const param = this.prevToken(1);
             this.expectSym(":");
             const paramType = this.type();
-            this.expectSym(",");
+            if (!(this.acceptSym(".") || this.acceptSym(","))) throw "Pi未匹配“,”号";
             const fnbody = this.type();
             val = { type: "P", name: param, nodes: [paramType, fnbody] };
         } else if (this.acceptSym("S")) {
@@ -160,7 +163,7 @@ export class ASTParser {
                         { type: "var", name: "U" }, { type: "var", name: "@0" }
                     ]
                 };
-            } else if (name.startsWith("U") && name !== "U@"&& isapply !== "(") {
+            } else if (name.startsWith("U") && name !== "U@" && isapply !== "(") {
                 val = {
                     type: "apply", name: "", nodes: [
                         { type: "var", name: "U" },

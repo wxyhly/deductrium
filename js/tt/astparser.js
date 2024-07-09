@@ -22,6 +22,9 @@ export class ASTParser {
         if (ast.type === ",") {
             return `(${this.stringify(nd[0])},${this.stringify(nd[1])})`;
         }
+        if (ast.type === "+") {
+            return `(${this.stringify(nd[0])}+${this.stringify(nd[1])})`;
+        }
         if (ast.type === "~=") {
             return `(${this.stringify(nd[0])}≃${this.stringify(nd[1])})`;
         }
@@ -138,7 +141,8 @@ export class ASTParser {
             const param = this.prevToken(1);
             this.expectSym(":");
             const paramType = this.type();
-            this.expectSym(".");
+            if (!(this.acceptSym(".") || this.acceptSym(",")))
+                throw "Lambda未匹配“.”号";
             const fnbody = this.type();
             val = { type: "L", name: param, nodes: [paramType, fnbody] };
         }
@@ -147,7 +151,8 @@ export class ASTParser {
             const param = this.prevToken(1);
             this.expectSym(":");
             const paramType = this.type();
-            this.expectSym(",");
+            if (!(this.acceptSym(".") || this.acceptSym(",")))
+                throw "Pi未匹配“,”号";
             const fnbody = this.type();
             val = { type: "P", name: param, nodes: [paramType, fnbody] };
         }

@@ -1,20 +1,18 @@
 import { ASTParser } from "./astparser.js";
-import { Core } from "./core.js";
+import { Compute, Core, wrapApply, wrapVar } from "./core.js";
 let core = new Core;
 let parser = new ASTParser;
 export class Assist {
     theorem;
-    theoremStr;
     goal;
     elem;
     constructor(h, target) {
         core = h;
         if (typeof target === "string") {
-            this.theoremStr = target;
             target = parser.parse(target);
         }
         this.theorem = Core.clone(target);
-        this.elem = { type: "var", name: "(?#0)" };
+        this.elem = { type: "var", name: "(?#0)", checked: target };
         this.goal = [{ context: {}, type: target, ast: this.elem }];
     }
     ls() {
@@ -33,6 +31,7 @@ export class Assist {
         let count = 0;
         for (const g of this.goal) {
             g.ast.name = "?#" + (count++);
+            g.ast.checked = g.type;
         }
     }
     autofillTactics() {
@@ -43,7 +42,14 @@ export class Assist {
         }
         const type = g.type;
         const introVar = (n) => !type.name || g.context[type.name] ? Core.getNewName(n, new Set(Object.keys(g.context))) : type.name;
-        if (type.type === "P") {
+        if (type.type === "+") {
+            tactics.push("left");
+            tactics.push("right");
+        }
+        else if (type.type === "S") {
+            tactics.push("ex ??");
+        }
+        else if (type.type === "P") {
             tactics.push("intro " + introVar(type.name));
         }
         else if (type.name === "True") {
@@ -58,12 +64,13 @@ export class Assist {
             if (!matchEq)
                 matchEq = Core.match(type, parser.parse("@eq $3 $4 $1 $2"), /^\$/);
             if (matchEq && core.equal(matchEq["$1"], matchEq["$2"], g.context)) {
-                tactics.push("reflexivity");
+                tactics.push("rfl");
                 return tactics;
             }
         }
         const ntype = Core.clone(type);
-        core.expandDef(ntype);
+        core.reduce(ntype);
+        Compute.exec(ntype);
         if (!Core.exactEqual(type, ntype)) {
             tactics.push("simpl");
         }
@@ -71,8 +78,8 @@ export class Assist {
             //todo eq'''
             const matchEq = Core.match(typ, parser.parse("eq $1 $2"), /^\$/);
             if (matchEq) {
-                tactics.push("rewrite " + val);
-                tactics.push("rewriteBack " + val);
+                tactics.push("rw " + val);
+                tactics.push("rwb " + val);
             }
             if (core.equal(typ, type, g.context))
                 tactics.push("apply " + val);
@@ -86,7 +93,8 @@ export class Assist {
         return tactics;
     }
     isIndType(typ) {
-        return typ.name === "nat" || typ.name === "Bool" || typ.name === "True" || typ.name === "False";
+        return (typ.name === "nat" || typ.name === "Bool" || typ.name === "True" || typ.name === "False"
+            || typ.type === "+");
     }
     intro(s) {
         s = s.trim();
@@ -110,7 +118,7 @@ export class Assist {
         Core.assign(goal.ast, { "type": "L", name: s, nodes: [tartgetType.nodes[0], { type: "var", name: "(?#0)" }] });
         // console.log(s + " : " + core.print(tartgetType.nodes[0]));
         const newtype = Core.clone(tartgetType.nodes[1]);
-        Core.replaceVar(newtype, goal.type.name, { type: "var", name: s });
+        core.replaceVar(newtype, goal.type.name, { type: "var", name: s });
         Core.assign(goal.type, newtype);
         // then set goal.ast to refer the new smaller hole
         goal.ast = goal.ast.nodes[1];
@@ -150,118 +158,104 @@ export class Assist {
             throw "无法对类型" + parser.stringify(astType) + "使用apply策略作用于类型" + parser.stringify(goal.type);
         }
     }
-    rewrite(eq) {
+    rw(eq) {
         if (typeof eq === "string")
             eq = parser.parse(eq);
         const goal = this.goal.shift();
         if (!goal)
             throw "无证明目标，请使用qed命令结束证明";
-        const matched = Core.match(core.check(eq, goal.context, false), parser.parse("eq $2 $3"), /^\$/);
+        const matched = Core.match(core.check(eq, goal.context, false), parser.parse("eq $2 $3"), /^\$/) || Core.match(core.check(eq, goal.context, false), parser.parse("@eq $0 $1 $2 $3"), /^\$/);
         if (!matched) {
             this.goal.unshift(goal);
             throw "使用rewrite策略必须提供一个相等类型";
         }
-        const fn = this.genReplaceFn(goal.type, matched["$2"], goal.context);
+        const fnparam = Core.getNewName("repl", goal.context);
+        const fnbody = this.genReplaceFn(goal.type, matched["$2"], fnparam, goal.context);
         // eq: eleq: eq t a b
         // type: F(a) 
         // F(a)->F(a), eleq  |- F(b)->F(a) 
         // newgoal: F(b)
+        const fn = { type: "L", name: fnparam, nodes: [matched["$2"].checked, fnbody] };
         matched["$fn"] = fn;
         matched["$eq"] = eq;
+        matched["$type"] = matched["$2"].checked;
         const ctxtSet = new Set(Object.keys(goal.context));
         const x = Core.getNewName("x", ctxtSet);
         const y = Core.getNewName("y", ctxtSet);
         const m = Core.getNewName("m", ctxtSet);
-        let newAst = parser.parse(`ind_eq (L${y}:_.L${m}:eq ${x} ${y}. P${m}:$fn ${y}, $fn ${x}) (L${m}:$fn ${x}.${m}) $2 $3 $eq`);
+        let newAst = parser.parse(`ind_eq $2 (L${y}:$type.L${m}:eq $2 ${y}. P${m}:$fn ${y}, $fn $2) (L${m}:$fn $2.${m}) $3 $eq`);
         Core.replaceByMatch(newAst, matched, /^\$/);
         newAst = { type: "apply", name: "", nodes: [newAst, { type: "var", name: "(?#0)" }] };
+        core.reduce(newAst);
         Core.assign(goal.ast, newAst);
         goal.ast = goal.ast.nodes[1];
         goal.type = { type: "apply", name: "", nodes: [fn, matched["$3"]] };
-        core.expandDef(goal.type);
+        core.reduce(goal.type);
         this.goal.unshift(goal);
         return this;
     }
-    rewriteBack(eq) {
+    rwb(eq) {
         if (typeof eq === "string")
             eq = parser.parse(eq);
         const goal = this.goal.shift();
         if (!goal)
             throw "无证明目标，请使用qed命令结束证明";
-        const matched = Core.match(core.check(eq, goal.context, false), parser.parse("eq $1 $2 $3"), /^\$/);
+        const matched = Core.match(core.check(eq, goal.context, false), parser.parse("eq $2 $3"), /^\$/) || Core.match(core.check(eq, goal.context, false), parser.parse("@eq $0 $1 $2 $3"), /^\$/);
         if (!matched) {
             this.goal.unshift(goal);
             throw "使用rewrite策略必须提供一个相等类型";
         }
-        const fn = this.genReplaceFn(goal.type, matched["$3"], goal.context);
+        const fnparam = Core.getNewName("repl", goal.context);
+        const fnbody = this.genReplaceFn(goal.type, matched["$3"], fnparam, goal.context);
         // eq: eleq: eq t a b
         // type: F(b) 
         // F(b)->F(b), eleq  |- F(a)->F(b) 
         // newgoal: F(b)
+        const fn = { type: "L", name: fnparam, nodes: [matched["$3"].checked, fnbody] };
         matched["$fn"] = fn;
         matched["$eq"] = eq;
+        matched["$type"] = matched["$3"].checked;
         const ctxtSet = new Set(Object.keys(goal.context));
         const x = Core.getNewName("x", ctxtSet);
         const y = Core.getNewName("y", ctxtSet);
         const m = Core.getNewName("m", ctxtSet);
-        let newAst = parser.parse(`ind_eq $1 (L${x}:$1.L${y}:$1.L${m}:eq $1 ${x} ${y}. P${m}:$fn ${x}, $fn ${y}) (L${y}:$1.L${m}:$fn ${y}.${m}) $2 $3 $eq`);
+        let newAst = parser.parse(`ind_eq $2 (L${y}:$type.L${m}:eq $2 ${y}. P${m}:$fn $2, $fn ${y}) (L${m}:$fn $2.${m}) $3 $eq`);
         Core.replaceByMatch(newAst, matched, /^\$/);
         newAst = { type: "apply", name: "", nodes: [newAst, { type: "var", name: "(?#0)" }] };
+        core.reduce(newAst);
         Core.assign(goal.ast, newAst);
         goal.ast = goal.ast.nodes[1];
         goal.type = { type: "apply", name: "", nodes: [fn, matched["$2"]] };
-        core.expandDef(goal.type);
+        core.reduce(goal.type);
         this.goal.unshift(goal);
         return this;
     }
-    genReplaceFn(ast, search, context = {}, searchType = core.check(search, context, false), searchFVs = Core.getFreeVars(search), newCtxt = context) {
-        const x = Core.getNewName("repl", new Set(Object.keys(context)));
-        if (core.equal(ast, search, context)) {
-            return { type: "L", name: x, nodes: [searchType, { type: "var", name: x }] };
+    genReplaceFn(ast, search, varname, context) {
+        if (Core.exactEqual(ast, search)) {
+            return { type: "var", name: varname };
         }
         if (ast.type === "var") {
-            return { type: "L", name: x, nodes: [searchType, Core.clone(ast)] };
-        }
-        if (ast.type === "apply") {
-            const l1 = { type: "apply", name: "", nodes: [this.genReplaceFn(ast.nodes[0], search, context, searchType, searchFVs), { type: "var", name: x }] };
-            const l2 = { type: "apply", name: "", nodes: [this.genReplaceFn(ast.nodes[1], search, context, searchType, searchFVs), { type: "var", name: x }] };
-            const fn = {
-                type: "L", name: x, nodes: [searchType, { type: "apply", name: "", nodes: [l1, l2] }]
-            };
-            core.expandDef(fn);
-            return fn;
+            return ast;
         }
         if (ast.type === "L" || ast.type === "P" || ast.type === "S") {
-            const x = Core.getNewName("repl", new Set([ast.name, ...Object.keys(context)]));
-            const l1 = { type: "apply", name: "", nodes: [this.genReplaceFn(ast.nodes[0], search, context, searchType, searchFVs), { type: "var", name: x }] };
-            let l2;
-            if (searchFVs.has(ast.name)) {
-                l2 = ast.nodes[1];
-            }
-            else {
-                const ctxt = Object.assign({}, context);
-                if (Core.getFreeVars(ast.nodes[0]).has(ast.name)) {
-                    // cancel dangerous loop quote by alpha conversion
-                    // x:c, x: f(x) => x':c, x:f(x')
-                    const newVarname = Core.getNewName(ast.name, new Set(Object.keys(ctxt)));
-                    ctxt[newVarname] = ctxt[ast.name];
-                    const newtype = Core.clone(ast.nodes[0]);
-                    Core.replaceVar(newtype, ast.name, { type: "var", name: newVarname });
-                    ctxt[ast.name] = newtype;
+            if (ast.type === search.type) {
+                if (ast.name !== search.name) {
+                    // todo
                 }
-                ctxt[ast.name] = ast.nodes[0];
-                const newCtxt = Object.assign({}, ctxt);
-                newCtxt[ast.name] = l1;
-                l2 = { type: "apply", name: "", nodes: [this.genReplaceFn(ast.nodes[1], search, ctxt, searchType, searchFVs, newCtxt), { type: "var", name: x }] };
+                // todo
             }
-            const fn = {
-                type: "L", name: x, nodes: [searchType, { type: ast.type, name: ast.name, nodes: [l1, l2] }]
-            };
-            core.expandDef(fn);
-            return fn;
+            const nast = Core.clone(ast);
+            nast.nodes[1] = this.genReplaceFn(nast.nodes[1], search, varname, context);
+            return nast;
+        }
+        if (ast.nodes?.length === 2) {
+            const nast = Core.clone(ast);
+            nast.nodes[1] = this.genReplaceFn(nast.nodes[1], search, varname, context);
+            nast.nodes[0] = this.genReplaceFn(nast.nodes[0], search, varname, context);
+            return nast;
         }
     }
-    reflexivity() {
+    rfl() {
         const goal = this.goal.shift();
         if (!goal)
             throw "无证明目标，请使用qed命令结束证明";
@@ -270,13 +264,13 @@ export class Assist {
             matched = Core.match(goal.type, parser.parse("@eq $3 $4 $1 $2"), /^\$/);
         if (!matched) {
             this.goal.unshift(goal);
-            throw "无法对非相等类型使用reflexivity策略";
+            throw "无法对非相等类型使用rfl策略";
         }
         if (!core.equal(matched["$1"], matched["$2"], goal.context)) {
             this.goal.unshift(goal);
-            throw "使用reflexivity策略失败：等式两边无法化简至相等";
+            throw "使用rfl策略失败：等式两边无法化简至相等";
         }
-        const newAst = parser.parse("refl");
+        const newAst = parser.parse("rfl");
         Core.replaceByMatch(newAst, matched, /^\$/);
         Core.assign(goal.ast, newAst);
         return this;
@@ -290,7 +284,10 @@ export class Assist {
         const goal = this.goal.shift();
         if (!goal)
             throw "无证明目标，请使用qed命令结束证明";
-        core.expandDef(goal.type);
+        if (!core.reduce(goal.type)) {
+            Compute.exec(goal.type);
+        }
+        ;
         this.goal.unshift(goal);
         return this;
     }
@@ -314,8 +311,8 @@ export class Assist {
             Core.assign(goal.ast, newAst);
             const type0b = Core.clone(goal.type);
             const type1b = Core.clone(goal.type);
-            Core.replaceVar(type0b, n, { type: "var", name: "0b" });
-            Core.replaceVar(type1b, n, { type: "var", name: "1b" });
+            core.replaceVar(type0b, n, { type: "var", name: "0b" });
+            core.replaceVar(type1b, n, { type: "var", name: "1b" });
             goal.type = type0b;
             const anotherGoal = {
                 ast: goal.ast.nodes[0].nodes[1],
@@ -325,14 +322,17 @@ export class Assist {
             goal.ast = goal.ast.nodes[0].nodes[0].nodes[1];
             this.goal.unshift(goal);
             this.goal.unshift(anotherGoal);
+            delete goal.context[n];
+            delete anotherGoal.context[n];
         }
         else if (nType.name === "True") {
             let newAst = parser.parse(`ind_True (L${n}:$typeN.$1) (?#0) $nast`);
             Core.replaceByMatch(newAst, matched, /^\$/);
             Core.assign(goal.ast, newAst);
-            Core.replaceVar(goal.type, n, { type: "var", name: "true" });
+            core.replaceVar(goal.type, n, { type: "var", name: "true" });
             goal.ast = goal.ast.nodes[0].nodes[1];
             this.goal.unshift(goal);
+            delete goal.context[n];
         }
         else if (nType.name === "False") {
             let newAst = parser.parse(`ind_False (L${n}:$typeN.$1) $nast`);
@@ -355,9 +355,9 @@ export class Assist {
             const type0 = Core.clone(goal.type);
             const typen = Core.clone(goal.type);
             const typeSn = Core.clone(goal.type);
-            Core.replaceVar(type0, n, { type: "var", name: "0" });
-            Core.replaceVar(typen, n, { type: "var", name: destructed });
-            Core.replaceVar(typeSn, n, { type: "apply", name: "", nodes: [{ type: "var", name: "succ" }, { type: "var", name: destructed }] });
+            core.replaceVar(type0, n, { type: "var", name: "0" });
+            core.replaceVar(typen, n, { type: "var", name: destructed });
+            core.replaceVar(typeSn, n, { type: "apply", name: "", nodes: [{ type: "var", name: "succ" }, { type: "var", name: destructed }] });
             matched["$indType"] = typen;
             Core.replaceByMatch(newAst, matched, /^\$/);
             Core.assign(goal.ast, newAst);
@@ -369,13 +369,70 @@ export class Assist {
             };
             anotherGoal.context[destructed] = { type: "var", name: "nat" };
             anotherGoal.context[induced] = typen;
-            // delete anotherGoal.context[n];
+            delete anotherGoal.context[n];
             goal.ast = goal.ast.nodes[0].nodes[0].nodes[1];
-            // delete goal.context[n];
+            delete goal.context[n];
+            this.goal.unshift(anotherGoal);
+            this.goal.unshift(goal);
+        }
+        else if (nType.type === "+") {
+            const fnl = Core.getNewName(n + "l", goal.context);
+            const fnr = Core.getNewName(n + "r", goal.context);
+            matched["$typel"] = nType.nodes[0];
+            matched["$typer"] = nType.nodes[1];
+            let newAst = parser.parse(`ind_Sum (L${n}:$typeN.$1) (L${fnl}:$typel.(?#0)) (L${fnr}:$typer.(?#0)) $nast`);
+            Core.replaceByMatch(newAst, matched, /^\$/);
+            Core.assign(goal.ast, newAst);
+            const anotherGoal = {
+                ast: goal.ast.nodes[0].nodes[1].nodes[1],
+                context: Object.assign({ [fnr]: nType.nodes[1] }, goal.context),
+                type: matched["$1"]
+            };
+            delete anotherGoal.context[n];
+            goal.ast = goal.ast.nodes[0].nodes[0].nodes[1].nodes[1];
+            goal.context[fnl] = nType.nodes[0];
+            delete goal.context[n];
             this.goal.unshift(anotherGoal);
             this.goal.unshift(goal);
         }
         return this;
+    }
+    ex(n) {
+        const goal = this.goal.shift();
+        if (!goal)
+            throw "无证明目标，请使用qed命令结束证明";
+        if (goal.type.type !== "S")
+            throw "ex策略只能作用于依赖积类型";
+        const dfn = Core.clone(goal.type);
+        dfn.type = "L";
+        const val = parser.parse(n);
+        Core.assign(goal.ast, wrapApply(wrapVar("pair"), dfn, val, wrapVar("(?#0)")), true);
+        goal.ast = goal.ast.nodes[1];
+        goal.type = wrapApply(dfn, val);
+        core.reduce(goal.type);
+        this.goal.unshift(goal);
+    }
+    left() {
+        const goal = this.goal.shift();
+        if (!goal)
+            throw "无证明目标，请使用qed命令结束证明";
+        if (goal.type.type !== "+")
+            throw "left策略只能作用于和类型";
+        Core.assign(goal.ast, wrapApply(wrapVar("inl"), wrapVar("(?#0)")), true);
+        goal.ast = goal.ast.nodes[1];
+        goal.type = goal.type.nodes[0];
+        this.goal.unshift(goal);
+    }
+    right() {
+        const goal = this.goal.shift();
+        if (!goal)
+            throw "无证明目标，请使用qed命令结束证明";
+        if (goal.type.type !== "+")
+            throw "left策略只能作用于和类型";
+        Core.assign(goal.ast, wrapApply(wrapVar("inr"), wrapVar("(?#0)")), true);
+        goal.ast = goal.ast.nodes[1];
+        goal.type = goal.type.nodes[1];
+        this.goal.unshift(goal);
     }
 }
 //# sourceMappingURL=assist.js.map
