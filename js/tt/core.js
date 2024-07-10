@@ -105,18 +105,19 @@ export class Core {
         }
         return res;
     }
-    replaceVar(ast, name, dst, fvDst = Core.getFreeVars(dst)) {
+    replaceVarInChecked(ast, name, dst, context) {
+        if (ast.checked)
+            this.replaceVar(ast.checked, name, dst, context);
+        if (ast.nodes?.length === 2) {
+            this.replaceVarInChecked(ast.nodes[0], name, dst, context);
+            this.replaceVarInChecked(ast.nodes[1], name, dst, context);
+        }
+    }
+    replaceVar(ast, name, dst, context, fvDst = Core.getFreeVars(dst)) {
         if (ast.type === "var") {
             let nast = ast;
-            let length = Object.keys(this.state.inferValues).length + 1;
-            while (nast.name[0] === "?" && length-- && nast.name !== name) {
-                const temp = this.state.inferValues[nast.name];
-                if (!temp)
-                    break;
-                nast = temp;
-            }
             if (nast.type !== "var") {
-                this.replaceVar(nast, name, dst, fvDst);
+                this.replaceVar(nast, name, dst, context, fvDst);
                 Core.assign(ast, nast);
                 return;
             }
@@ -125,26 +126,36 @@ export class Core {
             Core.assign(ast, dst);
         }
         else if (ast.type === "L" || ast.type === "P" || ast.type === "S") {
-            this.replaceVar(ast.nodes[0], name, dst, fvDst);
+            this.replaceVar(ast.nodes[0], name, dst, context, fvDst);
             if (ast.name === name)
                 return; // bounded
             const fvSrcBody = Core.getFreeVars(ast.nodes[1]);
             if (!fvSrcBody.has(name))
                 return; // not bounded, but not found
-            if (!fvDst.has(ast.name)) {
-                this.replaceVar(ast.nodes[1], name, dst, fvDst);
+            let bounded = false;
+            if (context) {
+                for (const e of fvDst) {
+                    if (context[e] && Core.exactEqual(context[e], ast.nodes[0])) {
+                        bounded = true;
+                        break;
+                    }
+                }
+            }
+            if (!fvDst.has(ast.name) || bounded) {
+                this.replaceVar(ast.nodes[1], name, dst, context, fvDst);
             }
             else {
                 const newName = Core.getNewName(ast.name, new Set([...fvSrcBody, ...fvDst]));
-                this.replaceVar(ast.nodes[1], ast.name, { type: "var", name: newName }, fvDst);
-                this.replaceVar(ast.nodes[1], name, dst, fvDst);
+                console.log("oma");
+                this.replaceVar(ast.nodes[1], ast.name, { type: "var", name: newName }, context);
+                this.replaceVar(ast.nodes[1], name, dst, context, fvDst);
                 ast.name = newName;
             }
             return;
         }
         else if (ast.nodes?.length === 2) {
-            this.replaceVar(ast.nodes[0], name, dst, fvDst);
-            this.replaceVar(ast.nodes[1], name, dst, fvDst);
+            this.replaceVar(ast.nodes[0], name, dst, context, fvDst);
+            this.replaceVar(ast.nodes[1], name, dst, context, fvDst);
         }
     }
     state = {
@@ -153,43 +164,8 @@ export class Core {
             "U@:": wrapVar("U@:"),
             "@max": parser.parse("U@->U@->U@"),
             "@succ": parser.parse("U@->U@"),
-            // "nat": parser.parse("U"),
-            // "Bool": parser.parse("U"),
-            // "0b": parser.parse("Bool"),
-            // "1b": parser.parse("Bool"),
-            // "True": parser.parse("U"),
-            // "true": wrapVar("True"),
-            // "succ": parser.parse("nat->nat"),
-            // "False": parser.parse("U"),
-            // "@ind_nat": parser.parse("Pu:U@,PC:nat->Uu,Pc0:C 0,Pcs:(Px:nat,Py:C x,C (succ x)),Px:nat,C x"),
-            // "@ind_True": parser.parse("Pu:U@,PC:True->Uu,Pc:C true,Px:True,C x"),
-            // "@ind_False": parser.parse("Pu:U@,PC:False->Uu,Px:False,C x"),
-            // "@ind_Bool": parser.parse("Pu:U@,PC:Bool->Uu,Pc0b:C 0b,Pc1b:C 1b,Px:Bool,C x"),
-            // "@ind_eq2": parser.parse("Pu:U@,Pv:U@,Pa:Uu,PC:Px:a,Py:a,(@eq u a x y)->Uv,Pc:Px:a,C x x (@refl u a x),Px:a,Py:a,Pm:@eq u a x y,C x y m"),
-            // "@ind_eq": parser.parse("Pu:U@,Pv:U@,Pa:Uu,Px:a,PC:Py:a,(@eq u a x y)->Uv,Pc:C x (@refl u a x),Py:a,Pm:@eq u a x y,C y m"),
-            // "@eq": parser.parse("Pu:U@,Pa:Uu,a->a->Uu"),
-            // "@refl": parser.parse("Pu:U@,Pa:Uu,Px:a,@eq u a x x"),
-            // "@Prod": parser.parse("Pu:U@,Pv:Un,Pa:Uu,Pb:Uv,a->b->(U(@max u v))"),
-            // "@pair": parser.parse("Pu:U@,Pv:U@,Pa:Uu,Pb:Px:a,Uv,  Pxa:a,Pxb:b xa, Sx:a,b x"),
-            // "funext": parser.parse("Pf:_,Pg:_,(homotopy f g)->(eq f g)"),
-            // "ua":parser.parse(""),
         },
-        sysDefs: {
-            "eq": parser.parse("@eq _ _"),
-            "rfl": parser.parse("@refl _ _ _"),
-            "refl": parser.parse("@refl _ _"),
-            "pair": parser.parse("@pair _ _ _"),
-            "ind_nat": parser.parse("@ind_nat _"),
-            "ind_True": parser.parse("@ind_True _"),
-            "ind_False": parser.parse("@ind_False _"),
-            "ind_Bool": parser.parse("@ind_Bool _"),
-            "ind_eq": parser.parse("@ind_eq _ _ _"),
-            "ind_eq2": parser.parse("@ind_eq2 _ _ _"),
-            "not": parser.parse("La:U_.a->False"),
-            "id": parser.parse("Lx:_.x"),
-            "add": parser.parse("ind_nat (Lx:nat.nat->nat) (Lx:nat.x) (Ly:nat.Lh:nat->nat.Lx:nat.succ (h x))"),
-            "mul": parser.parse("ind_nat (Lx:nat.nat->nat) (Lx:nat.0) (Ly:nat.Lh:nat->nat.Lx:nat.add (h x) x)"),
-        },
+        sysDefs: {},
         userDefs: {},
         errormsg: []
     };
@@ -205,6 +181,7 @@ export class Core {
         this.state.inferValues = infered ?? {};
         this.state.errormsg = [];
         const nast = this.preprocessInfered(ast);
+        this.state.activeAst = nast;
         try {
             this.check(nast, context, false);
         }
@@ -279,9 +256,6 @@ export class Core {
                 return ast.checked;
             // const in environment
             ast.checked ??= this.checkConst(ast.name);
-            if (ast.name === "ind_True" && !ast.checked) {
-                this.checkConst(ast.name);
-            }
             if (ast.checked)
                 return ast.checked;
             // a variable to be infered
@@ -298,9 +272,6 @@ export class Core {
             // }
             // #check domain -> U
             const domain = ast.nodes[0];
-            if (parser.stringify(ast) === "(((ind_eq x) (λy:nat.(λm':((eq x) y).((eq (((inv y) x) (((inv x) y) m'))) m')))) refl)") {
-                console.log("oma");
-            }
             const Udomain = UniverseLevel.get(this.check(domain, context, ignoreErr));
             if (Udomain === false)
                 this.error(domain, `函数参数类型不合法`, ignoreErr);
@@ -358,8 +329,9 @@ export class Core {
                 return;
             if (!tfn.nodes)
                 this.error(ast, "非函数尝试作用", ignoreErr);
-            if (!this.equal(tfn.nodes[0], tap, context))
+            if (!this.equal(tfn.nodes[0], tap, context)) {
                 this.error(ast, "函数作用类型不匹配", ignoreErr);
+            }
             else if (tfn.type === "->") {
                 // reffering
                 ast.checked = tfn.nodes[1];
@@ -465,12 +437,10 @@ export class Core {
         // infered value matched
         if (a.name?.startsWith("?")) {
             const name = a.name;
-            Core.assign(a, b);
             return this.mergeInfered({ [name]: b, [name + ":"]: this.check(b, context, false) }, context);
         }
         else if (b.name?.startsWith("?")) {
             const name = b.name;
-            Core.assign(b, a);
             return this.mergeInfered({ [name]: a, [name + ":"]: this.check(a, context, false) }, context);
         }
         // -> may not be real nondependent fn type, since it may infer bounded var
@@ -563,16 +533,24 @@ export class Core {
             catch (e) { }
         }
         if (context["*"]) {
-            return Core.exactEqual(UniverseLevel.reduceLvl(a), UniverseLevel.reduceLvl(b));
+            return this.equal(UniverseLevel.reduceLvl(a), UniverseLevel.reduceLvl(b), context);
         }
         return false;
     }
     mergeInfered(added, context) {
         const vals = this.state.inferValues;
         for (const [k, v] of Object.entries(added)) {
+            if (k.endsWith("::"))
+                continue;
             vals[k] ??= v;
             if (!this.equal(vals[k], v, context, true))
                 return false;
+            // }
+            for (const val of Object.values(vals)) {
+                this.replaceVar(val, k, v, context);
+            }
+            this.replaceVar(this.state.activeAst, k, v, context);
+            this.replaceVarInChecked(this.state.activeAst, k, v, context);
         }
         return true;
     }
@@ -676,8 +654,10 @@ export class Core {
         }
         return true;
     }
-    expandDef(ast) {
+    expandDef(ast, specified) {
         if (ast.type === "var") {
+            if (specified && !specified.has(ast.name))
+                return false;
             // defined constant expansion
             const res = this.state.sysDefs[ast.name] || this.state.userDefs[ast.name];
             if (!res)
@@ -689,7 +669,7 @@ export class Core {
         let modified = false;
         if (ast.nodes.length) {
             for (const n of ast.nodes) {
-                if (this.expandDef(n))
+                if (this.expandDef(n, specified))
                     modified = true;
             }
         }

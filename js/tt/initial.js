@@ -49,6 +49,7 @@ export function initTypeSystem() {
     typeName = "(nat)";
     addRule("定义", "add:=Lx:nat.Ly:nat.ind_nat (Lx:nat.nat->nat) (Lx:nat.x) (Ly:nat.Lh:nat->nat.Lx:nat.succ (h x))y x");
     addRule("定义", "mul:=Lx:nat.Ly:nat.ind_nat (Lx:nat.nat->nat) (Lx:nat.0) (Ly:nat.Lh:nat->nat.Lx:nat.add (h x) x)y x");
+    addRule("定义", "encode_nat:=ind_nat (Lx:nat.nat->U ) (ind_nat (Ly:nat.U ) True (Lz:nat.Lz':U .False ))  (Ly':nat,Lfn:nat->U.(ind_nat (Ly:nat.U ) False (Lz:nat.Lz':U .fn z )))");
     typeName = "eq";
     addRule("@类型", "@eq : Pu:U@,Pa:Uu,a->a->Uu");
     addRule("@类型", "eq := @eq _ _");

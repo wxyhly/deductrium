@@ -245,11 +245,15 @@ div.hintbar {
 .inhabitat-div:hover {
     background-color: orange;
 }
-
-.error {
+.infering{
     border: solid;
+    border-color: rgb(255, 242, 0);
+}
+.error {
+    border: solid 1px;
     border-color: red;
 }
+
 
 .inhabitat input {
     width: calc(100% - 32px);

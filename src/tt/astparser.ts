@@ -44,12 +44,14 @@ export class ASTParser {
             return ast.name;
         }
         if (ast.type === "apply") {
+            if(ast.nodes[0].name==="U"&&ast.nodes[1].name==="@0") return `U`;
+            if(ast.nodes[0].name==="U") return `(${this.stringify(nd[0])}${this.stringify(nd[1])})`;
             return `(${this.stringify(nd[0])} ${this.stringify(nd[1])})`;
         }
     }
     parse(s: string): AST {
         this.cursor = 0;
-        this.tokenise(s.replaceAll("Σ", "S").replaceAll("λ", "L").replaceAll("Π", "P").replaceAll("→", "->"));
+        this.tokenise(s.replaceAll("Σ", "S").replaceAll("λ", "L").replaceAll("Π", "P").replaceAll("→", "->").replaceAll("×", "X"));
         this.nextSym();
         const ret = this.type();
         if (this.tokens.length !== this.cursor - 1) {

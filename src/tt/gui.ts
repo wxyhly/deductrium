@@ -1,6 +1,6 @@
 import { Assist } from "./assist.js";
 import { AST, ASTParser } from "./astparser.js";
-import { Context, HoTT, HoTTFeatures } from "./check.js";
+import { Context } from "./check.js";
 import { Core } from "./core.js";
 import { TypeRule, initTypeSystem } from "./initial.js";
 const parser = new ASTParser;
@@ -9,71 +9,6 @@ const destructors = new Set<string>();
 const macro = new Set<string>();
 const sysmacro = new Set<string>();
 
-const list = [
-
-    "#pair",
-
-    "pair : Pa:U,Pb:(Px:a,U),Px:a,Py:b x,Sx:a,b x",
-    "ind_pair : Pa:U,Pb:(Px:a,U),PC:Pm:Sx:a,b x,U, Pc:Px:a,Py:b x,C (pair a b x y), Pm:Sx:a,b x, C m",
-    "ind_pair $1 $2 $3 $4 (pair $1 $2 $5 $6):=$4 $5 $6",
-
-    "ind_eq : Pa:U, PC:(Px:a,Py:a,Pm:eq a x y,U),Pc:Px:a,C x x (refl a x), Px:a,Py:a, Pm:eq a x y, C x y m",
-    "ind_eq $1 $2 $3 $4 $4 (refl $1 $4) := $3 $4",
-
-    "#True",
-
-    "True : U",
-    "true : True",
-    "ind_True : PC:Pm:True,U,Pc:C true, Pm:True, C m",
-    "ind_True $1 $2 true := $2",
-
-
-    "Bool: U",
-    "0b:Bool",
-    "1b: Bool",
-    "ind_Bool: PC:Pm:Bool,U,Pc1:C 0b,Pc2:C 1b, Pm:Bool, C m",
-
-
-    "#False",
-
-    "False : U",
-    "ind_False : PC:Pm:False,U, Pm:False, C m",
-
-    "#nat",
-
-    "nat : U",
-    "0 : nat",
-    "succ : Px:nat,nat",
-    "ind_nat : PC:Px:nat,U,Pc0:C 0,Pcs:(Px:nat,Py:C x,C (succ x)),Px:nat,C x",
-    "ind_nat $1 $2 $3 0 := $2",
-    "ind_nat $1 $2 $3 (succ $4) := $3 $4 (ind_nat $1 $2 $3 $4)",
-
-    "#union",
-
-    "union : Pa:U,Pb:U,U",
-    "inl : Pa:U,Pb:U,Px:a,union a b",
-    "inr : Pa:U,Pb:U,Px:b,union a b",
-    "ind_union : Pa:U,Pb:U,PQ:Px:union a b,U,Pc1:Px:a,Q (inl a b x),Pc2:Px:b,Q (inr a b x),Px:union a b,Q x",
-    "ind_union $1 $2 $3 $4 $5 (inl $1 $2 $6):=$4 $6",
-    "ind_union $1 $2 $3 $4 $5 (inr $1 $2 $6):=$5 $6",
-
-    "#nat macro",
-
-    "add := ind_nat (Lx:nat.Py:nat,nat) (Lx:nat.x) Lx':nat.Lx:Py:nat,nat.Ly:nat.succ (x y)",
-    "double:=ind_nat (Lx:nat.nat) 0 Lx':nat.Lx:nat.succ (succ x)",
-    "mult:=ind_nat (Lx:nat.Py:nat,nat) (Lx:nat.0) Lx':nat.Lx:Py:nat,nat.Ly:nat.add (x y) y",
-    "power:=ind_nat (Lx:nat.Py:nat,nat) (Lx:nat.1) Lx':nat.Lx:Py:nat,nat.Ly:nat.mult (x y) y",
-    "pred:=ind_nat (Lx:nat.nat) 0 Lx':nat.Lx:nat.x'",
-
-    "#hott axiom",
-
-    "ua : Pa:U,Pb:U,Px:a~=b,eq' U a b",
-    "funext : Pa:U,Pp:Px:a,U,Pf:Px:a,p x,Pg:Px:a,p x,Py:(Px:a,eq (p x) (f x) (g x)),(eq (Px:a,p x) f g)",
-
-];
-let info = "";
-let listTerms: AST[] = [];
-let listInfos: [string, string][] = [];
 let consts = new Set<string>;
 type definedConst = [AST, AST];
 const allrules = initTypeSystem();
@@ -243,9 +178,9 @@ export class TTGui {
                     break;
                 case "->": case "X": case "+":
 
-                    const b1 = !((ast.type === "+" && ast.nodes[0].type === "X") || ["var"].includes(ast.nodes[0].type) || ast.nodes[0].nodes[0].name == "U");
+                    const b1 = !(((ast.type === "+" || ast.type === "->") && ast.nodes[0].type === "X") || ["var"].includes(ast.nodes[0].type) || ast.nodes[0].nodes[0].name == "U");
 
-                    const b2 = !(["var", "->", "x"].includes(ast.nodes[1].type) || ast.nodes[1].nodes[0].name == "U");
+                    const b2 = !(((ast.type === "+" || ast.type === "->") && ast.nodes[1].type === "X") || (["var", "->", "X"].includes(ast.nodes[1].type) && ast.type !== "X") || ["var"].includes(ast.nodes[1].type) || ast.nodes[1].nodes[0].name == "U");
                     if (b1) this.addSpan(varnode, "(");
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], scopes, context, userLineNumber));
                     if (b1) this.addSpan(varnode, ")");
@@ -486,6 +421,7 @@ export class TTGui {
             const currentIdx = this.getHottDefCtxt(input);
             const nextInput = this.getInhabitatArray()[currentIdx + 1];
             wrapper.classList.remove("error");
+            wrapper.classList.remove("infering");
             if (!input.value.trim()) {
                 if (nextInput) {
                     nextInput.onblur({} as any);
@@ -513,6 +449,18 @@ export class TTGui {
                 div.removeChild(div.firstChild);
             }
             let type: AST;
+            // todo
+            const checkInfer = (ast:AST) => {
+                const allvars = Core.getFreeVars(ast);
+                if (ast.checked) Core.getFreeVars(ast.checked, allvars);
+                for (const v of allvars) {
+                    if (v.startsWith("?") || v === "_") {
+                        wrapper.classList.add("infering");
+                        return true;
+                    }
+                }
+                return false;
+            }
             if (ast) {
                 try {
                     if (ast.type === ":=") {
@@ -532,6 +480,7 @@ export class TTGui {
                             this.userDefinedConsts[currentIdx] = [ast.nodes[0], inferedAst.nodes[0]];
                         } else {
                             ast.nodes[0].checked = ast.nodes[1].checked;
+
                             this.userDefinedConsts[currentIdx] = [ast.nodes[0], ast.nodes[1]];
                         }
                     } else {
@@ -748,11 +697,17 @@ export class TTGui {
                 }
                 this.updateTacticStateDisplay(assist, statediv);
                 this.autofillTactics(assist);
+
             } catch (e) {
                 document.getElementById("tactic-errmsg").innerText = e;
             }
-            const astShow = { type: ":", name: "", nodes: [assist.elem, assist.theorem] };
-            this.core.checkType(astShow);
+            let astShow: AST;
+            try {
+                astShow = { type: ":", name: "", nodes: [assist.elem, assist.theorem] };
+                this.core.checkType(astShow);
+            } catch (e) {
+                document.getElementById("tactic-errmsg").innerText = e;
+            }
 
             assist.markTargets();
             hint.appendChild(this.ast2HTML("", astShow, [], Object.fromEntries(assist.goal.map(g => [g.ast.name, g.type])), this.getInhabitatArray().length));
