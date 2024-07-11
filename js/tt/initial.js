@@ -113,6 +113,15 @@ export function initTypeSystem() {
     addRule("_解构", "ind_Sum");
     addRule("计算", "ind_Sum ?C ?cinl ?cinr (inl ?xa) === ?cinl ?xa");
     addRule("计算", "ind_Sum ?C ?cinl ?cinr (inr ?xb) === ?cinr ?xb");
+    typeName = "eqv";
+    addRule("定义", "eqv:=La:U_,Lb:U_,Sf:a->b,(Sg:b->a,Px:a,eq x (g(f x)))X(Sh:b->a,Px:b, eq x (f(h x)))");
+    addRule("定义", "@id2eqv:=Lu:U@.Lv:U@.(λa:Uu.(λb:Uv.(λh':((eq a) b).((((((ind_eq a) (λy':U.(λm':((eq a) y').((Σf:(y'→b),((Σg:(b→y'),(Πx:y',((eq x) (g (f x)))))×(Σh:(b→y'),(Πx:b,((eq x) (f (h x)))))))→(Σf:(a→b),((Σg:(b→a),(Πx:a,((eq x) (g (f x)))))×(Σh:(b→a),(Πx:b,((eq x) (f (h x))))))))))) (λm':(Σf:(a→b),((Σg:(b→a),(Πx:a,((eq x) (g (f x)))))×(Σh:(b→a),(Πx:b,((eq x) (f (h x))))))).m')) b) h') (((pair (λf:(b→b).((Σg:(b→b),(Πx:b,((eq x) (g (f x)))))×(Σh:(b→b),(Πx:b,((eq x) (f (h x)))))))) (λx:b.x)) ((((pair (λg:(b→b).(Πx:b,((eq x) (g x))))) (λx:b.x)) (λx:b.rfl)),(((pair (λh:(b→b).(Πx:b,((eq x) (h x))))) (λx:b.x)) (λx:b.rfl)))))))):Pu:U@,Pv:U@,(Πa:Uu,(Πb:Uv,(((eq a) b)→((eqv a) b))))");
+    addRule("定义", "id2eqv:=@id2eqv _ _ _ _");
+    addRule("@构造", "@ua:Pu:U@,Pv:U@,Pa:Uu,Pb:Uv,(eqv a b)->(eq a b)");
+    addRule("@构造", "ua:=@ua _ _ _ _");
+    addRule("_构造", "ua");
+    addRule("计算", "ua (id2eqv ?p) === ?p");
+    addRule("计算", "id2eqv (ua ?p) === ?p");
     return ruleList;
 }
 //# sourceMappingURL=initial.js.map

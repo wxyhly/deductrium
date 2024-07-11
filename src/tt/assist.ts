@@ -104,7 +104,7 @@ export class Assist {
     }
     isIndType(typ: AST) {
         return (typ.name === "nat" || typ.name === "Bool" || typ.name === "True" || typ.name === "False"
-            || typ.type === "+" || typ.type === "X");
+            || typ.type === "+" || typ.type === "X" || typ.type === "S");
     }
     intro(s: string) {
         s = s.trim();
@@ -250,6 +250,7 @@ export class Assist {
                 // todo
             }
             const nast = Core.clone(ast);
+            nast.nodes[0] = this.genReplaceFn(nast.nodes[0], search, varname);
             nast.nodes[1] = this.genReplaceFn(nast.nodes[1], search, varname);
             return nast;
         }
@@ -290,6 +291,31 @@ export class Assist {
         };
         this.goal.unshift(goal);
         return this;
+    }
+    hyp(astr: string) {
+        const goal = this.goal.shift();
+        if (!goal) throw "无证明目标，请使用qed命令结束证明";
+        try {
+            const ast = parser.parse(astr);
+            let name = Core.getNewName("hyp", goal.context);
+            if (ast.type === ":" && ast.nodes[0].type === "var") {
+                if (goal.context[ast.nodes[0].name]) throw "无法引入重复名称的假设变量";
+                name = ast.nodes[0].name;
+            }
+            const newast = wrapApply({ type: "L", name, nodes: [ast, wrapVar("(?#0)")] }, wrapVar("(?#0)"));
+            Core.assign(goal.ast, newast);
+            const anotherGoal = {
+                ast: goal.ast.nodes[1],
+                context: goal.context,
+                type: ast
+            };
+            goal.ast = goal.ast.nodes[0].nodes[1];
+            goal.context = Object.assign({ [name]: ast }, goal.context);
+            this.goal.unshift(goal);
+            this.goal.unshift(anotherGoal);
+
+        } catch (e) { this.goal.unshift(goal); }
+
     }
     destruct(n: string) {
         n = n.trim();
@@ -413,6 +439,27 @@ export class Assist {
             goal.ast = goal.ast.nodes[0].nodes[1].nodes[1].nodes[1];
             goal.context[fnl] = nType.nodes[0];
             goal.context[fnr] = nType.nodes[1];
+            goal.type = newType;
+            delete goal.context[n];
+            this.goal.unshift(goal);
+        } else if (nType.type === "S") {
+            const fnl = Core.getNewName(n + "0", goal.context);
+            const fnr = Core.getNewName(n + "1", goal.context);
+            matched["$typel"] = nType.nodes[0];
+            matched["$typer"] = nType.nodes[1];
+            matched["$typerepl"] = Core.clone(nType.nodes[1]);
+            core.replaceVar(matched["$typerepl"], nType.name, wrapVar(fnl));
+            let newAst = parser.parse(`ind_Prod (L${nType.name}:$typel.$typer) (L${n}:$typeN.$1) (L${fnl}:$typel.L${fnr}:$typerepl.(?#0))  $nast`);
+
+            Core.replaceByMatch(newAst, matched, /^\$/);
+            Core.assign(goal.ast, newAst);
+            const newType = matched["$1"];
+            // refering
+            core.replaceVar(newType, n, wrapApply(wrapVar("pair"), { type: "L", name: nType.name, nodes: nType.nodes }, wrapVar(fnl), wrapVar(fnr)));
+
+            goal.ast = goal.ast.nodes[0].nodes[1].nodes[1].nodes[1];
+            goal.context[fnl] = nType.nodes[0];
+            goal.context[fnr] = matched["$typerepl"];
             goal.type = newType;
             delete goal.context[n];
             this.goal.unshift(goal);

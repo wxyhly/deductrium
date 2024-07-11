@@ -10,7 +10,7 @@ const macro = new Set<string>();
 const sysmacro = new Set<string>();
 
 let consts = new Set<string>;
-type definedConst = [AST, AST];
+type definedConst = [string, AST];
 const allrules = initTypeSystem();
 export class TTGui {
     onStateChange = () => { };
@@ -384,8 +384,8 @@ export class TTGui {
             for (let i = 0; i <= input; i++) {
                 const def = this.userDefinedConsts[i];
                 if (!def) continue;
-                macro.add(def[0].name);
-                this.core.state.userDefs[def[0].name] = def[1];
+                macro.add(def[0]);
+                this.core.state.userDefs[def[0]] = def[1];
             }
             return input;
         }
@@ -396,9 +396,9 @@ export class TTGui {
             if (!def) {
                 if (arr[i] === input) { currentIdx = i; break; } else { continue; }
             }
-            macro.add(def[0].name);
+            macro.add(def[0]);
             if (arr[i] === input) { currentIdx = i; break; }
-            this.core.state.userDefs[def[0].name] = def[1];
+            this.core.state.userDefs[def[0]] = def[1];
         }
         return currentIdx ?? arr.indexOf(input);
     }
@@ -419,7 +419,8 @@ export class TTGui {
 
             this.onStateChange();
             const currentIdx = this.getHottDefCtxt(input);
-            const nextInput = this.getInhabitatArray()[currentIdx + 1];
+            const inputsarr = this.getInhabitatArray();
+            const nextInput = inputsarr[currentIdx + 1];
             wrapper.classList.remove("error");
             wrapper.classList.remove("infering");
             if (!input.value.trim()) {
@@ -450,7 +451,9 @@ export class TTGui {
             }
             let type: AST;
             // todo
-            const checkInfer = (ast:AST) => {
+            const checkInfer = (ast?: AST) => {
+                const currentInferred = Object.assign({}, this.core.state.inferValues);
+                const currentInferId = this.core.state.inferId;
                 const allvars = Core.getFreeVars(ast);
                 if (ast.checked) Core.getFreeVars(ast.checked, allvars);
                 for (const v of allvars) {
@@ -458,8 +461,30 @@ export class TTGui {
                         wrapper.classList.add("infering");
                         return true;
                     }
+                    if (this.core.state.userDefs[v]) {
+                        const pos = this.userDefinedConsts.findIndex(e => e && e[0] === v);
+                        if (!inputsarr[pos].parentElement.classList.contains("infering")) continue;
+                        const expcheck = Core.clone(ast, true);
+                        this.core.expandDef(expcheck, new Set([v]));
+                        this.core.check(expcheck, {}, false);
+                        this.core.afterCheckType(expcheck, expcheck);
+                        const res = checkInfer(expcheck);
+                        this.core.state.inferValues = currentInferred;
+                        this.core.state.inferId = currentInferId;
+                        return res;
+                    }
                 }
                 return false;
+                // for (const v of Object.values(this.core.state.inferValues)) {
+                //     const allvars = Core.getFreeVars(v);
+                //     for (const v of allvars) {
+                //         if (v.startsWith("?") || v === "_") {
+                //             wrapper.classList.add("infering");
+                //             return true;
+                //         }
+                //     }
+                // }
+                // return false;
             }
             if (ast) {
                 try {
@@ -471,20 +496,23 @@ export class TTGui {
                         if (this.core.checkConst(defname)) throw defname + "的定义重复";
                         const inferedAst = {} as AST;
                         this.core.checkType(ast.nodes[1], {}, inferedAst);
+                        checkInfer(inferedAst);
                         macro.add(defname);
                         const defContent = ast.nodes[1];
                         if (defContent.type === ":") {
                             const type = defContent.nodes[1];
                             inferedAst.nodes[0].checked = type;
                             ast.nodes[0].checked = type;
-                            this.userDefinedConsts[currentIdx] = [ast.nodes[0], inferedAst.nodes[0]];
+                            this.userDefinedConsts[currentIdx] = [ast.nodes[0].name, inferedAst.nodes[0]];
                         } else {
                             ast.nodes[0].checked = ast.nodes[1].checked;
 
-                            this.userDefinedConsts[currentIdx] = [ast.nodes[0], ast.nodes[1]];
+                            this.userDefinedConsts[currentIdx] = [ast.nodes[0].name, ast.nodes[1]];
                         }
                     } else {
-                        type = this.core.checkType(ast);
+                        const outast = {} as AST;
+                        type = this.core.checkType(ast, {}, outast);
+                        checkInfer(outast);
                     }
                 } catch (e) {
                     error += e;
@@ -502,11 +530,13 @@ export class TTGui {
                 if (type) {
                     try {
                         this.core.checkType(type, {}, null, this.core.state.inferValues);
+                        checkInfer();
                     } catch (e) {
                     }
                     div.appendChild(this.ast2HTML("", type, [], {}, currentIdx));
                 }
             }
+
             if (nextInput) {
                 nextInput.onblur({} as any);
             }
@@ -532,7 +562,7 @@ export class TTGui {
             const current = this.getInhabitatArray().indexOf(input);
             const [removed] = this.userDefinedConsts.splice(current, 1);
             wrapper.remove();
-            if (removed) macro.delete(removed[0].name);
+            if (removed) macro.delete(removed[0]);
             const next = this.getInhabitatArray()[current];
             if (next) next.onblur({} as any);
             this.onStateChange();
