@@ -499,6 +499,9 @@ export class AssertionSystem {
             return !logicSyms.includes(ast.name);
         }
         if (ast.type === "fn") {
+            if (ast.name === "Prime") {
+                return true;
+            }
             if (ast.name.match(/^#v*nf/) || ast.name.match(/^#c?rp/)) {
                 // #v*nf( isItem, true, true ....);
                 // #c?rp( isItem, true, true ....);
@@ -675,10 +678,10 @@ export class AssertionSystem {
             }
         }
     }
-    // match sub exactly and replace without fussy booleans
+    // match sub exactly and replace without fussy booleans, return total matched counts
     matchSubAndReplace(ast, pattern, replace, nth, replNameReg, isItem, result, varTable) {
         if (nth >= 0 && !(result <= nth))
-            return;
+            return result;
         try {
             // match root ast
             const matched = {};
@@ -689,23 +692,25 @@ export class AssertionSystem {
                 astmgr.replaceByMatchTable(cas, matched);
                 this.assertUnwrap(cas, varTable);
             }
-            if (nth === -1 || nth === result) {
+            if (nth === -1 || nth === result++) {
                 // replace $s in replace param
                 const replaced = astmgr.clone(replace);
                 astmgr.replaceByMatchTable(replaced, matched);
                 // assign to ast
                 astmgr.assign(ast, replaced);
-                if (nth !== -1)
-                    return; // already replaced one, short circuit
-                result++;
+                // if (nth !== -1)
+                return result; // if (nth !== -1), already replaced one, short circuit, if nth === -1, just replace outter layer to avoid loop
             }
         }
         catch (e) { /** if can't match, just ignore it **/ }
         if (!ast.nodes?.length)
-            return;
+            return result;
         for (let i = 0; i < ast.nodes.length; i++) {
+            if ("E!V".includes(ast.name) && i === 0)
+                continue; // ignore replacing var name by mistake
             result = this.matchSubAndReplace(ast.nodes[i], pattern, replace, nth, replNameReg, this.getSubAstType(ast, i, isItem), result, varTable);
         }
+        return result;
     }
     // m: metarule
     // d: deduction
@@ -822,6 +827,15 @@ export class AssertionSystem {
                         throw `系统函数${ast.name}第${i + 1}个参数中：${e}`;
                     }
                 }
+                return;
+            }
+            if (ast.name === "Prime") {
+                if (type !== "p")
+                    throw "意外出现算数表达式";
+                if (ast.nodes?.length !== 1)
+                    throw `算数谓词${ast.name}仅接受一个类型为项的参数`;
+                for (const n of ast.nodes)
+                    this.checkGrammer(n, "i", consts);
                 return;
             }
             if (fnSyms.includes(ast.name)) {

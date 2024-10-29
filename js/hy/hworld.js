@@ -3,7 +3,7 @@ import { LocalDraw } from "./localdraw.js";
 import { TileBlockType, blockMap, initMap, nameMap } from "./maploader.js";
 import { Polygon } from "./tiling.js";
 export class HWorld {
-    debugDraw = false;
+    debugDraw = true;
     localDraw;
     localCamMat = new Rotor;
     currentTile = [];
@@ -67,7 +67,7 @@ export class HWorld {
             return true;
         }
         if (b.type === TileBlockType.Gate) {
-            return this.onPassGate(b.name, b);
+            return this.onPassGate(b.name ?? t.join(','), b);
         }
     }
     hitReward(b, hash, isLoading) {

@@ -290,3 +290,27 @@ div.hintbar {
     background-color: rgba(240, 240, 230, 0.9);
     border-radius: 2px;
 }
+.achievement{
+    display: flex;
+}
+.achievement div{
+    width: 120px;
+    min-height: 2.5em;
+    background-color: beige;
+    text-align: center;
+    align-content: center;
+    color: #AAA;
+    border: solid;
+    margin: 2px;
+    display: grid;
+}
+.achievement div.achieved{
+    width: 120px;
+    min-height: 2.5em;
+    background-color: greenyellow;
+    color: black;
+    text-align: center;
+    align-content: center;
+    border: solid;
+    margin: 2px;
+}

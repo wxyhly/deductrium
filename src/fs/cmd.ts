@@ -138,7 +138,13 @@ export class FSCmd {
                 }
                 this.cmdBuffer.push(this.gui.formalSystem.propositions);
                 try {
-                    this.gui.formalSystem.expandMacroWithDefaultValue(item);
+                    const fs = this.gui.formalSystem;
+                    const fmr = fs.fastmetarules;
+                    const fsd = Object.assign({}, fs.deductions);
+                    fs.fastmetarules = "cvuq><:";
+                    fs.expandMacroWithDefaultValue(item);
+                    fs.fastmetarules = fmr;
+                    fs.deductions = fsd;
                     this.execCmdBuffer();
                 } catch (e) {
                     this.cmdBuffer.pop();
@@ -150,7 +156,13 @@ export class FSCmd {
                 const p = item.slice(1);
                 this.cmdBuffer.push(this.gui.formalSystem.propositions);
                 try {
-                    this.gui.formalSystem.expandMacroWithProp(Number(p));
+                    const fs = this.gui.formalSystem;
+                    const fmr = fs.fastmetarules;
+                    const fsd = Object.assign({}, fs.deductions);
+                    fs.fastmetarules = "cvuq><:";
+                    fs.expandMacroWithProp(Number(p));
+                    fs.fastmetarules = fmr;
+                    fs.deductions = fsd;
                     this.execCmdBuffer();
                 } catch (e) {
                     this.cmdBuffer.pop();
@@ -192,7 +204,12 @@ export class FSCmd {
         if (cmdBuffer[1].startsWith("p")) cmdBuffer[1] = cmdBuffer[1].slice(1);
         try {
             if (!formalSystem.propositions[cmdBuffer[1]]) throw "该定理不存在";
+            const fmr = formalSystem.fastmetarules;
+            const fsd = Object.assign({}, formalSystem.deductions);
+            formalSystem.fastmetarules = "cvuq><:";
             formalSystem.inlineMacroInProp(Number(cmdBuffer[1]));
+            formalSystem.fastmetarules = fmr;
+            formalSystem.deductions = fsd;
             this.gui.updatePropositionList(true);
             this.clearCmdBuffer();
         } catch (e) {
@@ -252,7 +269,9 @@ export class FSCmd {
             hintText.innerText = preInfo + "请输入替代" + vars[cmdBuffer.length - 2 - condLength] + "的内容";
             if (!this.gui.actionInput.value) {
                 this.gui.actionInput.value = vars[cmdBuffer.length - 2 - condLength];
-                this.gui.actionInput.setSelectionRange(0, this.gui.actionInput.value.length);
+                // this.gui.actionInput.setSelectionRange(0, this.gui.actionInput.value.length);
+                this.gui.actionInput.selectionStart = this._selStart = 0;
+                this.gui.actionInput.selectionEnd = this._selEnd = this.gui.actionInput.value.length;
             }
             return;
         }
@@ -309,10 +328,16 @@ export class FSCmd {
                     newName = formalSystem.metaCompleteTheorem(this.astparser.parse(cmdBuffer[2]), cmdBuffer[5], "元规则生成*");
                     afterName = cmdBuffer[3];
                     break;
-
+                case "cmt":
+                    if (!this.getInputNewDeductionPos(4)) return;
+                    // ["m","cpt",cond0,cond1,  pos, null, name]
+                    newName = formalSystem.metaCombineTheorem(cmdBuffer[2], cmdBuffer[3], "元规则生成*");
+                    afterName = cmdBuffer[4];
+                    break;
                 default:
                     throw "很抱歉，该规则暂未被作者实现";
             }
+            // if (!formalSystem.deductions[newName].from.endsWith("*")) formalSystem.deductions[newName].from += "*";
             this.gui.addToDeductions(newName, afterName);
             this.clearCmdBuffer();
         } catch (e) {
@@ -370,7 +395,10 @@ export class FSCmd {
             hintText.innerText = preInfo + "请输入替代" + vars[cmdBuffer.length - 2 - condLength] + "的内容";
             if (!this.gui.actionInput.value) {
                 this.gui.actionInput.value = vars[cmdBuffer.length - 2 - condLength];
-                this.gui.actionInput.setSelectionRange(0, this.gui.actionInput.value.length);
+                // this.gui.actionInput.setSelectionRange(0, this.gui.actionInput.value.length);
+
+                this.gui.actionInput.selectionStart = this._selStart = 0;
+                this.gui.actionInput.selectionEnd = this._selEnd = this.gui.actionInput.value.length;
             }
         } else {
             // all params are there, finish it
@@ -427,7 +455,7 @@ export class FSCmd {
             this.gui.hintText.innerText = "删除推理规则失败：" + e;
         }
     }
-    
+
     execClear() {
         this.gui.formalSystem.removePropositions();
         this.gui.updatePropositionList(true);
@@ -470,7 +498,7 @@ export class FSCmd {
         }
         // deduction started, but wait for click props or replvars
         if (cmdBuffer[0] === "d" && cmdBuffer.length >= 2) {
-            const deduction = this.gui.formalSystem.deductions[cmdBuffer[1]];
+            const deduction = this.gui.formalSystem.deductions[cmdBuffer[1] === "." ? this.lastDeduction : cmdBuffer[1]];
             const vars = deduction.replaceNames.length;
             const conditions = deduction.conditions.length;
             if (conditions + 2 > cmdBuffer.length) {
@@ -552,7 +580,7 @@ export class FSCmd {
         }
         // ["m", pos, null, name]
         const n = this.cmdBuffer[prevLength + 2];
-        if (n.match(/^<>uvdcamp\.]/)) {
+        if (n.match(/^[<>uvdcamp\.]/)) {
             this.cmdBuffer.pop();
             const res = this.getInputNewDeductionPos(prevLength);
             this.gui.hintText.innerText = "以.<>uvdcamp开头的推理规则名称由系统保留，请重新命名";

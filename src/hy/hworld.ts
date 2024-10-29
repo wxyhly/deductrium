@@ -4,7 +4,7 @@ import { TileBlock, TileBlockType, blockMap, initMap, nameMap } from "./maploade
 import { HoroRect, Polygon, TileHash, TileNeighbor } from "./tiling.js";
 
 export class HWorld {
-    debugDraw = false;
+    debugDraw = true;
     localDraw: LocalDraw;
     localCamMat = new Rotor;
     currentTile: TileHash = [];
@@ -64,7 +64,7 @@ export class HWorld {
             return true;
         }
         if (b.type === TileBlockType.Gate) {
-            return this.onPassGate(b.name, b);
+            return this.onPassGate(b.name ?? t.join(','), b);
         }
     }
     hitReward(b: TileBlock, hash: string, isLoading?: boolean) {

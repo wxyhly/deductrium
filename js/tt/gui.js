@@ -12,17 +12,27 @@ const allrules = initTypeSystem();
 export class TTGui {
     onStateChange = () => { };
     core = new Core;
+    disableSimpleFn = false;
+    enablecopygate = false;
+    lastGateTarget = "";
     // gamecore = new HoTTGame;
     typeList = document.getElementById("type-list");
+    unlockedTypes;
+    unlockedTactics;
     inhabitList = document.getElementById("inhabit-list");
     // tactic mode
     mode = null;
     // "_" for infered, "@" for original
-    inferDisplayMode = "@";
+    inferDisplayMode = "_";
     userDefinedConsts = [];
     sysDefinedConsts = [];
     constructor(creative) {
-        this.updateTypeList(new Set(creative ? allrules.map(r => r.id) : []));
+        this.unlockedTypes = new Set(creative ? allrules.map(r => r.id) : ["True0", "True1", "False0"]);
+        this.updateTypeList(this.unlockedTypes);
+        if (!creative) {
+            this.unlockedTactics = new Set(["qed"]);
+            this.disableSimpleFn = true;
+        }
         this.updateInhabitList();
         document.getElementById("add-btn").addEventListener("click", () => {
             this.updateInhabitList();
@@ -48,20 +58,47 @@ export class TTGui {
                 this.mode.pop();
                 const newmode = this.mode.slice(1);
                 input.value = parser.stringify(this.mode[0].theorem);
-                this.executeTactic(input);
-                for (const m of newmode) {
-                    input.value = m;
-                    document.getElementById("tactic-begin").click();
+                this.executeTactic(input.value);
+                for (let i = 0; i < newmode.length; i++) {
+                    input.value = newmode[i];
+                    this.addTactic(i < newmode.length - 1);
                 }
                 input.value = "";
             }
         });
         document.getElementById("tactic-begin").addEventListener("click", () => {
-            this.addTactic();
+            this.addTactic(false);
         });
     }
+    setLastGateTarget(target) {
+        this.lastGateTarget = target;
+        document.getElementById("copygate").innerText = "";
+        const btn = document.createElement("button");
+        document.getElementById("copygate").appendChild(document.createTextNode("最近#t门上的目标："));
+        btn.classList.add("inhabitat-modify");
+        btn.innerText = "+";
+        document.getElementById("copygate").appendChild(btn);
+        btn.onclick = () => {
+            this.executeTactic(target);
+        };
+        document.getElementById("copygate").appendChild(this.ast2HTML("", parser.parse(target)));
+    }
     autofillTactics(assist) {
-        const tactics = assist.autofillTactics();
+        const allTactics = assist.autofillTactics();
+        let tactics;
+        if (this.unlockedTactics) {
+            tactics = [];
+            // only for survival. If creative, this.unlockedTactics is undefined
+            for (const t of allTactics) {
+                const prefix = t.split(" ")[0];
+                if (this.unlockedTactics.has(prefix)) {
+                    tactics.push(t);
+                }
+            }
+        }
+        else {
+            tactics = allTactics;
+        }
         const div = document.getElementById("tactic-autofill");
         const inp = document.getElementById("tactic-input");
         const exec = document.getElementById("tactic-begin");
@@ -105,7 +142,10 @@ export class TTGui {
             }
             goalDiv.appendChild(document.createElement("br"));
             this.addSpan(goalDiv, count ? "目标" + (count) + "：" : "当前目标：");
-            this.core.checkType(g.type, g.context);
+            try {
+                this.core.checkType(g.type, g.context);
+            }
+            catch (e) { }
             goalDiv.appendChild(this.ast2HTML("", g.type, scope, g.context, this.getInhabitatArray().length));
             if (count) {
                 goalDiv.style.opacity = "0.5";
@@ -123,6 +163,10 @@ export class TTGui {
     }
     ast2HTML(idx, ast, scopes = [], context = {}, userLineNumber = 0) {
         const varnode = document.createElement("span");
+        if (!ast) {
+            varnode.innerText = "表达式因错误而丢失";
+            return varnode;
+        }
         const astStr = parser.stringify(ast);
         varnode.setAttribute("ast-string", astStr);
         if (ast.type === "var") {
@@ -470,6 +514,7 @@ export class TTGui {
             const currentIdx = this.getHottDefCtxt(input);
             const inputsarr = this.getInhabitatArray();
             const nextInput = inputsarr[currentIdx + 1];
+            this.core.state.disableSimpleFn = this.disableSimpleFn;
             wrapper.classList.remove("error");
             wrapper.classList.remove("infering");
             if (!input.value.trim()) {
@@ -598,7 +643,7 @@ export class TTGui {
         };
         div.addEventListener("click", ev => {
             if (this.mode === "tactic-begin") {
-                this.executeTactic(input);
+                this.executeTactic(input.value);
             }
             else {
                 input.classList.remove("hide");
@@ -629,31 +674,48 @@ export class TTGui {
     }
     // find whether user has inhabitat of given type
     queryType(typeStr) {
-        // const ref = this.hott.parse(typeStr);
-        // for (const e of this.getInhabitatArray()) {
-        //     if (!e.classList.contains("hide")) {
-        //         e.onblur({} as any);
-        //     }
-        //     if (e.parentElement.classList.contains("error")) continue;
-        //     let ast: AST;
-        //     try {
-        //         ast = parser.parse(e.value);
-        //     } catch (e) {
-        //         continue;
-        //     }
-        //     if (!ast) continue;
-        //     try {
-        //         ast = this.hott.parse(e.value);
-        //         if (ast.type === ":") {
-        //             if (this.hott.equal(ast.nodes[1], ref, {})) return true;
-        //         } else {
-        //             if (this.hott.equal(this.hott.check(ast), ref, {})) return true;
-        //         }
-        //     } catch (e) {
-        //         continue;
-        //     }
-        // }
-        // return false;
+        this.getHottDefCtxt(this.getInhabitatArray().length);
+        const ref = parser.parse(typeStr);
+        for (const e of this.getInhabitatArray()) {
+            if (!e.classList.contains("hide")) {
+                e.onblur({});
+            }
+            if (e.parentElement.classList.contains("error") || e.parentElement.classList.contains("infering"))
+                continue;
+            let ast;
+            try {
+                ast = parser.parse(e.value);
+            }
+            catch (e) {
+                continue;
+            }
+            if (!ast)
+                continue;
+            try {
+                if (ast.type === ":") {
+                    if (this.core.checkType({
+                        name: "", type: "===", nodes: [ast.nodes[1], ref]
+                    }))
+                        return true;
+                }
+                else if (ast.type === ":=") {
+                    if (this.core.checkType({
+                        name: "", type: "===", nodes: [this.core.checkType(ast.nodes[0]), ref]
+                    }))
+                        return true;
+                }
+                else {
+                    if (this.core.checkType({
+                        name: "", type: "===", nodes: [this.core.checkType(ast), ref]
+                    }))
+                        return true;
+                }
+            }
+            catch (e) {
+                continue;
+            }
+        }
+        return false;
     }
     updateGuiList(prefix, logicArray, list, filter, setInfo, refresh, customIdx) {
         if (refresh) {
@@ -702,10 +764,10 @@ export class TTGui {
         }
         list.scroll({ top: list.scrollHeight });
     }
-    executeTactic(inputDom) {
+    executeTactic(value) {
         try {
             this.getHottDefCtxt(this.getInhabitatArray().length);
-            const ast = parser.parse(inputDom.value);
+            const ast = parser.parse(value);
             if (!ast)
                 throw "空表达式";
             if (ast.type === "===")
@@ -717,7 +779,7 @@ export class TTGui {
             const type = this.core.checkType(ast);
             if (type.type !== "apply" || type.nodes[0].name !== "U")
                 throw "不是命题类型";
-            const assist = new Assist(this.core, inputDom.value);
+            const assist = new Assist(this.core, value);
             this.mode = [assist];
             this.autofillTactics(assist);
             document.getElementById("tactic-remove").classList.remove("hide");
@@ -733,7 +795,7 @@ export class TTGui {
             this.mode = null;
         }
     }
-    addTactic() {
+    addTactic(noCheck) {
         const input = document.getElementById("tactic-input");
         const hint = document.getElementById("tactic-hint");
         if (!this.mode) {
@@ -777,6 +839,8 @@ export class TTGui {
                 hint.innerText = "";
                 this.mode.push(input.value);
                 input.value = "";
+                if (noCheck)
+                    return;
                 input.focus();
                 statediv.innerHTML = "";
                 for (const m of this.mode) {
@@ -796,68 +860,28 @@ export class TTGui {
                 this.core.checkType(astShow);
             }
             catch (e) {
-                document.getElementById("tactic-errmsg").innerText = e;
+                // document.getElementById("tactic-errmsg").innerText = e;
             }
             assist.markTargets();
             hint.appendChild(this.ast2HTML("", astShow, [], Object.fromEntries(assist.goal.map(g => [g.ast.name, g.type])), this.getInhabitatArray().length));
             window.scrollTo(0, document.body.clientHeight);
+            const wrapperDiv = document.getElementById("tactic-list").parentElement;
+            wrapperDiv.scrollTo(0, wrapperDiv.clientHeight);
         }
     }
     getInhabitatArray() {
         return Array.from(document.querySelectorAll(".inhabitat .wrapper input"));
     }
-    unlock(str) {
-        // switch (str) {
-        //     case "fnLP": addTerm([
-        //         "#lambda",
-        //         "t::P$1:$2,$3 : U",
-        //         "c::L$1:$2.$3 : P$1:$2,#typeof $3",
-        //     ]); break;
-        //     case "applyFn": addTerm([
-        //         "#lambda",
-        //         "e::(L$1:$2.$3) $4 : #typeof $3",
-        //         "p::(L$1:$2.$3) $4 := #replace $3 $1 $4",
-        //     ]); break;
-        //     case "notFn": addTerm([
-        //         "#not",
-        //         "d::not:=Lx:U.x->False",
-        //     ]); break;
-        //     case "Eq": addTerm([
-        //         "#eq",
-        //         "t::eq : Pa:U,Px:a,Py:a,U",
-        //         "c::refl : Pa:U,Px:a,eq a x x",
-        //     ]); break;
-        //     case "Nat": addTerm([
-        //         "#nat",
-        //         "t::nat : U",
-        //         "c::0 : nat",
-        //         "c::succ : Px:nat,nat",
-        //     ]); break;
-        //     case "Bool": addTerm([
-        //         "#Bool",
-        //         "t::Bool : U",
-        //         "c::0b : Bool",
-        //         "c::1b : Bool",
-        //     ]); break;
-        //     case "indBool": addTerm([
-        //         "#Bool",
-        //         "e::ind_Bool: PC:Pm:Bool,U,Pc1:C 0b,Pc2:C 1b, Pm:Bool, C m",
-        //         "p::ind_Bool $1 $2 $3 0b:=$2",
-        //         "p::ind_Bool $1 $2 $3 1b:=$3",
-        //     ], "Bool"); break;
-        //     case "indTrue": addTerm([
-        //         "#True",
-        //         "e::ind_True:PC:Pm:True,U,Pc:C true, Pm:True, C m",
-        //         "p::ind_True $1 $2 true:=$2",
-        //     ], "True"); break;
-        //     case "indFalse": addTerm([
-        //         "#False",
-        //         "e::ind_False: PC:Pm:False,U,Pm:False, C m",
-        //     ], "False"); break;
-        //     case "simplFn": this.hott.features.add(HoTTFeatures.SimplFnType); break;
-        // }
-        // this.updateTypeList();
-        this.getInhabitatArray().forEach(e => e.onblur({}));
+    unlock(str, update) {
+        this.unlockedTypes.add(str);
+        if (update) {
+            this.updateTypeList(this.unlockedTypes);
+            this.getInhabitatArray()[0].onblur({});
+        }
+    }
+    updateAfterUnlock() {
+        this.updateTypeList(this.unlockedTypes);
+        this.getInhabitatArray()[0].onblur({});
     }
 }
 //# sourceMappingURL=gui.js.map

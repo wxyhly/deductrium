@@ -108,7 +108,7 @@ export class Proof {
                         replaceValues: [{ type: "replvar", name: "$" + i }]
                     });
                 }
-                this.fs.addMacro(name, "元定理生成*");
+                this.fs.addMacro(name, "元规则生成*");
                 this.fs.propositions = p;
                 return name;
             } catch (e) {

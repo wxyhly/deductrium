@@ -2,9 +2,9 @@ import { ASTParser } from "./astparser.js";
 import { initFormalSystem } from "./initial.js";
 const dict = {
     ',"aE0","aPair","aPow","aUnion","areg","arepl","asep","ainf",': "a#`",
-    '],["0","1","2","3","4","5","6","7","8","9"': "b#`",
-    '[["Union","Pow","Pair","S"': "c#`",
-    ',"d0","d1","d2","d3","d4","d5","d6","d7","d8","d9",': "d#`",
+    '"0","1","2","3","4","5","6","7","8","9","10"': "b#`",
+    '"{}","Union","Pow","S"': "c#`",
+    ',"apn1","apn2","apn3","d1","d2","d3","d4","d5","d6","d7","d8","d9",': "d#`",
     '","a': 'a`',
     '","d': 'd`',
 };
@@ -58,8 +58,9 @@ export class SavesParser {
             }
             userD[n] = this.serializeDeduction(d);
         }
+        const props = gui.getProps();
         return this.serializeStr(JSON.stringify([
-            Array.from(fs.fns), Array.from(fs.consts), userD, dlist, fs.propositions.map(s => this.serializeProposition(s))
+            Array.from(fs.fns), Array.from(fs.consts), userD, dlist, props.map(s => this.serializeProposition(s))
         ]));
     }
     deserializeArr(fs, arr) {
@@ -82,7 +83,9 @@ export class SavesParser {
     deserialize(gui, str) {
         const fsArrD = initFormalSystem(this.creative);
         const fsdata = this.deserializeArr(fsArrD.fs, JSON.parse(this.deserializeStr(str)));
+        const savedMetarules = gui.formalSystem.fastmetarules;
         gui.formalSystem = fsdata.fs;
+        gui.formalSystem.fastmetarules = savedMetarules;
         gui.deductions = fsdata.arrD;
         gui.updatePropositionList(true);
         gui.updateDeductionList();

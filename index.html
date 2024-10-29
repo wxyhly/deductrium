@@ -1,12 +1,14 @@
 <!DOCTYPE html>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0" />
 <meta charset="UTF-8">
 <title>Deductrium</title>
 <link href="gui.css" rel="stylesheet" type="text/css">
+</head>
+<body>
 <h1 style="user-select: none;">Deductrium<span id="gamemode">[生存模式]</span></h1>
 <div id="panel"><button>几何层</button><button id="deduct-btn" class="hide">推理层</button><button id="type-btn"
-    class="hide">类型层</button><button id="progress-btn"
-        class="">进度层</button>
+        class="hide">类型层</button><button id="progress-btn" class="hide">进度层</button>
     <div id="panel-0" class="show" style="user-select: none;"><canvas id="hyper"></canvas></div>
     <div id="panel-3">
         <hr>
@@ -15,8 +17,10 @@
             <button class="danger">加载</button>
             <button class="danger">清除进度</button>
         </div>
-        <div><p></p>
-            <textarea id="progress-txtarea" rows="3" style="width: 100%;" onfocus="this.setSelectionRange(0,this.value.length);"></textarea>
+        <div>
+            <p></p>
+            <textarea id="progress-txtarea" rows="3" style="width: 100%;"
+                onfocus="this.setSelectionRange(0,this.value.length);"></textarea>
         </div>
         <h3>数据统计：</h3>
         <ul>
@@ -24,36 +28,94 @@
             <li>累计消耗推理素：<span id="deductrium-consumed">0</span></li>
             <li>拆除门个数：<span id="destructed-gates">0</span>块</li>
             <li>总方块步数：<span id="parcours-tiles">1</span>块</li>
-            </ul>
-        <h3>成就统计：</h3> upcoming soon
-        <div class="hide">
-            <div>解锁了成就</div>
-            <div>我推出我</div>
-            <div>你推出你，他推出他</div>
-            <div>一物推一物，万物推万物</div>
-            <div>If I were..</div>
-            <div>会跑的“⊢”</div>
-            <div>我推出你，你推出我</div>
-            <div>逻辑真值表</div>
-            <div>逻辑真值表</div>
-            
-            <div>吃素啦</div>
-            <div>第一次消费</div>
-            <div>敢于说不</div>
-            <div>负负得正</div>
-            <div>否定爆炸</div>
-            <div>素食主义者</div>
-            <div>排中律是真的！</div>
-            <div>皮尔士定律</div>
+        </ul>
+        <div id="ach">
+            <h3>成就统计：(手机横屏最佳)</h3>
+            <div class="achievement">
+                <div>解锁了成就</div>
+                <div>我推出我</div>
+                <div>收费站拆除</div>
+                <div>你推出你，他推出他（⊢$0>$0）</div>
+                <div>If I were..</div>
+                <div>会跑的“⊢”（演绎元定理）</div>
+            </div>
+            <div class="achievement">
+                <div>吃素啦</div>
+                <div>第一次消费</div>
+                <div>敢于说不</div>
+                <div>负负得正</div>
+                <div>否定爆炸</div>
+                <div>素食主义者（累计获40µg推理素）</div>
+            </div>
+            <div class="achievement">
+                <div>我推出你，你推出我（&lt;&gt;）</div>
+                <div>逻辑门（与/或）</div>
+                <div>排中律是真的！(p|~p)</div>
+                <div>没毛病！~( p & ~p )</div>
+                <div>皮尔士定律((p>q)>p)>p</div>
+                <div>命题逻辑自动推理</div>
 
-            <div>一阶逻辑</div>
-            <div>ZFC集合论</div>
-            <div>空空如也，仅有一家</div>
-            <div>类型论</div>
-            <div>类型论</div>
-            <div>排中律是个谎言？</div>
-            <div>排中律是个谎言？</div>
+            </div>
+            <div class="achievement">
+                <div>一阶逻辑</div>
+                <div>约束与自由</div>
+                <div>丢掉量词，尽情替换！</div>
+                <div>众生平等</div>
+                <div>概括一切（概括元定理）</div>
+                <div>加大剂量（累计获1mg推理素）</div>
+            </div>
+            <div class="achievement">
+                <div>皮亚诺公理</div>
+                <div>1+1=2</div>
+                <div>2*2=4</div>
+                <div>加法交换律</div>
+                <div>乘法分配率</div>
+                <div>3小于4</div>
+            </div>
+            <div class="achievement">
+                <div>5不整除6</div>
+                <div>解锁素数</div>
+                <div>7是素数</div>
+                <div>任何数都有阶乘</div>
+                <div>质数有无穷个</div>
+                <div>致死剂量（累计获1g推理素）</div>
+            </div>
+            <div class="achievement">
+                <div>ZFC集合论</div>
+                <div>空空如也</div>
+                <div>我给且只给所有不自己理发的人理发</div>
+                <div>序数之门</div>
+                <div>不可数</div>
+                <div>临界质量（累计获50.1kg推理素）</div>
+            </div>
+            <div class="achievement">
+                <div>类型论</div>
+                <div>真理之门</div>
+                <div>简化依赖函数</div>
+                <div>证明助手上线！</div>
+                <div>相等类型</div>
+                <div>True的值都是true</div>
+            </div>
+            <div class="achievement">
+
+                <div>自然数的归纳法</div>
+                <div>1+1=2类型论版</div>
+                <div>相等的归纳法</div>
+                <div>代入方程即可</div>
+                <div>1就是1，2就是2（not (eq 1 2)）</div>
+                <div>数论达人(5不整除7)</div>
+            </div>
+            <div class="achievement">
+                <div>顺时针一圈逆时针一圈，还是回到原点</div>
+                <div>我等价我</div>
+                <div>泛等公理（ua）</div>
+                <div>圆圈跟圆点不同伦（loop不是rfl）</div>
+                <div>原来皮尔士跟他们是一伙的</div>
+                <div>排中律是个谎言！？</div>
+            </div>
         </div>
+        <h3>若遇Bug或其它任何问题：</h3>
+        <p>欢迎联系游戏作者<a target="_blank" href="https://wxyhly.github.io/about/">Hqak</a></p>
     </div>
     <div id="panel-1">
         <div id="metarule-subpanel" class="hide">[M]元规则：
@@ -69,6 +131,8 @@
             <label id="show-d-zfc" class="hide"><input name="show-d" type="checkbox" checked />ZFC集合论</label>
             <label id="show-d-sym" class="hide"><input name="show-d" type="checkbox" checked />逻辑符号定义</label>
             <label class="hide"><input name="show-d" type="checkbox" checked />集合符号定义</label>
+            <label class="hide"><input name="show-d" type="checkbox" checked />集合算数连接</label>
+            <label class="hide"><input name="show-d" type="checkbox" checked />皮亚诺公理</label>
             <label class="hide"><input name="show-d" type="checkbox" checked />算数符号定义</label>
             <label id="show-d-i" class="hide"><input name="show-d" type="checkbox" checked />内置宏</label>
             <label id="show-d-a" class="hide"><input name="show-d" type="checkbox" checked />添加的规则</label>
@@ -120,11 +184,13 @@
                     <button class="inhabitat-modify" id="add-btn">+</button>
                 </div>
             </div>
+            <div id="copygate"></div>
             <label>证明策略：<span id="tactic-hint"></span></label>
             <div class="list-wrapper">
                 <div id="tactic-list">
                     <div id="tactic-state"></div>
-                    <button class="inhabitat-modify hide" id="tactic-remove">-</button><button class="inhabitat-modify" id="tactic-begin">+</button><input id="tactic-input" class="hide"/>
+                    <button class="inhabitat-modify hide" id="tactic-remove">-</button><button class="inhabitat-modify"
+                        id="tactic-begin">+</button><input id="tactic-input" class="hide" />
                     <div id="tactic-errmsg"></div>
                     <div id="tactic-autofill"></div>
                 </div>
@@ -132,6 +198,7 @@
         </div>
     </div>
 </div>
+</body>
 <script type="module" src="js/game.js">
 </script>
 

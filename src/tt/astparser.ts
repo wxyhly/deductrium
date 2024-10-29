@@ -1,17 +1,24 @@
 export type AST = { type: string, name: string, nodes?: AST[], checked?: AST, err?: any };
 export class ASTParser {
-    keywords = [":=", "->", "~=", "===", "@ind_Sum", "ind_Sum", "@Sum", "Sum", "@ind_Prod", "ind_Prod", "@Prod", "Prod"];
+    keywords = [":=", "->", "~=", "===", "@ind_Sum", "ind_Sum", "@Sum", "Sum","@ind_S1","ind_S1","S1", "@ind_Prod", "ind_Prod", "@Prod", "Prod"];
     symChar = ".:,()PSLX~*+";
     ast: AST;
     cursor: number = 0;
     tokens: string[];
     token: string;
     stringify(ast: AST): string {
+        if(!ast) return '表达式丢失';
         const nd = ast.nodes;
         if (ast.type === "->") {
             return `(${this.stringify(nd[0])}→${this.stringify(nd[1])})`;
         } if (ast.type === "===") {
             return `(${this.stringify(nd[0])}===${this.stringify(nd[1])})`;
+        }
+        if (ast.type === ":") {
+            return `(${this.stringify(nd[0])} : ${this.stringify(nd[1])})`;
+        }
+        if (ast.type === ":=") {
+            return `(${this.stringify(nd[0])} := ${this.stringify(nd[1])})`;
         }
         if (ast.type === "~") {
             return `(${this.stringify(nd[0])}~${this.stringify(nd[1])})`;

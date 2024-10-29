@@ -1,17 +1,25 @@
 export class ASTParser {
-    keywords = [":=", "->", "~=", "===", "@ind_Sum", "ind_Sum", "@Sum", "Sum", "@ind_Prod", "ind_Prod", "@Prod", "Prod"];
+    keywords = [":=", "->", "~=", "===", "@ind_Sum", "ind_Sum", "@Sum", "Sum", "@ind_S1", "ind_S1", "S1", "@ind_Prod", "ind_Prod", "@Prod", "Prod"];
     symChar = ".:,()PSLX~*+";
     ast;
     cursor = 0;
     tokens;
     token;
     stringify(ast) {
+        if (!ast)
+            return '表达式丢失';
         const nd = ast.nodes;
         if (ast.type === "->") {
             return `(${this.stringify(nd[0])}→${this.stringify(nd[1])})`;
         }
         if (ast.type === "===") {
             return `(${this.stringify(nd[0])}===${this.stringify(nd[1])})`;
+        }
+        if (ast.type === ":") {
+            return `(${this.stringify(nd[0])} : ${this.stringify(nd[1])})`;
+        }
+        if (ast.type === ":=") {
+            return `(${this.stringify(nd[0])} := ${this.stringify(nd[1])})`;
         }
         if (ast.type === "~") {
             return `(${this.stringify(nd[0])}~${this.stringify(nd[1])})`;

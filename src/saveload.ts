@@ -40,6 +40,9 @@ export class GameSaveLoad {
         } catch (e) {
             if (!skipRollback) {
                 alert("进度代码格式错误：" + e);
+                console.warn("进度代码格式错误：");
+                console.warn(str);
+                console.warn("进度已回滚。");
                 this.load(game, rollback, true);
             } else {
                 console.error(e);
@@ -74,7 +77,11 @@ export class GameSaveLoad {
         let parcours: number;
         [rewards, deductriums, consumed, destructedGates, parcours] = JSON.parse(data);
         for (const r of rewards) {
-            game.hyperGui.world.hitReward(game.hyperGui.world.getBlock(r), r, true);
+            if (r.startsWith("[ach]")) {
+                game.finishAchievement(r.slice(5),true);
+            } else {
+                game.hyperGui.world.hitReward(game.hyperGui.world.getBlock(r), r, true);
+            }
         }
         // caution: rewards can modify deductriums
         game.deductriums = deductriums;

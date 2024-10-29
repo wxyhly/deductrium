@@ -228,33 +228,37 @@ export class FormalSystem {
                 if (!unlocked.includes("<"))
                     throw "null";
                 [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
-                return [tokens[cursor] + n, this.deductions[this.metaInvDeductTheorem(n, "元定理生成*")], c];
+                return [tokens[cursor] + n, this.deductions[this.metaInvDeductTheorem(n, "元规则生成*")], c];
             case ">":
                 if (!unlocked.includes(">"))
                     throw "null";
                 [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
-                return [tokens[cursor] + n, this.deductions[this.metaDeductTheorem(n, "元定理生成*")], c];
+                return [tokens[cursor] + n, this.deductions[this.metaDeductTheorem(n, "元规则生成*")], c];
             case "c":
                 if (!unlocked.includes("c"))
                     throw "null";
                 [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
-                return [tokens[cursor] + n, this.deductions[this.metaConditionTheorem(n, "元定理生成*")], c];
+                return [tokens[cursor] + n, this.deductions[this.metaConditionTheorem(n, "元规则生成*")], c];
             case "v":
-                if (!unlocked.includes("v"))
-                    throw "null";
+                if (!unlocked.includes("v")) {
+                    if (!unlocked.includes("q"))
+                        throw "null";
+                    [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
+                    return ["v" + n, this.deductions[this.metaQuantifyAxiomSchema(n, "元规则生成*")], c];
+                }
                 [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
-                return [tokens[cursor] + n, this.deductions[this.metaConditionUniversalTheorem(n, "元定理生成*")], c];
+                return [tokens[cursor] + n, this.deductions[this.metaConditionUniversalTheorem(n, "元规则生成*")], c];
             case "u":
                 if (!unlocked.includes("u"))
                     throw "null";
                 [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
-                return [tokens[cursor] + n, this.deductions[this.metaUniversalTheorem(n, "元定理生成*")], c];
+                return [tokens[cursor] + n, this.deductions[this.metaUniversalTheorem(n, "元规则生成*")], c];
             case ":":
                 if (!unlocked.includes(":"))
                     throw "null";
                 [n, d, cursor] = this.generateDeductionAndName(name, tokens, cursor + 1);
                 [n2, d, cursor] = this.generateDeductionAndName(name, tokens, cursor);
-                return [":" + n + "," + n2, this.deductions[this.metaCombineTheorem(n, n2, "元定理生成*")], c];
+                return [":" + n + "," + n2, this.deductions[this.metaCombineTheorem(n, n2, "元规则生成*")], c];
             case ",": throw ",";
             default:
                 if (this.deductions[tokens[cursor]])
@@ -275,8 +279,8 @@ export class FormalSystem {
             if (e === "null")
                 return null;
             if (e === ",")
-                throw `使用元定理生成推理规则${name}时：意外出现了“,”`;
-            throw `使用元定理生成推理规则${name}时：` + e;
+                throw `使用元规则生成推理规则${name}时：意外出现了“,”`;
+            throw `使用元规则生成推理规则${name}时：` + e;
         }
     }
     deduct(step, inlineMode) {
@@ -387,8 +391,11 @@ export class FormalSystem {
         if (!p.from)
             throw "该定理为假设，无推理步骤可展开";
         const { deductionIdx, conditionIdxs, replaceValues } = p.from;
+        if (!this.deductions[deductionIdx])
+            this.generateDeduction(deductionIdx);
+        const from = this.deductions[deductionIdx].from;
         if (!this.deductions[deductionIdx].steps)
-            throw `该定理由来自<${this.deductions[deductionIdx].from}>的原子推理规则得到，无子步骤`;
+            throw `该定理由来自<${deductionIdx[0] === "v" ? "一阶逻辑公理模式" : from}>的原子推理规则得到，无子步骤`;
         const hyps = conditionIdxs.map(c => this.propositions[c].value);
         this.removePropositions();
         // expandMode set true to skip local var check in addHypothese
@@ -402,6 +409,8 @@ export class FormalSystem {
         if (!p.from)
             throw "该定理为假设，无推理步骤可展开";
         const { deductionIdx, conditionIdxs, replaceValues } = p.from;
+        if (!this.deductions[deductionIdx])
+            this.generateDeduction(deductionIdx);
         if (!this.deductions[deductionIdx].steps)
             throw `该定理由来自<${this.deductions[deductionIdx].from}>的原子推理规则得到，无子步骤`;
         const suivant = [];
@@ -429,7 +438,7 @@ export class FormalSystem {
         }
     }
     expandMacroWithDefaultValue(deductionIdx, inlineMode = "inline", expandAxiom) {
-        const d = this.deductions[deductionIdx];
+        const d = this.deductions[deductionIdx] || this.generateDeduction(deductionIdx);
         if (!d)
             throw `推理规则${deductionIdx}不存在`;
         if (!expandAxiom && !d.steps)
@@ -513,7 +522,7 @@ export class FormalSystem {
         const s = this._findNewReplName(idx);
         // axiom
         if (!d.steps?.length) {
-            return this.metaQuantifyAxiomSchema(idx, "元定理生成*");
+            return this.metaQuantifyAxiomSchema(idx, "元规则生成*");
         }
         // macro
         const offsetTable = [];
@@ -605,7 +614,7 @@ export class FormalSystem {
             if (isFinite(offsetCondTable[idx]))
                 return offsetCondTable[idx];
             return offsetCondTable[idx] = this.deduct({
-                deductionIdx: this.metaConditionUniversalTheorem(sdidx, "元定理生成*"),
+                deductionIdx: this.metaConditionUniversalTheorem(sdidx, "元规则生成*"),
                 replaceValues: sd.conditions.length ? stepReplaceValues : [s, ...stepReplaceValues],
                 conditionIdxs: step.conditionIdxs.map(id => generate(true, id >= 0 ? id : idx + id))
             });
@@ -950,26 +959,37 @@ export class FormalSystem {
         const R = astmgr.clone(C);
         assert.matchSubAndReplace(R, A, B, nth, /^\$/, false, 0, assert.getReplVarsType(R, {}, false));
         let A_B;
+        let replacedNth = 0;
         // generate a <> b or VxVyVz a<>b
         const generate = (a, b, Vs = []) => {
             const prefix = "".padEnd(Vs.length, "v");
             if (astmgr.equal(a, b)) {
+                // example: (~~a>~~b) <> (~~a > b), also count ~~a one time
+                try {
+                    const matched = {};
+                    assert.match(a, A, /^\$/, false, matched, {}, []);
+                    replacedNth++;
+                }
+                catch (e) { }
                 // a == b : a <> a
-                return this.deduct({ deductionIdx: prefix + ".<>3", conditionIdxs: [], replaceValues: [...Vs, a] });
+                return this.deduct({ deductionIdx: prefix + ".<>i", conditionIdxs: [], replaceValues: [...Vs, a] });
             }
             try {
                 const matched = {};
                 assert.match(a, A, /^\$/, false, matched, {}, []);
-                return this.deduct({
-                    deductionIdx: prefix + idx, conditionIdxs: [],
-                    replaceValues: [...Vs, ...d.replaceNames.map(str => matched[str])]
-                });
+                replacedNth++;
+                if (nth === -1 || nth + 1 === replacedNth) {
+                    return this.deduct({
+                        deductionIdx: prefix + idx, conditionIdxs: [],
+                        replaceValues: [...Vs, ...d.replaceNames.map(str => matched[str])]
+                    });
+                }
             }
             catch (e) { }
             if (!a.nodes?.length || a.nodes?.length !== b.nodes?.length) {
                 throw "元推理函数中替换函数##crp执行失败";
             }
-            if (a.type !== B.type || a.name !== b.name) {
+            if (a.type !== b.type || a.name !== b.name) {
                 throw "元推理函数中替换函数##crp执行失败";
             }
             if (a.type === "sym") {

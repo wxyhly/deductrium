@@ -19,7 +19,7 @@ export class LocalDraw {
     }
     drawPlayer() {
         this.ctxt.beginPath();
-        this.ctxt.arc(this.canvas.width / 2, this.canvas.height / 2, 10, 0, Math.PI * 2);
+        this.ctxt.arc(this.canvas.width / 2, this.canvas.height / 2, 10 * window.devicePixelRatio, 0, Math.PI * 2);
         this.ctxt.fill();
     }
     moveTo(p) {
@@ -34,7 +34,7 @@ export class LocalDraw {
         if (p.z > 1e2)
             return;
         const scale = this.scale / (p.z + 1) * Math.min(this.canvas.width, this.canvas.height) / 2;
-        const fs = Math.round(25 / p.z);
+        const fs = Math.round(25 * window.devicePixelRatio / p.z);
         this.ctxt.font = fs + "px sans-serif"; // + "px";
         const arr = text.split("\n");
         const middle = (arr.length - 1) / 2;
