@@ -1,8 +1,10 @@
 import { ASTMgr } from "./astmgr.js";
 import { AssertionSystem } from "./assertion.js";
 import { Proof } from "./proof.js";
+import { ASTParser } from "./astparser.js";
 const astmgr = new ASTMgr;
 const assert = new AssertionSystem;
+const parser = new ASTParser;
 export class FormalSystem {
     deductions = {};
     metaRules = {};
@@ -10,11 +12,12 @@ export class FormalSystem {
     disabledMetaRules = [];
     deductionReplNameRule = /^\$/g;
     localNameRule = /^\#/g;
-    replacedLocalNameRule = /^&/g;
-    ignoreNfNameRule = /^(&|#)/g;
+    localReplacedNameRule = /^\#\#/g;
+    // replacedLocalNameRule: RegExp = /^&/g;
+    // ignoreNfNameRule: RegExp = /^(&|#)/g;
+    // fnParamNames = (n: number) => "#" + n;
     consts = new Set(); // [constName -> defineDeductionIdx]
     fns = new Set(); // [fnName -> defineDeductionIdx]
-    fnParamNames = (n) => "#" + n;
     propositions = [];
     ast2deduction(ast) {
         assert.checkGrammer(ast, "d", this.consts);
@@ -22,7 +25,7 @@ export class FormalSystem {
         const varLists = {};
         const allReplvars = new Set;
         const matchingReplvars = new Set;
-        const netConditions = conditions.nodes.map(c => {
+        conditions.nodes.map(c => {
             assert.getReplVarsType(c, varLists, false);
             astmgr.getVarNames(c, allReplvars, /^\$/);
             const netC = astmgr.clone(c);
@@ -38,7 +41,8 @@ export class FormalSystem {
             conditions: conditions.nodes,
             replaceNames: Array.from(allReplvars).filter(e => !matchingReplvars.has(e)),
             replaceTypes: varLists,
-            from: ""
+            from: "",
+            tempvars: null
         };
     }
     ast2metaRule(ast) {
@@ -89,10 +93,11 @@ export class FormalSystem {
         delete this.deductions[name];
         return true;
     }
-    addDeduction(name, d, from, macro) {
+    addDeduction(name, d, from, macro, tempvars) {
         const deduction = this.ast2deduction(d);
         deduction.from = from;
         deduction.steps = macro;
+        deduction.tempvars = tempvars ?? this.findLocalNamesInDeductionStep(macro);
         if (this.deductions[name])
             throw "规则名称 " + name + " 已存在";
         this.deductions[name] = deduction;
@@ -133,6 +138,60 @@ export class FormalSystem {
         }
         return false;
     }
+    // find ##0 in ast
+    findLocalNamesInAst(ast, reg, res = new Set) {
+        if (ast.type === "replvar" && ast.name.match(reg)) {
+            res.add(ast.name);
+            return res;
+        }
+        if (ast.nodes?.length) {
+            for (const n of ast.nodes) {
+                this.findLocalNamesInAst(n, reg, res);
+            }
+        }
+        return res;
+    }
+    // find ##0 in macro
+    findLocalNamesInDeductionStep(steps, res = new Set) {
+        if (!steps)
+            return res;
+        for (const step of steps) {
+            for (const val of step.replaceValues) {
+                this.findLocalNamesInAst(val, this.localReplacedNameRule, res);
+                for (const subval of this.generateDeduction(step.deductionIdx).tempvars) {
+                    res.add(subval);
+                }
+            }
+        }
+        return res;
+    }
+    replaceTempVar(ast, tempvarTable) {
+        if (ast.type === "replvar" && ast.name.match(this.localNameRule)) {
+            ast.name = ast.name.replace(/^#([^#].*)$/, "##$1");
+            while (tempvarTable.has(ast.name)) {
+                ast.name += "#";
+            }
+        }
+        if (ast.nodes?.length) {
+            for (const n of ast.nodes) {
+                this.replaceTempVar(n, tempvarTable);
+            }
+        }
+    }
+    // when inline, recover ##0 to #0. if outter has #0, change it to #0#
+    recoverTempVar(ast, tempvarTable) {
+        if (ast.type === "replvar" && ast.name.match(/^##.+$/)) {
+            ast.name = ast.name.replace(/^##(.+)$/, "#$1");
+            while (tempvarTable.has(ast.name)) {
+                ast.name += "#";
+            }
+        }
+        if (ast.nodes?.length) {
+            for (const n of ast.nodes) {
+                this.recoverTempVar(n, tempvarTable);
+            }
+        }
+    }
     addMacro(name, from) {
         const propositionIdx = this.propositions.length - 1;
         let hypothesisAmount = this.propositions.findIndex(e => e.from);
@@ -149,14 +208,20 @@ export class FormalSystem {
             throw "局部变量不能出现在推理宏的结论中";
         }
         const macro = [];
+        const subTempvars = new Set;
+        for (let i = hypothesisAmount; i <= propositionIdx; i++) {
+            for (const v of this.generateDeduction(this.propositions[i].from.deductionIdx).tempvars) {
+                subTempvars.add(v);
+            }
+        }
         for (let i = hypothesisAmount; i <= propositionIdx; i++) {
             const step = this.propositions[i].from;
             macro.push({
                 conditionIdxs: step.conditionIdxs.map(cidx => cidx < hypothesisAmount ? cidx : cidx - i),
                 replaceValues: step.replaceValues.map(v => {
                     const newv = astmgr.clone(v);
-                    // replace #0 to name&0
-                    astmgr.replaceVarNamesInAst(newv, this.localNameRule, /^#(.+)$/, name + "&$1");
+                    // replace #0 to ##0, if conflict with substep, rename it as ##0#
+                    this.replaceTempVar(newv, subTempvars);
                     return newv;
                 }),
                 deductionIdx: step.deductionIdx
@@ -351,6 +416,9 @@ export class FormalSystem {
         // if it is macro and inline, expand substeps 
         let startPropositions = this.propositions.length;
         let propsOffset = [];
+        // find outter tempvars
+        let tempvars = new Set;
+        Object.values(matchTable).forEach(v => this.findLocalNamesInAst(v, this.localNameRule, tempvars));
         for (const [substepIdx, substep] of steps.entries()) {
             // if condition number is positive, use given macro condition props
             // if condition number is negative, this implies newly deducted props, which is relative to the end of prop list
@@ -365,6 +433,8 @@ export class FormalSystem {
             });
             const replaceValues = substep.replaceValues.map(ast => {
                 const replaced = astmgr.clone(ast);
+                this.recoverTempVar(replaced, tempvars);
+                this.replaceTempVar;
                 astmgr.replaceByMatchTable(replaced, matchTable);
                 return replaced;
             });
@@ -938,6 +1008,326 @@ export class FormalSystem {
             throw e;
         }
     }
+    metaChangeNameTheorem(ast, newNames, name, from) {
+        let oldNames = [];
+        const VEs = []; // V for true, E for false
+        let sub = ast;
+        let count = 0;
+        while (sub.type === "sym" && (sub.name === "V" || sub.name === "E")) {
+            oldNames.push(sub.nodes[0].name);
+            VEs.push(sub.name === "V");
+            if (count++ >= newNames.length)
+                break;
+            sub = sub.nodes[1];
+        }
+        const oldP = this.propositions;
+        let lastP;
+        const uniq = "#";
+        const replace = (ast, start, newNames, invOrder) => {
+            const newNamesInv = newNames.slice(0).reverse();
+            const oldNames = [];
+            let sub = ast;
+            let startCount = 0;
+            let subBody;
+            let subprefix = [];
+            while (sub.type === "sym" && sub.name === "V") {
+                if (startCount < start) {
+                    subprefix.push(sub.nodes[0]);
+                }
+                else if (startCount === start) {
+                    subBody = sub;
+                }
+                if (startCount++ >= start) {
+                    oldNames.push(sub.nodes[0].name);
+                }
+                sub = sub.nodes[1];
+            }
+            lastP = this.deduct({
+                deductionIdx: "v".repeat(start) + ".i",
+                replaceValues: [...subprefix, subBody],
+                conditionIdxs: [],
+            });
+            // VxVy: > V#xV#yVxVy:
+            // for (const n of newNamesInv) {
+            //     lastP = this.deduct({
+            //         deductionIdx: "v".repeat(start) + "c<a6",
+            //         replaceValues: [{ type: "replvar", name: oldNames.has(n) ? uniq + n : n }],
+            //         conditionIdxs: [lastP],
+            //     });
+            // }
+            // // lastP = this.deduct({
+            // //     deductionIdx: ".i",
+            // //     replaceValues: [{type:"replvar",name:"a"}],
+            // //     conditionIdxs: [],
+            // // });
+            // //V#xV#yVxVy:f(x,y) > V#xV#y:f(#x,#y)
+            // for (const n of newNames) {
+            //     lastP = this.deduct({
+            //         deductionIdx: "v".repeat(start) + "c" + ("v".repeat(newNames.length)) + "<a4",
+            //         replaceValues: [
+            //             { type: "replvar", name: oldNames.has(n) ? uniq + n : n }
+            //         ],
+            //         conditionIdxs: [lastP],
+            //     });
+            // }
+            // V#xV#y: > V$xV$yV#xV#y:
+            if (invOrder) { // replace from right to left
+                for (let i = newNames.length - 1; i >= 0; i--) {
+                    const n = newNames[i];
+                    // V#xV$y: > V$xV#xV$y
+                    if (oldNames[i] === n) {
+                        continue;
+                    }
+                    lastP = this.deduct({
+                        deductionIdx: "v".repeat(start) + "c" + ("v".repeat(i)) + "<a6",
+                        replaceValues: [{ type: "replvar", name: n }],
+                        conditionIdxs: [lastP],
+                    });
+                    // V$xV#xV$y: > V$xV$y
+                    lastP = this.deduct({
+                        deductionIdx: "v".repeat(start) + "c" + ("v".repeat(i + 1)) + "<a4",
+                        replaceValues: [{ type: "replvar", name: n }],
+                        conditionIdxs: [lastP],
+                    });
+                }
+            }
+            else { // replace from left to right
+                let offset = 0;
+                for (const n of newNames) {
+                    // V#xV$y: > V$xV#xV$y
+                    if (oldNames[offset] === n) {
+                        offset++;
+                        continue;
+                    }
+                    lastP = this.deduct({
+                        deductionIdx: "v".repeat(start) + "c" + ("v".repeat(offset++)) + "<a6",
+                        replaceValues: [{ type: "replvar", name: n }],
+                        conditionIdxs: [lastP],
+                    });
+                    // V$xV#xV$y: > V$xV$y
+                    lastP = this.deduct({
+                        deductionIdx: "v".repeat(start) + "c" + ("v".repeat(offset)) + "<a4",
+                        replaceValues: [{ type: "replvar", name: n }],
+                        conditionIdxs: [lastP],
+                    });
+                }
+            }
+            // .....
+            // #$$#$ .....
+            // #$$#$
+            // $$ #$$#$
+            // $$$$$
+            // Va1Va2Va3Va4Va5:f(a1,a2,a3,a4,a5)=0
+            // V$xV$yV#xV#y:f(#x,#y) > V$xV$yf($x,$y)
+            // offset = start + newNames.length;
+            // for (const n of newNamesInv) {
+            //     if (!oldNames.has(n)) {
+            //         offset--;
+            //         continue;
+            //     }
+            //     lastP = this.deduct({
+            //         deductionIdx: "c" + ("v".repeat(offset--)) + "<a4",
+            //         replaceValues: [
+            //             { type: "replvar", name: n }
+            //         ],
+            //         conditionIdxs: [lastP],
+            //     });
+            // }
+            return lastP;
+        };
+        const replace2 = (ast, start, newNames) => {
+            ast = astmgr.clone(ast);
+            let sub = ast;
+            for (let i = 0; i < start; i++) {
+                if (sub.type === "sym" && (sub.name === "E")) {
+                    sub.name = "V";
+                }
+                sub = sub.nodes[1];
+            }
+            const piff1 = replace(ast, start, newNames, false);
+            const oldNames = [];
+            sub = ast;
+            let startCount = 0;
+            while (sub.type === "sym" && (sub.name === "V")) {
+                if (startCount++ >= start) {
+                    oldNames.push(sub.nodes[0].name);
+                }
+                sub = sub.nodes[1];
+            }
+            let sub2 = astmgr.clone(this.propositions[piff1].value);
+            sub = sub2;
+            startCount = 0;
+            while (sub.type === "sym" && (sub.name === "V")) {
+                if (startCount++ >= start) {
+                    oldNames.push(sub.nodes[0].name);
+                }
+                sub = sub.nodes[1];
+            }
+            astmgr.assign(sub, sub.nodes[1]); // vvvv(a>b) -> vvvv(b)
+            const piff2 = replace(sub2, start, oldNames, true);
+            lastP = this.deduct({
+                deductionIdx: "v".repeat(start) + ".<>", conditionIdxs: [piff1, piff2], replaceValues: []
+            });
+            return lastP;
+        };
+        const replaceE = (ast, starts, newName) => {
+            const wrapName = { type: "replvar", name: newName };
+            const replaced = {
+                type: "fn", name: "#rp", nodes: [
+                    ast.nodes[1], ast.nodes[0], wrapName
+                ]
+            };
+            let temp;
+            lastP = this.deduct({
+                deductionIdx: "v".repeat(starts.length) + "dE", conditionIdxs: [],
+                replaceValues: [...starts, ...ast.nodes]
+            });
+            temp = lastP = this.deduct({
+                deductionIdx: "v".repeat(starts.length) + "<.<>1", conditionIdxs: [lastP], replaceValues: []
+            });
+            lastP = this.deduct({
+                deductionIdx: "v".repeat(starts.length) + "cva4", conditionIdxs: [], replaceValues: [
+                    ...starts, ast, ast.nodes[0], wrapName,
+                    { type: "sym", name: "~", nodes: [replaced] },
+                    ast.nodes[0]
+                ]
+            });
+            lastP = this.deduct({
+                deductionIdx: "v".repeat(starts.length) + "c<a5", conditionIdxs: [lastP], replaceValues: []
+            });
+            lastP = this.deduct({
+                deductionIdx: "v".repeat(starts.length) + "c<.a30", conditionIdxs: [lastP], replaceValues: []
+            });
+            temp = lastP = this.deduct({
+                deductionIdx: "v".repeat(starts.length) + "cmp", conditionIdxs: [lastP, temp], replaceValues: []
+            });
+            lastP = this.deduct({
+                deductionIdx: "v".repeat(starts.length) + "ca6", conditionIdxs: [], replaceValues: [
+                    ...starts, ast,
+                    { type: "sym", name: "V", nodes: [wrapName, { type: "sym", name: "~", nodes: [replaced] }] },
+                    ast.nodes[0]
+                ]
+            });
+            lastP = this.deduct({
+                deductionIdx: "v".repeat(starts.length) + "c<.a30", conditionIdxs: [lastP], replaceValues: []
+            });
+            temp = lastP = this.deduct({
+                deductionIdx: "v".repeat(starts.length) + "cmp", conditionIdxs: [lastP, temp], replaceValues: []
+            });
+            lastP = this.deduct({
+                deductionIdx: "v".repeat(starts.length) + "cdE", conditionIdxs: [], replaceValues: [
+                    ...starts, ast, wrapName, replaced
+                ]
+            });
+            lastP = this.deduct({
+                deductionIdx: "v".repeat(starts.length) + "c<<.<>2", conditionIdxs: [lastP, temp], replaceValues: []
+            });
+            return lastP;
+        };
+        const replaceE2 = (ast, starts, newName) => {
+            const piff1 = replaceE(ast, starts, newName);
+            let sub = this.propositions[piff1].value;
+            for (let i = 0; i < starts.length; i++) {
+                sub = sub.nodes[1];
+            }
+            const piff2 = replaceE(sub.nodes[1], starts, ast.nodes[0].name);
+            lastP = this.deduct({
+                deductionIdx: "v".repeat(starts.length) + ".<>", conditionIdxs: [piff1, piff2], replaceValues: []
+            });
+            return lastP;
+        };
+        let lastAst = ast;
+        let steps = [];
+        const replaceVE = (newNames) => {
+            let cursor = 0;
+            while (cursor < newNames.length) {
+                if (VEs[cursor]) {
+                    let lastV;
+                    for (let i = cursor; i < newNames.length; i++) {
+                        if (!VEs[i]) {
+                            lastV = i;
+                            break;
+                        }
+                    }
+                    lastV ??= newNames.length;
+                    let changed = false;
+                    for (let i = cursor; i < lastV; i++) {
+                        if (oldNames[i] !== newNames[i]) {
+                            changed = true;
+                            break;
+                        }
+                    }
+                    if (!changed) {
+                        cursor = lastV;
+                        continue;
+                    }
+                    lastP = replace2(lastAst, cursor, newNames.slice(cursor, lastV));
+                    for (let i = cursor - 1; i >= 0; i--) {
+                        lastP = this.deduct({
+                            deductionIdx: "v".repeat(i) + ".<>r" + (VEs[i] ? "V" : "E"),
+                            conditionIdxs: [lastP], replaceValues: []
+                        });
+                    }
+                    cursor = lastV;
+                    steps.push(lastP);
+                    console.log(parser.stringify(this.propositions[lastP].value));
+                    lastAst = this.propositions[lastP].value.nodes[1];
+                }
+                else {
+                    if (oldNames[cursor] === newNames[cursor]) {
+                        cursor++;
+                        continue;
+                    }
+                    sub = lastAst;
+                    let i = 0;
+                    const subprefix = [];
+                    while (i++ !== cursor) {
+                        subprefix.push({ type: "replvar", name: newNames[i - 1] });
+                        sub = sub.nodes[1];
+                    }
+                    lastP = replaceE2(sub, subprefix, newNames[cursor]);
+                    for (let i = cursor - 1; i >= 0; i--) {
+                        lastP = this.deduct({
+                            deductionIdx: "v".repeat(i) + ".<>r" + (VEs[i] ? "V" : "E"),
+                            conditionIdxs: [lastP], replaceValues: []
+                        });
+                    }
+                    steps.push(lastP);
+                    console.log(parser.stringify(this.propositions[lastP].value));
+                    lastAst = this.propositions[lastP].value.nodes[1];
+                    cursor++;
+                }
+            }
+        };
+        try {
+            this.removePropositions();
+            // replace2(ast, 0, replaced);
+            // replaceE2(ast, replaced[0]);
+            const tempNames = [];
+            for (let i = 0; i < newNames.length; i++) {
+                const pos = oldNames.indexOf(newNames[i]);
+                tempNames.push((pos === -1 || pos < i) ? newNames[i] : uniq + newNames[i]);
+            }
+            replaceVE(tempNames);
+            oldNames = tempNames;
+            replaceVE(newNames);
+            let frontier = steps[0];
+            if (!frontier)
+                throw "无任何变量被改名";
+            for (let i = 1; i < steps.length; i++) {
+                frontier = this.deduct({
+                    deductionIdx: ".<>t", conditionIdxs: [frontier, steps[i]], replaceValues: []
+                });
+            }
+            const ret = this.addMacro(name, from);
+            this.propositions = oldP;
+            return ret;
+        }
+        catch (e) {
+            this.propositions = oldP;
+            throw e;
+        }
+    }
     metaIffTheorem(idx, replaceValues, name, from) {
         const d = this.generateDeduction(idx);
         if (!d)
@@ -1001,34 +1391,22 @@ export class FormalSystem {
                 }
                 if (a.name === "~") {
                     return this.deduct({
-                        deductionIdx: prefix + ".<>r~", replaceValues: [],
+                        deductionIdx: prefix + ".<>rn", replaceValues: [],
                         conditionIdxs: [generate(a.nodes[0], b.nodes[0], Vs)],
                     });
                 }
                 if (a.name === "V") {
                     const vab = generate(a.nodes[1], b.nodes[1], [...Vs, a.nodes[0]]);
                     return this.deduct({
-                        deductionIdx: prefix + "<.<>rV", replaceValues: [],
+                        deductionIdx: prefix + ".<>rV", replaceValues: [],
                         conditionIdxs: [vab],
                     });
                 }
                 if (a.name === "E") {
-                    const nvnab = generate({
-                        type: "sym", name: "~", nodes: [{
-                                type: "sym", name: "V", nodes: [
-                                    a.nodes[0], { type: "sym", name: "~", nodes: [a.nodes[1]] }
-                                ]
-                            }]
-                    }, {
-                        type: "sym", name: "~", nodes: [{
-                                type: "sym", name: "V", nodes: [
-                                    b.nodes[0], { type: "sym", name: "~", nodes: [b.nodes[1]] }
-                                ]
-                            }]
-                    }, Vs);
+                    const vab = generate(a.nodes[1], b.nodes[1], [...Vs, a.nodes[0]]);
                     return this.deduct({
                         deductionIdx: prefix + ".<>rE", replaceValues: [],
-                        conditionIdxs: [nvnab],
+                        conditionIdxs: [vab],
                     });
                 }
             }

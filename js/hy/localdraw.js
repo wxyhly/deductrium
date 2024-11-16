@@ -57,7 +57,7 @@ export class LocalDraw {
         if (center.z > 1e3)
             return;
         this.ctxt.beginPath();
-        let pa = p.vertex;
+        let pa = debug ? new Hvec(p.vertex.z, p.vertex.x * 0.99, p.vertex.y * 0.99).normalize() : p.vertex;
         const r = Rotor.rotate(Math.PI * 2 / p.p);
         for (let i = 0; i < p.p; i++) {
             let pb = r.apply(pa);

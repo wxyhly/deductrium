@@ -342,6 +342,13 @@ export class FSCmd {
                     newName = formalSystem.metaCombineTheorem(cmdBuffer[2], cmdBuffer[3], "元规则生成*");
                     afterName = cmdBuffer[4];
                     break;
+                case "nt":
+                    if (!this.getInputNewDeductionPos(4))
+                        return;
+                    // ["m","cpt",oldvars+body,  newvars,pos, null, name]
+                    newName = formalSystem.metaChangeNameTheorem(this.astparser.parse(cmdBuffer[2]), cmdBuffer[3].split(/[\s,]/g).filter(e => e), cmdBuffer[6], "元规则生成*");
+                    afterName = cmdBuffer[4];
+                    break;
                 default:
                     throw "很抱歉，该规则暂未被作者实现";
             }
@@ -363,7 +370,7 @@ export class FSCmd {
             return;
         }
         // a deduction is chosen, we verify vars and conditions
-        const deduction = this.gui.getDeduction(cmdBuffer[1]);
+        const deduction = cmdBuffer[1] === "." ? this.gui.getDeduction(this.lastDeduction) : this.gui.getDeduction(cmdBuffer[1]);
         if (!deduction) {
             this.clearCmdBuffer();
             hintText.innerText = `推理已取消：\n未找到推理规则 ${cmdBuffer[1]}`;
@@ -412,14 +419,20 @@ export class FSCmd {
         else {
             // all params are there, finish it
             try {
+                const replvals = cmdBuffer.slice(2 + condLength);
+                const sharpsharpIdx = replvals.findIndex(r => r.includes("##")) + 1;
+                if (sharpsharpIdx) {
+                    throw vars[sharpsharpIdx - 1] + " 中包含了系统保留的符号“##”";
+                }
                 formalSystem.deduct({
-                    deductionIdx: cmdBuffer[1],
-                    replaceValues: cmdBuffer.slice(2 + condLength).map((it) => this.astparser.parse(it)),
+                    deductionIdx: cmdBuffer[1] === "." ? this.lastDeduction : cmdBuffer[1],
+                    replaceValues: replvals.map((it) => this.astparser.parse(it)),
                     conditionIdxs: cmdBuffer.slice(2, 2 + condLength).map(n => Number(n))
                 });
                 this.clearCmdBuffer();
                 this.gui.updatePropositionList();
-                this.lastDeduction = cmdBuffer[1];
+                if (cmdBuffer[1] !== ".")
+                    this.lastDeduction = cmdBuffer[1];
             }
             catch (e) {
                 this.clearCmdBuffer();

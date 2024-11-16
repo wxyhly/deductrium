@@ -314,3 +314,10 @@ div.hintbar {
     border: solid;
     margin: 2px;
 }
+.achievement.locked div::before{
+    content: "?";
+    font-size: 40px;
+}
+.achievement.locked div{
+    font-size: 0em;
+}

@@ -39,12 +39,14 @@ export class SavesParser {
     serializeDeduction(deduction) {
         const value = astparser.stringifyTight(deduction.value);
         const steps = deduction.steps?.map(s => this.serializeDeductionStep(s));
-        return [value, deduction.from, steps];
+        // if fs has tempvars record, then serialize it
+        return deduction.tempvars?.size ? [value, deduction.from, steps, Array.from(deduction.tempvars)] : [value, deduction.from, steps];
     }
     deserializeDeduction(name, fs, sd) {
+        // deserialized data is reliable, no need to regen tempvars
         fs.addDeduction(name, astparser.parse(sd[0]), sd[1], sd[2]?.map(e => ({
             deductionIdx: e[0], conditionIdxs: e[1], replaceValues: e[2].map(v => astparser.parse(v))
-        })));
+        })), sd[3] ? new Set(sd[3]) : new Set());
     }
     serialize(gui) {
         const fs = gui.formalSystem;

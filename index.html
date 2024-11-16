@@ -22,13 +22,15 @@
             <textarea id="progress-txtarea" rows="3" style="width: 100%;"
                 onfocus="this.setSelectionRange(0,this.value.length);"></textarea>
         </div>
-        <h3>数据统计：</h3>
+        <div id="stat"><h3>数据统计：</h3>
         <ul>
             <li>拥有推理素：<span id="deductrium-amount">0</span></li>
             <li>累计消耗推理素：<span id="deductrium-consumed">0</span></li>
             <li>拆除门个数：<span id="destructed-gates">0</span>块</li>
             <li>总方块步数：<span id="parcours-tiles">1</span>块</li>
-        </ul>
+            <li>到达过的最大序数：<span id="max-ord">0</span></li>
+            <li>能前往的最大序数：<span id="next-ord">1</span> (逢<span id="ord-base">0</span>进位<span id="next-ord-stepw"></span>)</li>
+        </ul></div>
         <div id="ach">
             <h3>成就统计：(手机横屏最佳)</h3>
             <div class="achievement">
@@ -39,7 +41,7 @@
                 <div>If I were..</div>
                 <div>会跑的“⊢”（演绎元定理）</div>
             </div>
-            <div class="achievement">
+            <div class="achievement locked">
                 <div>吃素啦</div>
                 <div>第一次消费</div>
                 <div>敢于说不</div>
@@ -47,7 +49,7 @@
                 <div>否定爆炸</div>
                 <div>素食主义者（累计获40µg推理素）</div>
             </div>
-            <div class="achievement">
+            <div class="achievement locked">
                 <div>我推出你，你推出我（&lt;&gt;）</div>
                 <div>逻辑门（与/或）</div>
                 <div>排中律是真的！(p|~p)</div>
@@ -56,7 +58,7 @@
                 <div>命题逻辑自动推理</div>
 
             </div>
-            <div class="achievement">
+            <div class="achievement locked">
                 <div>一阶逻辑</div>
                 <div>约束与自由</div>
                 <div>丢掉量词，尽情替换！</div>
@@ -64,31 +66,31 @@
                 <div>概括一切（概括元定理）</div>
                 <div>加大剂量（累计获1mg推理素）</div>
             </div>
-            <div class="achievement">
+            <div class="achievement locked">
+                <div>命题逻辑大礼包</div>
+                <div>替换一切（互推替换元定理）</div>
+                <div>割让量词的领土</div>
+                <div>一阶逻辑大礼包</div>
+                <div>量词连连消消乐</div>
+                <div>改名换姓（换名元定理）</div>
+            </div>
+            <div class="achievement locked">
                 <div>皮亚诺公理</div>
                 <div>1+1=2</div>
                 <div>2*2=4</div>
                 <div>加法交换律</div>
                 <div>乘法分配率</div>
-                <div>3小于4</div>
+                <div>致死剂量（累计获1g推理素）</div>
             </div>
-            <div class="achievement">
+            <div class="achievement locked">
+                <div>3小于4</div>
                 <div>5不整除6</div>
                 <div>解锁素数</div>
                 <div>7是素数</div>
                 <div>任何数都有阶乘</div>
                 <div>质数有无穷个</div>
-                <div>致死剂量（累计获1g推理素）</div>
             </div>
-            <div class="achievement">
-                <div>ZFC集合论</div>
-                <div>空空如也</div>
-                <div>我给且只给所有不自己理发的人理发</div>
-                <div>序数之门</div>
-                <div>不可数</div>
-                <div>临界质量（累计获50.1kg推理素）</div>
-            </div>
-            <div class="achievement">
+            <div class="achievement locked">
                 <div>类型论</div>
                 <div>真理之门</div>
                 <div>简化依赖函数</div>
@@ -96,7 +98,7 @@
                 <div>相等类型</div>
                 <div>True的值都是true</div>
             </div>
-            <div class="achievement">
+            <div class="achievement locked">
 
                 <div>自然数的归纳法</div>
                 <div>1+1=2类型论版</div>
@@ -105,7 +107,7 @@
                 <div>1就是1，2就是2（not (eq 1 2)）</div>
                 <div>数论达人(5不整除7)</div>
             </div>
-            <div class="achievement">
+            <div class="achievement locked">
                 <div>顺时针一圈逆时针一圈，还是回到原点</div>
                 <div>我等价我</div>
                 <div>泛等公理（ua）</div>
@@ -113,6 +115,23 @@
                 <div>原来皮尔士跟他们是一伙的</div>
                 <div>排中律是个谎言！？</div>
             </div>
+            <div class="achievement locked">
+                <div>ZFC集合论</div>
+                <div>我包含我</div>
+                <div>千里之行，始于空集</div>
+                <div>ZFC简化大礼包</div>
+                <div>交交并并</div>
+                <div>ω^ω</div>
+            </div>
+            <div class="achievement locked">
+                <div>我给且只给所有不自己理发的人理发</div>
+                <div>集齐所有ZFC公理</div>
+                <div>不可数</div>
+                <div>一切皆可良序</div>
+                <div>ω^ω^ω^ω</div>
+                <div>临界质量（累计获50.1kg推理素）</div>
+            </div>
+            
         </div>
         <h3>若遇Bug或其它任何问题：</h3>
         <p>欢迎联系游戏作者<a target="_blank" href="https://wxyhly.github.io/about/">Hqak</a></p>
@@ -126,16 +145,17 @@
         </div>
         <div class="dlist-option">
             <label>[D]推理规则：</label>
-            <label id="show-d-0" class="hide"><input name="show-d" type="checkbox" checked />命题逻辑</label>
-            <label id="show-d-1" class="hide"><input name="show-d" type="checkbox" checked />一阶逻辑</label>
-            <label id="show-d-zfc" class="hide"><input name="show-d" type="checkbox" checked />ZFC集合论</label>
-            <label id="show-d-sym" class="hide"><input name="show-d" type="checkbox" checked />逻辑符号定义</label>
-            <label class="hide"><input name="show-d" type="checkbox" checked />集合符号定义</label>
-            <label class="hide"><input name="show-d" type="checkbox" checked />集合算数连接</label>
-            <label class="hide"><input name="show-d" type="checkbox" checked />皮亚诺公理</label>
-            <label class="hide"><input name="show-d" type="checkbox" checked />算数符号定义</label>
-            <label id="show-d-i" class="hide"><input name="show-d" type="checkbox" checked />内置宏</label>
-            <label id="show-d-a" class="hide"><input name="show-d" type="checkbox" checked />添加的规则</label>
+            <label id="show-d-0"><input name="show-d" type="checkbox" checked />命题逻辑</label>
+            <label id="show-d-1"><input name="show-d" type="checkbox" checked />一阶逻辑</label>
+            <label id="show-d-zfc"><input name="show-d" type="checkbox" checked />ZFC集合论</label>
+            <label id="show-d-zfc"><input name="show-d" type="checkbox" checked />几何公理</label>
+            <label id="show-d-sym"><input name="show-d" type="checkbox" checked />逻辑符号定义</label>
+            <label><input name="show-d" type="checkbox" checked />集合符号定义</label>
+            <label><input name="show-d" type="checkbox" checked />集合算数连接</label>
+            <label><input name="show-d" type="checkbox" checked />皮亚诺公理</label>
+            <label><input name="show-d" type="checkbox" checked />算数符号定义</label>
+            <label id="show-d-i"><input name="show-d" type="checkbox" checked />内置宏</label>
+            <label id="show-d-a"><input name="show-d" type="checkbox" checked />添加的规则</label>
         </div>
         <div class="list-wrapper">
             <div class="list" id="deduct-list">

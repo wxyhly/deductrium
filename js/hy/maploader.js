@@ -1,15 +1,18 @@
 import { mapData } from "./map.js";
+import { genOrdTiles } from "./ordinal.js";
 export var TileBlockType;
 (function (TileBlockType) {
     TileBlockType[TileBlockType["Road"] = 0] = "Road";
     TileBlockType[TileBlockType["Wall"] = 1] = "Wall";
     TileBlockType[TileBlockType["Gate"] = 2] = "Gate";
     TileBlockType[TileBlockType["Reward"] = 3] = "Reward";
+    TileBlockType[TileBlockType["Ordinal"] = 4] = "Ordinal";
 })(TileBlockType || (TileBlockType = {}));
 export const blockMap = new Map();
 export const nameMap = new Map();
 let prevTilehash = null;
 export function initMap(p) {
+    genOrdTiles(blockMap, nameMap, p, [1, 2, 1], [1], 5);
     mapData.split("\n").map(e => e.trimStart().replaceAll("\n", "")).forEach(e => {
         if (!e)
             return;
@@ -24,7 +27,7 @@ export function initMap(p) {
                 content += k;
                 continue;
             }
-            const i = "@|#$".indexOf(k);
+            const i = "@|#$O".indexOf(k);
             if (i === -1) {
                 hash += k;
                 continue;

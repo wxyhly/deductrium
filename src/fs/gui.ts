@@ -73,11 +73,12 @@ export class FSGui {
         document.getElementById("macro-btns").classList.remove("hide");
         document.getElementById("hyp-btn").classList.remove("hide");
         document.getElementById("ach").classList.add("hide");
+        document.getElementById("stat").classList.add("hide");
     }
     prettyPrint(s: string) {
         return s.replace(/<>/g, "↔").replace(/>/g, "→").replace(/</g, "⊂").replace(/@/g, "∈")
             .replace(/U/g, "∪").replace(/I/g, "∩").replace(/\*/g, "×").replace(/\//g, "÷").replace(/-/g, "−")
-            .replace(/\|/g, "∨").replace(/&/g, "∧").replace(/~/g, "¬").replace(/V/g, "∀").replace(/E/g, "∃");
+            .replace(/\|/g, "∨").replace(/&/g, "∧").replace(/~/g, "¬").replace(/V/g, "∀").replace(/E/g, "∃").replace(/omega/g, "ω");
     }
     private addSpan(parentSpan: HTMLSpanElement, text: string) {
         const span = document.createElement("span");
@@ -159,7 +160,7 @@ export class FSGui {
                 this.addSpan(varnode, ")");
             }
         } else if (ast.type === "replvar") {
-            const el = this.addSpan(varnode, ast.name);
+            const el = this.addSpan(varnode, ast.name === "omega" ? "ω" : ast.name);
             const scopeStack = scopes.slice(0);
             if (this.formalSystem.consts.has(ast.name)) {
                 el.classList.add("constant");
@@ -265,7 +266,11 @@ export class FSGui {
     private _convert(d: Deduction) {
         let str = this.cmd.astparser.stringifyTight(d.value);
         let steps = d.steps?.map(step => [step.deductionIdx, step.conditionIdxs, step.replaceValues.map(v => this.cmd.astparser.stringifyTight(v))]);
-        console.log(JSON.stringify([str,"内置宏", steps]));
+        if (d.tempvars?.size) {
+            console.log(JSON.stringify([str, "内置宏", steps, Array.from(d.tempvars)]));
+            return [str, JSON.stringify(steps), Array.from(d.tempvars)];
+        }
+        console.log(JSON.stringify([str, "内置宏", steps]));
         return [str, JSON.stringify(steps)];
     }
     private updateGuiList<T extends { value: AST }>(
@@ -335,12 +340,23 @@ export class FSGui {
         }, refresh);
     }
     updateDeductionList() {
-        this.updateGuiList("", this.deductions.map(d => this.formalSystem.deductions[d] || this.formalSystem.generateDeduction(d)), this.deductionList,
+        const types = new Set<string>;
+        const ds = this.deductions.map(d => this.formalSystem.deductions[d] || this.formalSystem.generateDeduction(d));
+        for (const d of ds) {
+            types.add(d.from);
+            if(d.from.endsWith("*"))types.add("添加的规则");
+        }
+        document.querySelectorAll("input[name='show-d']").forEach((sd: HTMLInputElement) => {
+            const from = (sd.parentNode as HTMLElement).innerText;
+            if (types.has(from)) sd.parentElement.classList.remove("hide"); else sd.parentElement.classList.add("hide");
+        });
+        this.updateGuiList("", ds, this.deductionList,
             (p) => (this.displayDs.has(p.from) || (this.displayDs.has("添加的规则") && p.from.endsWith("*"))),
             (p, itInfo, it) => {
                 itInfo[0].innerText = p.from.replaceAll("<", "&lt;").replaceAll(">", "&gt;") + (p.steps?.length ? "[宏]" : "");
             }, true, this.deductions
         );
+
     }
     updateMetaRuleList(refresh?: boolean) {
         this.updateGuiList("m", this.formalSystem.metaRules, this.metaRuleList, (p, idx) => this.metarules.includes(idx), (p, itInfo, it) => {

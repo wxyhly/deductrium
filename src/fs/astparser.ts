@@ -1,6 +1,6 @@
 import { AST } from "astmgr.js"
 export class ASTParser {
-    keywords = ["E!", "⊢M", "<>", "Union", "{}"];
+    keywords = ["E!", "⊢M", "<>", "Union", "{}", "Equiv"];
     symChar = "VEMUI()@~^<>|&=,;:[]!⊢+-*/{}";
     ast: AST;
     cursor: number = 0;
@@ -51,7 +51,7 @@ export class ASTParser {
         this.cursor = 0;
         this.tokenise(s.replaceAll("∀", "V").replaceAll("∃", "E").replaceAll("∈", "@").replaceAll("¬", "~")
             .replaceAll("→", ">").replaceAll("↔", "<>").replaceAll("⊂", "<").replaceAll("∪", "U").replaceAll("∩", "I")
-            .replaceAll("∧", "&").replaceAll("∨", "|")
+            .replaceAll("∧", "&").replaceAll("∨", "|").replaceAll("ω", "omega")
         );
         this.nextSym();
         return this.meta();
@@ -146,6 +146,13 @@ export class ASTParser {
             }
             this.expectSym("}");
             return { type: "fn", name: "{", nodes };
+        } else if (this.acceptSym("-")) {
+            // -n in #rp(.,.,., here)
+            if (this.acceptVar()) {
+                return { type: "replvar", name: "-"+this.prevToken(1) };
+            }else{
+                throw "语法错误";
+            }
         } else {
             throw "语法错误";
         }

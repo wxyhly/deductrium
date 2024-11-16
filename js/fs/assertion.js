@@ -3,6 +3,7 @@ const astmgr = new ASTMgr;
 const logicSyms = ["<>", ">", "~", "&", "|"];
 const quantSyms = ["E", "E!", "V"];
 const verbSyms = ["@", "=", "<"];
+const verbFns = ["Prime", "Equiv", "Order", "WellOrder", "Rel", "Point", "Line", "Plane", "Between", "Angle"];
 const fnSyms = ["Pair", "Union", "Pow", "U", "I", "S", "+", "-", "*", "/"];
 const T = 1;
 const F = -1;
@@ -92,7 +93,12 @@ export class AssertionSystem {
         let newnth;
         if (isFinite(Number(nth)))
             newnth = Number(nth) - 1;
-        return [ast.nodes[0], ast.nodes[1], ast.nodes[2], nth ? (newnth ?? nth) : -1];
+        let right = false;
+        if (newnth < -1) {
+            newnth = -(newnth + 2);
+            right = true;
+        }
+        return [ast.nodes[0], ast.nodes[1], ast.nodes[2], nth ? (newnth ?? nth) : -1, right];
     }
     getRpParams(ast) {
         if (ast.type !== "fn")
@@ -103,7 +109,12 @@ export class AssertionSystem {
         let newnth;
         if (isFinite(Number(nth)))
             newnth = Number(nth) - 1;
-        return [ast.nodes[0], ast.nodes[1], ast.nodes[2], nth ? (newnth ?? nth) : -1];
+        let right = false;
+        if (newnth < -1) {
+            newnth = -(newnth + 2);
+            right = true;
+        }
+        return [ast.nodes[0], ast.nodes[1], ast.nodes[2], nth ? (newnth ?? nth) : -1, right];
     }
     // check if assertions can't be propagated into ast's children nodes
     ignorePropagateAst(ast) {
@@ -225,7 +236,7 @@ export class AssertionSystem {
     }
     // fussy check for #crp (can replace), varTypes is provided outside
     // if nth === -1, replace all
-    crp(ast, src, dst, nth, varTypes) {
+    crp(ast, src, dst, nth, right, varTypes) {
         if (typeof nth === "string" && !nth.match(/^\$/))
             throw `替换表达式中指定的匹配序号"${nth}"必须为整数`;
         if (typeof nth === "number" && Math.floor(nth) !== nth)
@@ -237,7 +248,7 @@ export class AssertionSystem {
         if (this.astEq(src, dst) === T)
             return T;
         // todo: verify: if contains assertions, just match them exactly is ok?
-        const scopes = this.getSubAstMatchTimes(ast, src, Number(nth), dst);
+        const scopes = this.getSubAstMatchTimes(ast, src, Number(nth), dst, undefined, undefined, right);
         if (!scopes)
             return U; // can't decide
         for (const [idx, scope] of scopes.entries()) {
@@ -406,7 +417,7 @@ export class AssertionSystem {
     }
     // fussy search if subast exist in ast
     // return  matched positions's scopes, false if unknown
-    getSubAstMatchTimes(ast, subAst, nth, dst, scope = [], res = []) {
+    getSubAstMatchTimes(ast, subAst, nth, dst, scope = [], res = [], right) {
         if (scope.length) {
             const vars = this.getVarNamesAndIsNots(subAst, {}, null);
             for (const [v, vIsNot] of Object.entries(vars)) {
@@ -434,17 +445,31 @@ export class AssertionSystem {
             return res; // end of node, find 0
         const qp = this.getQuantParams(ast);
         if (qp) {
+            // can't find free y in Vy:xxx
+            if (qp[0].name === subAst.name && subAst.type === "replvar")
+                return res;
             scope.push(qp[0]);
-            return this.getSubAstMatchTimes(qp[1], subAst, nth, dst, scope);
+            return this.getSubAstMatchTimes(qp[1], subAst, nth, dst, scope, res, right);
+        }
+        if (right) {
+            for (let n = ast.nodes.length - 1; n >= 0; n--) {
+                const result = this.getSubAstMatchTimes(ast.nodes[n], subAst, nth, dst, scope.slice(0), res, right);
+                // if found exact nth
+                if (nth !== -1 && res.length === nth + 1)
+                    return res;
+                // unknown spread
+                if (result === false)
+                    return false;
+            }
         }
         for (const n of ast.nodes) {
             // unknown spread
-            if (this.getSubAstMatchTimes(n, subAst, nth, dst, scope.slice(0), res) === false)
+            if (this.getSubAstMatchTimes(n, subAst, nth, dst, scope.slice(0), res, right) === false)
                 return false;
         }
         return res;
     }
-    getSubAstMatchTimesAndReplace(ast, subAst, newAst, nth, scope = [], res = []) {
+    getSubAstMatchTimesAndReplace(ast, subAst, newAst, nth, scope = [], res = [], right) {
         if (nth !== -1 && nth < res.length)
             return res; // completed, this short circuit is neccesary for later unknown $s 
         if (scope.length) {
@@ -479,11 +504,26 @@ export class AssertionSystem {
             return res; // end of node, find 0
         const qp = this.getQuantParams(ast);
         if (qp) {
+            if (nth === -1) {
+                const bounded = this.astEq(qp[0], subAst);
+                if (bounded === T)
+                    return res; // can't match bounded var
+                if (bounded === U)
+                    return false;
+            }
             scope.push(qp[0]);
-            return this.getSubAstMatchTimesAndReplace(qp[1], subAst, newAst, nth, scope, res);
+            return this.getSubAstMatchTimesAndReplace(qp[1], subAst, newAst, nth, scope, res, right);
+        }
+        if (right) {
+            for (let n = ast.nodes.length - 1; n >= 0; n--) {
+                const subres = this.getSubAstMatchTimesAndReplace(ast.nodes[n], subAst, newAst, nth, scope.slice(0), res, right);
+                // if unknown, don't spread, just ignore it and replace??
+                if (subres === false)
+                    return false;
+            }
         }
         for (const n of ast.nodes) {
-            const subres = this.getSubAstMatchTimesAndReplace(n, subAst, newAst, nth, scope.slice(0), res);
+            const subres = this.getSubAstMatchTimesAndReplace(n, subAst, newAst, nth, scope.slice(0), res, right);
             // if unknown, don't spread, just ignore it and replace??
             if (subres === false)
                 return false;
@@ -499,7 +539,7 @@ export class AssertionSystem {
             return !logicSyms.includes(ast.name);
         }
         if (ast.type === "fn") {
-            if (ast.name === "Prime") {
+            if (verbFns.includes(ast.name)) {
                 return true;
             }
             if (ast.name.match(/^#v*nf/) || ast.name.match(/^#c?rp/)) {
@@ -616,7 +656,7 @@ export class AssertionSystem {
         const crpParams = this.getCrpParams(ast);
         // ast is crp
         if (crpParams) {
-            const tf = this.crp(crpParams[0], crpParams[1], crpParams[2], crpParams[3], varLists);
+            const tf = this.crp(...crpParams, varLists);
             if (tf === T)
                 this.removeFn(ast);
             if (tf === F)
@@ -626,8 +666,8 @@ export class AssertionSystem {
         const rpParams = this.getRpParams(ast);
         // ast is rp
         if (rpParams) {
-            const [sub, src, dst, nth] = rpParams;
-            const tf = this.crp(sub, src, dst, nth, varLists);
+            const [sub, src, dst, nth, right] = rpParams;
+            const tf = this.crp(sub, src, dst, nth, right, varLists);
             if (tf === F)
                 throw "函数#rp执行失败：自由变量将被量词约束";
             if (this.astEq(src, dst) === T) {
@@ -646,7 +686,7 @@ export class AssertionSystem {
                 return;
             if (typeof nth === "string")
                 return;
-            if (this.getSubAstMatchTimesAndReplace(sub, src, dst, nth)) {
+            if (this.getSubAstMatchTimesAndReplace(sub, src, dst, nth, undefined, undefined, right)) {
                 astmgr.assign(ast, sub); // unwrap
             }
             ;
@@ -831,9 +871,36 @@ export class AssertionSystem {
             }
             if (ast.name === "Prime") {
                 if (type !== "p")
-                    throw "意外出现算数表达式";
+                    throw "意外出现算数谓词表达式";
                 if (ast.nodes?.length !== 1)
                     throw `算数谓词${ast.name}仅接受一个类型为项的参数`;
+                for (const n of ast.nodes)
+                    this.checkGrammer(n, "i", consts);
+                return;
+            }
+            if (ast.name === "Equiv") {
+                if (type !== "p")
+                    throw "意外出现双射谓词表达式";
+                if (ast.nodes?.length !== 2)
+                    throw `双射谓词${ast.name}仅接受两个类型为项的参数`;
+                for (const n of ast.nodes)
+                    this.checkGrammer(n, "i", consts);
+                return;
+            }
+            if (ast.name === "Order" || ast.name === "WellOrder") {
+                if (type !== "p")
+                    throw "意外出现序关系谓词表达式";
+                if (ast.nodes?.length !== 2)
+                    throw `序关系谓词${ast.name}仅接受两个类型为项的参数`;
+                for (const n of ast.nodes)
+                    this.checkGrammer(n, "i", consts);
+                return;
+            }
+            if (ast.name === "Rel") {
+                if (type !== "p")
+                    throw "意外出现二元关系谓词表达式";
+                if (ast.nodes?.length !== 3)
+                    throw `二元关系谓词${ast.name}仅接受3个类型为项的参数`;
                 for (const n of ast.nodes)
                     this.checkGrammer(n, "i", consts);
                 return;

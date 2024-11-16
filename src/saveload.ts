@@ -1,5 +1,6 @@
 import { SavesParser as FsSavesParser } from "./fs/savesparser.js";
 import { Game } from "./game.js";
+import { calcMaxReachOrd } from "./hy/ordinal.js";
 import { SavesParser as HySavesParser } from "./hy/savesparser.js";
 import { SavesParser as TtSavesParser } from "./tt/savesparser.js";
 const splittor = "-(=)-";
@@ -67,27 +68,34 @@ export class GameSaveLoad {
         }
     }
     serialize(game: Game) {
-        return JSON.stringify([game.rewards, game.deductriums, game.consumed, game.destructedGates, game.parcours]);
+        return JSON.stringify([
+            game.rewards, game.deductriums, game.consumed,
+            game.destructedGates, game.parcours, game.maxOrd, game.ordBase
+        ]);
     }
     deserialize(game: Game, data: string) {
         let rewards: string[];
         let deductriums: number;
         let consumed: number;
         let destructedGates: number;
-        let parcours: number;
-        [rewards, deductriums, consumed, destructedGates, parcours] = JSON.parse(data);
+        let maxOrd: number[], ordBase: number;
+        [
+            rewards, deductriums, consumed, destructedGates,
+            game.parcours, maxOrd, ordBase
+        ] = JSON.parse(data);
         for (const r of rewards) {
             if (r.startsWith("[ach]")) {
-                game.finishAchievement(r.slice(5),true);
+                game.finishAchievement(r.slice(5), true);
             } else {
                 game.hyperGui.world.hitReward(game.hyperGui.world.getBlock(r), r, true);
             }
         }
-        // caution: rewards can modify deductriums
+        // caution: rewards can modify deductriums, maxOrds and ordBases
         game.deductriums = deductriums;
         game.consumed = consumed;
         game.destructedGates = destructedGates;
-        game.parcours = parcours;
+        game.maxOrd = maxOrd; game.ordBase = ordBase;
+        game.nextOrd = calcMaxReachOrd(game.maxOrd, game.ordBase, game.rewards.includes("stepw"));
         game.updateProgressParam();
     }
 }

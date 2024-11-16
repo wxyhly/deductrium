@@ -37,16 +37,16 @@ export class ASTMgr {
         }
         return varNames;
     }
-    replaceVarNamesInAst(ast: AST, filterReg: RegExp, replaceSrc: RegExp, replaceDst: string) {
-        if (ast.type === "replvar" && ast.name.match(filterReg)) {
-            ast.name = ast.name.replace(replaceSrc, replaceDst);
-        }
-        if (ast.nodes?.length) {
-            for (const n of ast.nodes) {
-                this.replaceVarNamesInAst(n, filterReg, replaceSrc, replaceDst);
-            }
-        }
-    }
+    // replaceVarNamesInAst(ast: AST, filterReg: RegExp, replaceSrc: RegExp, replaceDst: string) {
+    //     if (ast.type === "replvar" && ast.name.match(filterReg)) {
+    //         ast.name = ast.name.replace(replaceSrc, replaceDst);
+    //     }
+    //     if (ast.nodes?.length) {
+    //         for (const n of ast.nodes) {
+    //             this.replaceVarNamesInAst(n, filterReg, replaceSrc, replaceDst);
+    //         }
+    //     }
+    // }
     // exact replace, without matching $.*s
     // nth: null or -1 for replaceAll, others for replace nth(start from 0) 
     replace(ast: AST, searchValue: AST, replaceValue: AST, preventCircularReplace?: boolean, nth?: number, matchedTimes: number = 0) {

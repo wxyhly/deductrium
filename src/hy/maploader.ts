@@ -1,7 +1,8 @@
 import { mapData } from "./map.js"
+import { genOrdTiles } from "./ordinal.js";
 import { Polygon, TileHash } from "./tiling.js";
 export enum TileBlockType {
-    Road, Wall, Gate, Reward
+    Road, Wall, Gate, Reward, Ordinal
 }
 export type TileBlock = {
     type: TileBlockType,
@@ -12,6 +13,7 @@ export const blockMap = new Map<string, TileBlock>();
 export const nameMap = new Map<string, string>();
 let prevTilehash: TileHash = null;
 export function initMap(p: Polygon) {
+    genOrdTiles(blockMap, nameMap, p, [1, 2, 1], [1], 5);
     mapData.split("\n").map(e => e.trimStart().replaceAll("\n", "")).forEach(e => {
         if (!e) return;
         if (e.startsWith("//")) return;
@@ -21,7 +23,7 @@ export function initMap(p: Polygon) {
         let header = true;
         for (const k of e) {
             if (!header) { content += k; continue; }
-            const i = "@|#$".indexOf(k);
+            const i = "@|#$O".indexOf(k);
             if (i === -1) { hash += k; continue; }
             tbt = i;
             header = false;

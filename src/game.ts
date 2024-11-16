@@ -2,6 +2,7 @@ import { ASTMgr } from "./fs/astmgr.js";
 import { FSGui } from "./fs/gui.js";
 import { HyperGui } from "./hy/gui.js"
 import { TileBlock, TileBlockType } from "./hy/maploader.js";
+import { calcMaxReachOrd, cmp, printOrd } from "./hy/ordinal.js";
 import { GameSaveLoad } from "./saveload.js";
 import { TTGui } from "./tt/gui.js";
 function parseDeductriumAmout(str: string) {
@@ -35,15 +36,21 @@ export class Game {
     destructedGates: number = 0;
     parcours: number = 1;
     consumed: number = 0;
+    maxOrd: number[] = [];
+    nextOrd: number[] = [1];
+    ordBase = 15;
     creative = false;
     achievementsTable = {
         "aa": "我推出我", "delgate": "收费站拆除", ".i": "你推出你，他推出他（⊢$0>$0）", "progL": "解锁了成就",
         "hyp": "If I were..", "mdt": "会跑的“⊢”（演绎元定理）", "neg": "敢于说不", ".dne": "负负得正", "exfalso1": "否定爆炸", "exfalso2": "否定爆炸",
         "iff": "我推出你，你推出我（<>）", "andor": "逻辑门（与/或）", "pierce": "皮尔士定律((p>q)>p)>p", "lem": "排中律是真的！(p|~p)", "contra": "没毛病！~( p & ~p )", "mcpt": "命题逻辑自动推理",
         "1st": "一阶逻辑", "nf": "约束与自由", "rp": "丢掉量词，尽情替换！", "a7": "众生平等", "mvt": "概括一切（概括元定理）",
+        ".prop": "命题逻辑大礼包", "mifft": "替换一切（互推替换元定理）", ".1st": "一阶逻辑大礼包", "terr1": "割让量词的领土", "terr2": "割让量词的领土",
+        "mnt": "改名换姓（换名元定理）", "elV1": "量词连连消消乐", "elV2": "量词连连消消乐", "elV3": "量词连连消消乐",
         "peano": "皮亚诺公理", "1+1": "1+1=2", "2x2": "2*2=4", "commu+": "加法交换律", "xdistr": "乘法分配率", "3<4": "3小于4",
         "5R6": "5不整除6", "dPrime": "解锁素数", "prm7": "7是素数", "ex!": "任何数都有阶乘", "infprm": "质数有无穷个",
-        "aExt": "ZFC集合论", "empty": "空空如也",
+        "aExt": "ZFC集合论", ".<i": "我包含我", "ext<": "我包含我", "empty": "千里之行，始于空集", ".zfc": "ZFC简化大礼包", "UUII": "交交并并",
+        "a@a": "我给且只给所有不自己理发的人理发", "vwo": "一切皆可良序", "delAl": "不可数",
         "type": "类型论", "ttrue": "真理之门", "ttsimplFn": "简化依赖函数", "ttactic1": "证明助手上线！", "ttEq": "相等类型", "AllTrue": "True的值都是true",
         "ttindnat": "自然数的归纳法", "tt1+1": "1+1=2类型论版", "ttindeq": "相等的归纳法", "0+x": "代入方程即可", "x+x": "代入方程即可", "1neq2": "1就是1，2就是2（not (eq 1 2)）", "tt5R7": "数论达人(5不整除7)",
         "S1S1": "顺时针一圈逆时针一圈，还是回到原点", "eqvid": "我等价我", "ttua": "泛等公理（ua）", "looprfl": "圆圈跟圆点不同伦（loop不是rfl）", "ttpierce": "原来皮尔士跟他们是一伙的", "lemlie": "排中律是个谎言！？",
@@ -77,8 +84,37 @@ export class Game {
             }
         });
         const astmgr = new ASTMgr;
-        this.hyperGui.world.onPassGate = (hash: string, tile: TileBlock) => {
+        this.hyperGui.world.onPassGate = (name: string, tile: TileBlock, hash: string) => {
             const gateTest = () => {
+                if (tile.name?.[0] === "O") {
+                    // todo: check genOrdMap
+                    const ord = tile.name.slice(1).split(",").map(e => Number(e));
+                    this.hyperGui.world.onPassOrd(hash, ord);
+
+
+                    // this.hyperGui.world.currentOrd = ord;
+                    // return true; // smaller or eq, okay
+
+                    if (cmp(ord, this.maxOrd) <= 0) {
+                        this.hyperGui.world.currentOrd = ord;
+                        return true; // smaller or eq current, okay
+                    }
+                    if (cmp(ord, this.nextOrd) <= 0) {
+                        if (cmp(ord, [1, 2, 3]) >= 0) this.finishAchievement("ω^ω");
+                        if (cmp(ord, [1, 2, 3, 4, 5]) >= 0) this.finishAchievement("ω^ω^ω^ω");
+                        this.maxOrd = ord;
+                        this.nextOrd = calcMaxReachOrd(ord, this.ordBase, this.rewards.includes("stepw"));
+                        this.updateProgressParam();
+                        this.hyperGui.world.currentOrd = ord;
+                        return true; // smaller or eq next, okay
+                    }
+                } else if (tile.type === 4) return true;
+                if (tile.name === "preord") {
+                    return this.parcours >= 256;
+                }
+                if (tile.name === "I1I2I3") {
+                    return (this.rewards.includes("I1") && this.rewards.includes("I2") && this.rewards.includes("I3"));
+                }
                 if (tile.name === "mct2mdt") {
                     const needed = 20;
                     if (this.deductriums < needed) return false;
@@ -89,7 +125,7 @@ export class Game {
                 }
                 if (tile.text.endsWith("#p")) {
                     // if with hyps, fail
-                    if (!this.fsGui.formalSystem.propositions[0]?.from) return false;
+                    // if (!this.fsGui.formalSystem.propositions[0]?.from) return false;
                     const ast = this.fsGui.cmd.astparser.parse(tile.text.replaceAll("\n#p", "").replaceAll("\n", ""));
                     return this.fsGui.getProps().findIndex(v => astmgr.equal(v.value, ast)) !== -1;
                 }
@@ -118,11 +154,11 @@ export class Game {
             if (!gateTest()) return false;
             const achievement = this.achievementsTable[tile.name ?? tile.text];
             if (achievement) this.finishAchievement(achievement);
-            if (this.rewards.includes("delgate") && !this.rewards.includes("hash")) {
+            if (this.rewards.includes("delgate") && !this.rewards.includes("hash") && tile.type !== 4) {
                 tile.text += "\n（此门已拆除）"; tile.type = 0;
                 this.destructedGates++;
                 this.updateProgressParam();
-                this.rewards.push(hash);
+                this.rewards.push(name);
             }
             return true;
         }
@@ -148,6 +184,52 @@ export class Game {
                 case "macro": return document.getElementById("macro-btns").classList.remove("hide");
                 case "hyp": return document.getElementById("hyp-btn").classList.remove("hide");
                 case "neg": this.fsGui.addToDeductions("a3", "a2"); return;
+                case "cmpss": this.hyperGui.world.navigateDraw = true; return;
+                case "omega":
+                    const tileOmega = this.hyperGui.world.getBlock("w");
+                    tileOmega.text += "\n（此门已拆除）"; tileOmega.type = 0;
+                    this.destructedGates++; this.updateProgressParam(); return;
+                case "delAl":
+                    const tileAleph = this.hyperGui.world.getBlock("Aleph");
+                    tileAleph.text += "\n（此门已拆除）"; tileAleph.type = 0;
+                    this.destructedGates++; this.updateProgressParam(); return;
+                case "base-1": case "base-2": case "base-3": case "base-4": case "base-5":
+                case "base-6": case "base-7": case "base-8": case "base-9": case "base-10":
+                    if (this.ordBase > 5) {
+                        this.ordBase--;
+                        this.nextOrd = calcMaxReachOrd(this.maxOrd, this.ordBase, this.rewards.includes("stepw"));
+                        this.updateProgressParam();
+                    }
+                    break;
+                case "base5":
+                    this.ordBase = 4;
+                    this.nextOrd = calcMaxReachOrd(this.maxOrd, this.ordBase, this.rewards.includes("stepw"));
+                    this.updateProgressParam(); break;
+                case "base4":
+                    this.ordBase = 3;
+                    this.nextOrd = calcMaxReachOrd(this.maxOrd, this.ordBase, this.rewards.includes("stepw"));
+                    this.updateProgressParam(); break;
+                case "base3":
+                    this.ordBase = 2;
+                    this.nextOrd = calcMaxReachOrd(this.maxOrd, this.ordBase, this.rewards.includes("stepw"));
+                    this.updateProgressParam(); break;
+                case "base2":
+                    this.ordBase = 1;
+                    this.nextOrd = calcMaxReachOrd(this.maxOrd, this.ordBase, this.rewards.includes("stepw"));
+                    this.updateProgressParam(); break;
+                case "w^2": case "ww2": case "w^3": case "w4234":
+                    const newOrd = {
+                        "w^2": [1, 2, 2],
+                        "w^3": [1, 2, 2, 2],
+                        "w4234": [1, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 2, 1, 2, 2, 1, 2, 2, 1, 2, 2, 1, 2, 2],
+                        "ww2": [1, 2, 3, 2, 3],
+                    }[tile.name];
+                    if (cmp(newOrd, this.maxOrd) > 0) {
+                        this.maxOrd = newOrd;
+                        this.nextOrd = calcMaxReachOrd(this.maxOrd, this.ordBase, this.rewards.includes("stepw"));
+                        this.updateProgressParam();
+                    }
+                    return;
                 case "del<>":
                     const tileIFF = this.hyperGui.world.getBlock("port-iff");
                     tileIFF.text += "\n（此门已拆除）"; tileIFF.type = 0;
@@ -162,14 +244,22 @@ export class Game {
                     this.destructedGates++; this.updateProgressParam(); return;
                 case ".prop":
                     [
-                        '.i', '.d1', '.d2', '.dne', '.dni', '.dn', '.m0', '.m1', '.m2', '.m3',
-                        '.<>0', '.<>1', '.<>2', '.<>3', '.<>4', '.<>5', '.<>r>', '.<>r~', '.<>r<>',
-                        // '.<>r&', '.<>r|',
-                        '.a31', '.a32',
-                        //   '.~EV~', '.dEE', '.VVe', '.VV', '.EE', '.EV', '.<>rV', '.<>rE', 
-                        '.>TF', '.>FU', '.a3TF', '.<>TT', '.<>FF', '.<>TF', '.<>FT',
-                        '.|TU', '.|UT', '.|FF', '.&TT', '.&FU', '.&UF'
+                        '.i', '.t', '.ne', '.ni', '.cs', '.a30', '.a31', '.a32', '.m', '.mn', '.m1', '.m2', '.m&', '.m&1', '.m&2',
+                        '.<>', '.<>1', '.<>2', '.<>i', '.<>s', '.<>t', '.<>&', '.<>r>', '.<>rn', '.<>r<>', '.<>r&', '.<>r|',
+                        '.&', '.&1', '.&2', '.&n1', '.&n2', '.&s', '.&a', '.&m1', '.&m2',
+                        '.|i', '.|1', '.|2', '.|n', '.|n1', '.|n2', '.|s', '.|a', '.|m',
+                        '.n|&', '.n&|', '.nn|&', '.nn&|', '.|nn&', '.&nn|',
+                        '.n', '.a3<>', '.a31<>', '.a32<>', '.>TF', '.>FU', '.>|', '.<>TT', '.<>FF', '.<>TF', '.<>FT',
                     ].forEach(s => this.fsGui.addToDeductions(s));
+                    return;
+                case ".1st":
+                    [
+                        ".nEVn", ".nVEn", ".nVVn", ".nEn", ".Ve", ".Vs", ".V&1", ".V&2", ".V&", ".Ee", ".Ei", ".Es", ".EV", ".E|1", ".E|2", ".E|",
+                        ".Vnf", ".Vnf>", ".V>nf", ".Vnf|", ".V|nf", ".Vnf&", ".V&nf", ".Enf", ".Enf>", ".E>nf", ".Enf|", ".E|nf", ".Enf&", ".E&nf",
+                        ".=s", ".=t", ".=r=", ".=r@"
+                    ].forEach(s => this.fsGui.addToDeductions(s));
+                    this.fsGui.addToDeductions(".<>rV", ".<>r|");
+                    this.fsGui.addToDeductions(".<>rE", ".<>rV");
                     return;
                 case "1st":
                     this.fsGui.addToDeductions("a4", "a3");
@@ -186,13 +276,30 @@ export class Game {
                 case "d{..}": this.fsGui.addToDeductions("d{..}"); return;
                 case "d<>": this.fsGui.addToDeductions("d<>"); return;
                 case "d<": this.fsGui.addToDeductions("d<"); return;
+                case "dw": this.fsGui.addToDeductions("domega"); return;
+                case "dSd0": this.fsGui.addToDeductions("dS"); this.fsGui.addToDeductions("d0"); return;
+                case "dOrder": this.fsGui.addToDeductions("dOrder"); this.fsGui.addToDeductions("dWOrder"); return;
+                case "dEquiv": this.fsGui.addToDeductions("dEquiv"); return;
                 case "andor": this.fsGui.addToDeductions("d&"); this.fsGui.addToDeductions("d|"); return;
-                case "aExt": this.fsGui.addToDeductions("aExt"); return;
-                case "aPair": this.fsGui.addToDeductions("aPair"); return;
-                case "aReg": this.fsGui.addToDeductions("aReg"); return;
-                case "aSep": this.fsGui.addToDeductions("aSep"); return;
-                case "simplezfc":
-                    // todo, do simplifications first
+                case "aExt": this.fsGui.addToDeductions("aExt"); if (this.rewards.includes(".zfc")) { this.fsGui.addToDeductions(".aext"); } this.checkAllZFC(isLoading); return;
+                case "aPair": this.fsGui.addToDeductions("aPair"); if (this.rewards.includes(".zfc")) { this.fsGui.addToDeductions(".apair"); } this.checkAllZFC(isLoading); return;
+                case "aReg": this.fsGui.addToDeductions("aReg"); if (this.rewards.includes(".zfc")) { this.fsGui.addToDeductions(".areg"); } this.checkAllZFC(isLoading); return;
+                case "aSep": this.fsGui.addToDeductions("aSep"); if (this.rewards.includes(".zfc")) { this.fsGui.addToDeductions(".asep"); } this.checkAllZFC(isLoading); return;
+                case "aUnion": this.fsGui.addToDeductions("aUnion"); if (this.rewards.includes(".zfc")) { this.fsGui.addToDeductions(".aunion"); } this.checkAllZFC(isLoading); return;
+                case "aPow": this.fsGui.addToDeductions("aPow"); if (this.rewards.includes(".zfc")) { this.fsGui.addToDeductions(".apow"); } this.checkAllZFC(isLoading); return;
+                case "aRepl": this.fsGui.addToDeductions("aRepl"); if (this.rewards.includes(".zfc")) { this.fsGui.addToDeductions(".arepl"); } this.checkAllZFC(isLoading); return;
+                case "aInf": this.fsGui.addToDeductions("aInf"); if (this.rewards.includes(".zfc")) { this.fsGui.addToDeductions(".ainf"); } this.checkAllZFC(isLoading); return;
+                case "aChoice": this.fsGui.addToDeductions("aChoice"); if (this.rewards.includes(".zfc")) { this.fsGui.addToDeductions(".achoice"); } this.checkAllZFC(isLoading); return;
+                case ".zfc":
+                    if (this.fsGui.deductions.includes("aExt")) this.fsGui.addToDeductions(".aext", "aExt");
+                    if (this.fsGui.deductions.includes("aPair")) this.fsGui.addToDeductions(".apair", "aPair");
+                    if (this.fsGui.deductions.includes("aReg")) this.fsGui.addToDeductions(".areg", "aReg");
+                    if (this.fsGui.deductions.includes("aSep")) this.fsGui.addToDeductions(".asep", "aSep");
+                    if (this.fsGui.deductions.includes("aUnion")) this.fsGui.addToDeductions(".aunion", "aUnion");
+                    if (this.fsGui.deductions.includes("aPow")) this.fsGui.addToDeductions(".apow", "aPow");
+                    if (this.fsGui.deductions.includes("aRepl")) this.fsGui.addToDeductions(".arepl", "aRepl");
+                    if (this.fsGui.deductions.includes("aInf")) this.fsGui.addToDeductions(".ainf", "aInf");
+                    if (this.fsGui.deductions.includes("aChoice")) this.fsGui.addToDeductions(".achoice", "aChoice");
                     return;
                 case "mct": return this.unlockMetarule("cdt");
                 case "mdt": return this.unlockMetarule("dt");
@@ -200,7 +307,11 @@ export class Game {
                 case "mcmt": return this.unlockMetarule("cmt");
                 case "midt": return this.unlockMetarule("idt");
                 case "mifft": return this.unlockMetarule("ifft");
+                case "mnt": return this.unlockMetarule("nt");
                 case "mvt":
+                    if(!this.fsGui.metarules.includes("cvt")){
+                        this.unlockMetarule("cvt");
+                    }
                     this.unlockMetarule("vt");
                     return;
                 case "mcvt": const tileV = this.hyperGui.world.getBlock("V");
@@ -241,6 +352,7 @@ export class Game {
                 case "ttdbl": this.ttGui.unlock("(nat)1", true); return;
                 case "ttadd": this.ttGui.unlock("(nat)2", true); return;
                 case "ttmul": this.ttGui.unlock("(nat)3", true); return;
+                case "ttord": for (let i = 0; i < 10; i++)this.ttGui.unlock("Ord" + i);for (let i = 0; i < 4; i++)this.ttGui.unlock("(Ord)" + i); this.ttGui.updateAfterUnlock(); return;
                 case "ttap": for (let i = 0; i < 6; i++)this.ttGui.unlock("(eq)" + i); this.ttGui.updateAfterUnlock(); return;
                 case "ttS1": for (let i = 0; i < 4; i++)this.ttGui.unlock("S1" + i); this.ttGui.updateAfterUnlock(); return;
                 case "ttindS1": for (let i = 0; i < 7; i++)this.ttGui.unlock("S1" + i); this.ttGui.updateAfterUnlock(); return;
@@ -292,6 +404,18 @@ export class Game {
 
         if (saves) gameSaveLoad.load(this, saves);
     }
+    checkAllZFC(mute: boolean) {
+        let r = this.fsGui.deductions.includes("aUnion");
+        r &&= this.fsGui.deductions.includes("aPair");
+        r &&= this.fsGui.deductions.includes("aInf");
+        r &&= this.fsGui.deductions.includes("aPow");
+        r &&= this.fsGui.deductions.includes("aSep");
+        r &&= this.fsGui.deductions.includes("aExt");
+        r &&= this.fsGui.deductions.includes("aRepl");
+        r &&= this.fsGui.deductions.includes("aReg");
+        r &&= this.fsGui.deductions.includes("aChoice");
+        if (r) this.finishAchievement("集齐所有ZFC公理", mute);
+    }
     addDeductriums(amount: number) {
         this.deductriums += amount;
         this.showHint("推理素" + (amount >= 0 ? "+" : "") + stringifyDeductriumAmout(amount) + "<br>共" + stringifyDeductriumAmout(this.deductriums));
@@ -308,6 +432,10 @@ export class Game {
         document.getElementById("deductrium-consumed").innerText = stringifyDeductriumAmout(this.consumed);
         document.getElementById("parcours-tiles").innerText = this.parcours.toString();
         document.getElementById("destructed-gates").innerText = this.destructedGates.toString();
+        document.getElementById("max-ord").innerText = printOrd(this.maxOrd);
+        document.getElementById("ord-base").innerText = (this.ordBase + 1).toString();
+        document.getElementById("next-ord").innerText = cmp(this.nextOrd, [1, 2, 3, 4, 5]) > 0 ? "？？" : printOrd(this.nextOrd);
+        document.getElementById("next-ord-stepw").innerText = this.rewards.includes("stepw") ? "、后继指数提升" : "";
     }
     showHint(text: string) {
         const dom = document.createElement("div");
@@ -323,6 +451,7 @@ export class Game {
         for (const d of document.querySelectorAll(".achievement div") as any as Array<HTMLDivElement>) {
             if (d.innerText === a) {
                 d.classList.add("achieved");
+                d.parentElement.classList.remove("locked");
                 break;
             }
         }
@@ -344,4 +473,4 @@ export class Game {
         document.getElementById("metarule-subpanel").classList.remove("hide");
     }
 }
-// new Game;
+new Game;

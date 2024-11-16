@@ -26,7 +26,7 @@ export class Proof {
                 const p1 = proofEnumsTable[i];
                 const p2 = proofEnumsTable[i + (hypEnums >> (idx + 1))];
                 const p3 = this.fs.deduct({
-                    deductionIdx: prefix + ".a3TF",
+                    deductionIdx: prefix + ".m2",
                     conditionIdxs: [p2, p1], replaceValues: [],
                 })
                 proofEnumsTable[i] = p3;
@@ -45,7 +45,7 @@ export class Proof {
             if (ast.name === "~") {
                 const [ta, pa] = this.enumProve(ast.nodes[0], vars, hyps);
                 if (!ta) return [true, pa];
-                return [false, this.fs.deduct({ deductionIdx: prefix + "<.dni", conditionIdxs: [pa], replaceValues: [] })];
+                return [false, this.fs.deduct({ deductionIdx: prefix + "<.ni", conditionIdxs: [pa], replaceValues: [] })];
             }
             if (ast.name === ">") {
                 const prevLen = this.fs.propositions.length;
@@ -71,7 +71,7 @@ export class Proof {
             if (ast.name === "|") {
                 const [ta, pa] = this.enumProve(ast.nodes[0], vars, hyps);
                 const [tb, pb] = this.enumProve(ast.nodes[1], vars, hyps);
-                const dname = ta ? "TU" : tb ? "UT" : "FF";
+                const dname = ta ? "1" : tb ? "2" : "n";
                 const conditionIdxs = ta ? [pa] : tb ? [pb] : [pa, pb];
                 const replaceValues = ta ? [ast.nodes[1]] : tb ? [ast.nodes[0]] : [];
                 return [ta || tb, this.fs.deduct({ deductionIdx: prefix + ".|" + dname, conditionIdxs, replaceValues })];
@@ -79,7 +79,7 @@ export class Proof {
             if (ast.name === "&") {
                 const [ta, pa] = this.enumProve(ast.nodes[0], vars, hyps);
                 const [tb, pb] = this.enumProve(ast.nodes[1], vars, hyps);
-                const dname = !ta ? "FU" : !tb ? "UF" : "TT";
+                const dname = !ta ? "n1" : !tb ? "n2" : "";
                 const conditionIdxs = !ta ? [pa] : !tb ? [pb] : [pa, pb];
                 const replaceValues = !ta ? [ast.nodes[1]] : !tb ? [ast.nodes[0]] : [];
                 return [ta && tb, this.fs.deduct({ deductionIdx: prefix + ".&" + dname, conditionIdxs, replaceValues })];
