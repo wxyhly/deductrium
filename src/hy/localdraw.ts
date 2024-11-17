@@ -1,4 +1,4 @@
-import { Hvec, Rotor } from "./algebra.js";
+import { Hvec, Quaternion, Rotor } from "./algebra.js";
 import { HoroRect, Polygon } from "./tiling.js";
 
 export class LocalDraw {
@@ -19,11 +19,11 @@ export class LocalDraw {
         this.ctxt.arc(this.canvas.width / 2, this.canvas.height / 2, this.scale * Math.min(this.canvas.width, this.canvas.height) / 2, 0, Math.PI * 2);
         this.ctxt.fill();
     }
-    drawPlayer() {
-        this.ctxt.beginPath();
-        this.ctxt.arc(this.canvas.width / 2, this.canvas.height / 2, 10*window.devicePixelRatio, 0, Math.PI * 2);
-        this.ctxt.fill();
-    }
+    // drawPlayer() {
+    //     this.ctxt.beginPath();
+    //     this.ctxt.arc(this.canvas.width / 2, this.canvas.height / 2, 10*window.devicePixelRatio, 0, Math.PI * 2);
+    //     this.ctxt.fill();
+    // }
     moveTo(p: Hvec) {
         const scale = this.scale / (p.z + 1) * Math.min(this.canvas.width, this.canvas.height) / 2;
         this.ctxt.moveTo(p.x * scale + this.canvas.width / 2, p.y * scale + this.canvas.height / 2);
@@ -54,7 +54,7 @@ export class LocalDraw {
         const center = mat.apply(new Hvec);
         if (center.z > 1e3) return;
         this.ctxt.beginPath();
-        let pa = debug?new Hvec(p.vertex.z,p.vertex.x*0.99,p.vertex.y*0.99).normalize():p.vertex;
+        let pa = debug ? new Hvec(p.vertex.z, p.vertex.x * 0.99, p.vertex.y * 0.99).normalize() : p.vertex;
         const r = Rotor.rotate(Math.PI * 2 / p.p);
         for (let i = 0; i < p.p; i++) {
             let pb = r.apply(pa);
@@ -94,5 +94,72 @@ export class LocalDraw {
         }
         this.drawLine(mat.mul(new Rotor(1, -w_2, 0, -w_2)).apply(p2), mat.mul(new Rotor(1, -w_2, 0, -w_2)).apply(p));
         this.ctxt.fill();
+    }
+    // }
+    // class Charactor{
+    points: number[][] = [
+        [1, 0, 0, 0], [0, 1, 0, 0], [-1, 0, 0, 0], [0, -1, 0, 0],
+        [0, 0, 1, 0], [0, 0, 0, 1], [0, 0, -1, 0], [0, 0, 0, -1],
+
+    ];
+
+    edges1: [number, number][] = [
+        [0, 4], [4, 2], [6, 2], [6, 0],
+        [1, 5], [5, 3], [7, 3], [7, 1],
+    ];
+    edges2: [number, number][] = [
+        [0, 1], [1, 2], [2, 3], [3, 0],
+        [4, 5], [5, 6], [6, 7], [7, 4],
+    ];
+
+    edges3: [number, number][] = [
+        [0, 5], [5, 2], [2, 7], [7, 0],
+        [1, 4], [4, 3], [3, 6], [6, 1],
+    ];
+    rotorL = Quaternion.rand();
+    rotorR = Quaternion.rand();
+    drawPlayer() {
+        this.ctxt.beginPath();
+        this.ctxt.arc(this.canvas.width / 2, this.canvas.height / 2, 10 * window.devicePixelRatio, 0, Math.PI * 2);
+        this.ctxt.fill();
+        const ps = this.points.map((p) => {
+            const r = new Quaternion(...p);
+            r.mulsl(this.rotorL).mulsr(this.rotorR);
+            const p3 = 3;
+            const p2 = 3;
+            const scale = 3;
+            // 3d perspect proj
+            r.x *= (r.w + p3) / p3;
+            r.y *= (r.w + p3) / p3;
+            r.z *= (r.w + p3) / p3;
+            // 2d perspect proj
+            r.x *= (r.z + p2) / p2 * scale;
+            r.y *= (r.z + p2) / p2 * scale;
+            return [this.canvas.width / 2 + 20 * window.devicePixelRatio * r.x, this.canvas.height / 2 - 20 * window.devicePixelRatio * r.y]
+        });
+        this.ctxt.lineWidth = 1.5 * window.devicePixelRatio;
+        this.ctxt.strokeStyle = "rgba(255,70,50,0.5)";
+        this.ctxt.beginPath();
+        for (const [a, b] of this.edges1) {
+            this.ctxt.moveTo(ps[a][0], ps[a][1]);
+            this.ctxt.lineTo(ps[b][0], ps[b][1]);
+        }
+        this.ctxt.stroke();
+
+        this.ctxt.strokeStyle = "rgba(0,0,255,1)";
+        this.ctxt.beginPath();
+        for (const [a, b] of this.edges2) {
+            this.ctxt.moveTo(ps[a][0], ps[a][1]);
+            this.ctxt.lineTo(ps[b][0], ps[b][1]);
+        }
+        this.ctxt.stroke();
+
+        this.ctxt.strokeStyle = "rgba(0,180,0,0.3)";
+        this.ctxt.beginPath();
+        for (const [a, b] of this.edges3) {
+            this.ctxt.moveTo(ps[a][0], ps[a][1]);
+            this.ctxt.lineTo(ps[b][0], ps[b][1]);
+        }
+        this.ctxt.stroke();
     }
 }

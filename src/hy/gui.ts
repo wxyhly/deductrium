@@ -41,6 +41,12 @@ export class HyperGui {
             touchStartX = ev.targetTouches[0].clientX;
             touchStartY = ev.targetTouches[0].clientY;
         });
+        const prettyPrintInput = document.querySelector("#panel-0 input") as HTMLInputElement;
+        prettyPrintInput.onfocus = ()=>prettyPrintInput.blur();
+        prettyPrintInput.addEventListener('change',(e)=>{
+            this.world.prettyPrint = !prettyPrintInput.checked;
+            this.needUpdate = true;
+        })
         this.canvas.addEventListener("touchmove", ev => {
             ev.preventDefault();
             ev.stopPropagation();

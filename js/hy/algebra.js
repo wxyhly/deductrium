@@ -1,3 +1,17 @@
+export class Vec {
+    x;
+    y;
+    z;
+    constructor(z = 0, x = 0, y = 0) {
+        this.x = x;
+        this.z = z;
+        this.y = y;
+    }
+    norm() {
+        const l = Math.sqrt(this.z * this.z + this.x * this.x + this.y * this.y);
+        return l;
+    }
+}
 export class Hvec {
     x;
     y;
@@ -111,6 +125,139 @@ export class Rotor {
     apply(p) {
         const q = this.mul(new Rotor(0, p.y, p.x, p.z)).mul(this.conj());
         return new Hvec(q.z, q.y, q.x);
+    }
+}
+// from repo tesserxel
+export class Quaternion {
+    x;
+    y;
+    z;
+    w;
+    constructor(x = 1, y = 0, z = 0, w = 0) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.w = w;
+    }
+    set(x = 1, y = 0, z = 0, w = 0) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.w = w;
+        return this;
+    }
+    flat() {
+        return [this.x, this.y, this.z, this.w];
+    }
+    copy(v) {
+        this.x = v.x;
+        this.y = v.y;
+        this.z = v.z;
+        this.w = v.w;
+        return this;
+    }
+    clone() {
+        return new Quaternion(this.x, this.y, this.z, this.w);
+    }
+    neg() {
+        return new Quaternion(-this.x, -this.y, -this.z, -this.w);
+    }
+    negs() {
+        this.x = -this.x;
+        this.y = -this.y;
+        this.z = -this.z;
+        this.w = -this.w;
+        return this;
+    }
+    mul(q) {
+        return new Quaternion(this.x * q.x - this.y * q.y - this.z * q.z - this.w * q.w, this.x * q.y + this.y * q.x + this.z * q.w - this.w * q.z, this.x * q.z - this.y * q.w + this.z * q.x + this.w * q.y, this.x * q.w + this.y * q.z - this.z * q.y + this.w * q.x);
+    }
+    /** this = this * q; */
+    mulsr(q) {
+        var x = this.x * q.x - this.y * q.y - this.z * q.z - this.w * q.w;
+        var y = this.x * q.y + this.y * q.x + this.z * q.w - this.w * q.z;
+        var z = this.x * q.z - this.y * q.w + this.z * q.x + this.w * q.y;
+        this.w = this.x * q.w + this.y * q.z - this.z * q.y + this.w * q.x;
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        return this;
+    }
+    /** this = q * this; */
+    mulsl(q) {
+        var x = q.x * this.x - q.y * this.y - q.z * this.z - q.w * this.w;
+        var y = q.x * this.y + q.y * this.x + q.z * this.w - q.w * this.z;
+        var z = q.x * this.z - q.y * this.w + q.z * this.x + q.w * this.y;
+        this.w = q.x * this.w + q.y * this.z - q.z * this.y + q.w * this.x;
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        return this;
+    }
+    /** this = this * conj(q); */
+    mulsrconj(q) {
+        var x = this.x * q.x + this.y * q.y + this.z * q.z + this.w * q.w;
+        var y = -this.x * q.y + this.y * q.x - this.z * q.w + this.w * q.z;
+        var z = -this.x * q.z + this.y * q.w + this.z * q.x - this.w * q.y;
+        this.w = -this.x * q.w - this.y * q.z + this.z * q.y + this.w * q.x;
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        return this;
+    }
+    /** this = conj(q) * this; */
+    mulslconj(q) {
+        var x = q.x * this.x + q.y * this.y + q.z * this.z + q.w * this.w;
+        var y = q.x * this.y - q.y * this.x - q.z * this.w + q.w * this.z;
+        var z = q.x * this.z + q.y * this.w - q.z * this.x - q.w * this.y;
+        this.w = q.x * this.w - q.y * this.z + q.z * this.y - q.w * this.x;
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        return this;
+    }
+    conj() {
+        return new Quaternion(this.x, -this.y, -this.z, -this.w);
+    }
+    conjs() {
+        this.y = -this.y;
+        this.z = -this.z;
+        this.w = -this.w;
+        return this;
+    }
+    norm() {
+        return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w);
+    }
+    norms() {
+        let n = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w);
+        n = n == 0 ? 0 : (1 / n);
+        this.x *= n;
+        this.y *= n;
+        this.z *= n;
+        this.w *= n;
+        return this;
+    }
+    static expset(xy, xz, xw, yz, yw, zw) {
+        let A = new Vec(xy + zw, xz - yw, xw + yz);
+        let B = new Vec(xy - zw, xz + yw, xw - yz);
+        let a = A.norm();
+        let b = B.norm();
+        let aa = a * 0.5;
+        let bb = b * 0.5;
+        let sa = (a > 0.005 ? Math.sin(aa) / a : 0.5 - a * a / 12);
+        let sb = (b > 0.005 ? Math.sin(bb) / b : 0.5 - b * b / 12);
+        return [
+            new Quaternion(Math.cos(aa), sa * A.x, sa * A.y, sa * A.z),
+            new Quaternion(Math.cos(bb), sb * B.x, sb * B.y, sb * B.z)
+        ];
+    }
+    static rand() {
+        let a = Math.random() * Math.PI * 2;
+        let b = Math.random() * Math.PI * 2;
+        let c = Math.random();
+        let sc = Math.sqrt(c);
+        let cc = Math.sqrt(1 - c);
+        return new Quaternion(sc * Math.cos(a), sc * Math.sin(a), cc * Math.cos(b), cc * Math.sin(b));
     }
 }
 //# sourceMappingURL=algebra.js.map

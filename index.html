@@ -9,7 +9,9 @@
 <h1 style="user-select: none;">Deductrium<span id="gamemode">[生存模式]</span></h1>
 <div id="panel"><button>几何层</button><button id="deduct-btn" class="hide">推理层</button><button id="type-btn"
         class="hide">类型层</button><button id="progress-btn" class="hide">进度层</button>
-    <div id="panel-0" class="show" style="user-select: none;"><canvas id="hyper"></canvas></div>
+    <div id="panel-0" class="show" style="user-select: none;">
+        <label style="position: absolute;"><input type="checkbox"/>以输入形式(ascii)显示谜题</label>
+        <canvas id="hyper"></canvas></div>
     <div id="panel-3">
         <hr>
         <div class="progress-btns">
@@ -131,6 +133,9 @@
                 <div>临界质量（累计获50.1kg推理素）</div>
             </div>
             
+        </div>
+        <div id="creer" class="hide">
+            <p>注意：创造模式与生存模式不共享进度系统。创造模式下无法体验双曲空间以及序数系统等游戏内容，前往生存模式<a href="?" target="_blank">请点击这里</a>。</p>
         </div>
         <h3>若遇Bug或其它任何问题：</h3>
         <p>欢迎联系游戏作者<a target="_blank" href="https://wxyhly.github.io/about/">Hqak</a></p>

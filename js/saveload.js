@@ -130,13 +130,13 @@ export class GameSaveLoad {
         for (const [a, b] of replaceArr1) {
             json = json.replaceAll(a, b);
         }
-        let randomFunction = new Rnd(json.length);
+        let randomFunction = new Rnd(this.storageKey === "deductrium-save" ? json.length : (json.length - 1));
         console.log(json);
         const l78z = Shuffle.shuffleArray(Array.from(json), randomFunction);
         return l78z.join("");
     }
     deserializeStr(str) {
-        let randomFunction = new Rnd(str.length);
+        let randomFunction = new Rnd(this.storageKey === "deductrium-save" ? str.length : (str.length - 1));
         str = Shuffle.shuffleArrayReverse(Array.from(str), randomFunction);
         for (const [a, b] of replaceArr2) {
             str = str.replaceAll(b, a);
@@ -155,16 +155,6 @@ class Rnd {
     }
 }
 class Shuffle {
-    // static seedrandom(seed: number) {
-    //     let x = Math.sin(seed) * 1e4;
-    //     return function () {
-    //         // Jenkins Hash
-    //         x = ((x + 0x19da44d9) + (x << 8)) >>> 0;
-    //         x = (x ^ (x >>> 4)) >>> 0;
-    //         x = ((x * 0xb5502e5) + (x >>> 0)) >>> 0;
-    //         return (x >>> 0) / 0x100000000;
-    //     };
-    // }
     static shuffleArray(array, randomFunction) {
         for (let i = array.length - 1; i > 0; i--) {
             const j = Math.floor(randomFunction.next() * (i + 1));

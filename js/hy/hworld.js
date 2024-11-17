@@ -1,4 +1,4 @@
-import { Hvec, Rotor } from "./algebra.js";
+import { Hvec, Quaternion, Rotor } from "./algebra.js";
 import { LocalDraw } from "./localdraw.js";
 import { TileBlockType, blockMap, initMap, nameMap } from "./maploader.js";
 import { genOrdTiles } from "./ordinal.js";
@@ -11,6 +11,7 @@ export class HWorld {
     currentTile = [];
     currentOrd = null;
     gravity = true;
+    prettyPrint = true;
     highLightGetD = false;
     // if tile doesn't have name, name is hash
     onPassGate;
@@ -66,7 +67,7 @@ export class HWorld {
             }
             ctxt.fillStyle = ["rgb(0,80,0)", "rgb(60,60,255)", "rgb(33,38,255)", "rgb(255,0,0)", "rgb(30,20,100)"][block.type];
             let text = block.text;
-            if (true) {
+            if (this.prettyPrint) {
                 if (text.endsWith("#p") || text.endsWith("#d")) {
                     text = text.replaceAll("V", "∀").replaceAll("<>", "↔").replaceAll(/E([^q])/g, "∃$1").replaceAll("@", "∈").replaceAll("~", "¬")
                         .replaceAll(">", " → ").replaceAll("<", "⊂").replaceAll("U", "∪").replaceAll("I", "∩")
@@ -74,12 +75,12 @@ export class HWorld {
                 }
                 else if (text.endsWith("#t")) {
                     text = text.replaceAll("->", " → ").replaceAll("L", "λ").replaceAll("S", "Σ").replaceAll("P", "Π")
-                        .replaceAll("X", "×").replaceAll("|", "∨");
+                        .replaceAll("X", "×");
                 }
             }
             this.localDraw.textTo(this.localCamMat.mul(r).apply(new Hvec), text);
         }
-        ctxt.fillStyle = "rgb(0,0,0)";
+        ctxt.fillStyle = "rgba(0,0,0,0.2)";
         this.localDraw.drawPlayer();
     }
     hitTest(t) {
@@ -108,8 +109,16 @@ export class HWorld {
     onPassOrd(hash, ord) {
         genOrdTiles(blockMap, nameMap, this.atlasTile, hash.split(",").map(e => Number(e)), ord);
     }
+    updateCharactor(x, y) {
+        x *= 10;
+        y *= 10;
+        const R = Quaternion.expset(-x, 0, x * 0.05 + 0.0001, y, 0, 0.000063);
+        this.localDraw.rotorL.mulsl(R[0]).norms();
+        this.localDraw.rotorR.mulsr(R[1]).norms();
+    }
     moveCam(x, y) {
         this.localCamMat = Rotor.move(x, y).mul(this.localCamMat).normalize();
+        this.updateCharactor(x, y);
         const pos = this.localCamMat.conj().apply(new Hvec);
         this.onStateChange();
         const newDomain = this.atlasTile.isInDomain(pos);
@@ -120,7 +129,10 @@ export class HWorld {
                 const normal = this.localCamMat.conj().mul(Rotor.rotate(-Math.PI * 2 * newDomain / this.atlasTile.p)).apply(this.atlasTile.n3);
                 const theta = Math.atan2(normal.y, normal.x);
                 const ds = Math.hypot(x, y);
-                this.localCamMat = Rotor.move(Math.cos(theta) * ds - x, Math.sin(theta) * ds - y).mul(this.localCamMat);
+                const xx = Math.cos(theta) * ds - x;
+                const yy = Math.sin(theta) * ds - y;
+                this.localCamMat = Rotor.move(xx, yy).mul(this.localCamMat);
+                this.updateCharactor(xx, yy);
             }
             else {
                 this.onStepToAnotherTile();

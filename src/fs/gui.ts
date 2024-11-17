@@ -74,6 +74,7 @@ export class FSGui {
         document.getElementById("hyp-btn").classList.remove("hide");
         document.getElementById("ach").classList.add("hide");
         document.getElementById("stat").classList.add("hide");
+        document.getElementById("creer").classList.remove("hide");
     }
     prettyPrint(s: string) {
         return s.replace(/<>/g, "↔").replace(/>/g, "→").replace(/</g, "⊂").replace(/@/g, "∈")
