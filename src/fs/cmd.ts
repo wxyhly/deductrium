@@ -40,7 +40,8 @@ export class FSCmd {
             return false;
         }
         if (e.key !== "Enter") return false;
-        const cmd = actionInput.value;
+        let cmd = actionInput.value;
+        if (cmd.includes("`")) cmd = cmd.replaceAll("`", "");
         if (!cmd.trim()) return;
         this.cmdBuffer.push(cmd);
         actionInput.value = "";

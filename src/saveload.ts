@@ -4,6 +4,31 @@ import { calcMaxReachOrd } from "./hy/ordinal.js";
 import { SavesParser as HySavesParser } from "./hy/savesparser.js";
 import { SavesParser as TtSavesParser } from "./tt/savesparser.js";
 const splittor = "-(=)-";
+const dict = {
+    ',"aE0","aPair","aPow","aUnion","areg","arepl","asep","ainf",': "a#`",
+    '"0","1","2","3","4","5","6","7","8","9","10"': "b#`",
+    '"Union","Pow","S"': "c#`",
+    ',"apn1","apn2","apn3","d1","d2","d3","d4","d5","d6","d7","d8","d9",': "d#`",
+    '","2,2,4,2,': '@`',
+    '3,3,3,3,': '3`',
+    '2,2,2,2,2,2,': '6`',
+    '1,1,1,1,1,1,': '1`',
+    '素食主义者（累计获40µg推理素）': '#4`',
+    '你推出你，他推出他（⊢$0>$0）': '#2`',
+    '会跑的“⊢”（演绎元定理）': '#3`',
+    '第一次消费': '#1`',
+    '[["progL","[ach]解锁了成就",': 'ch`',
+    '","[ach]': '2`',
+    '","录制*",[["': '*`',
+    ',["mp",[': 'm`',
+    '],[]]]],"': '[`',
+    '",[],["': '{`',
+    '","a': 'a`',
+    '","d': 'd`',
+};
+const replaceArr1 = Object.entries(dict);
+const replaceArr2 = replaceArr1.slice(0).reverse();
+
 export class GameSaveLoad {
     storageKey = "deductrium-save";
     constructor(gamemode: "survival" | "creative") {
@@ -31,7 +56,7 @@ export class GameSaveLoad {
     load(game: Game, str: string, skipRollback?: boolean) {
         const rollback = this.save(game);
         try {
-            const [globaldata, hydata, fsdata, ttdata] = str.split(splittor);
+            const [globaldata, hydata, fsdata, ttdata] = this.deserializeStr(str).split(splittor);
             this.deserialize(game, globaldata);
             new HySavesParser().deserialize(game.hyperGui.world, hydata);
             game.hyperGui.needUpdate = true;
@@ -55,7 +80,7 @@ export class GameSaveLoad {
         const hydata = new HySavesParser().serialize(game.hyperGui.world);
         const ttdata = new TtSavesParser().serialize(game.ttGui);
         const globaldata = this.serialize(game);
-        const data = [globaldata, hydata, fsdata, ttdata].join(splittor);
+        const data = this.serializeStr([globaldata, hydata, fsdata, ttdata].join(splittor));
         localStorage.setItem(this.storageKey, data);
         if (!dom) return data;
         dom.value = data;
@@ -97,5 +122,64 @@ export class GameSaveLoad {
         game.maxOrd = maxOrd; game.ordBase = ordBase;
         game.nextOrd = calcMaxReachOrd(game.maxOrd, game.ordBase, game.rewards.includes("stepw"));
         game.updateProgressParam();
+    }
+
+    serializeStr(json: string) {
+        for (const [a, b] of replaceArr1) {
+            json = json.replaceAll(a, b);
+        }
+        let randomFunction = new Rnd(json.length);
+        console.log(json);
+        const l78z = Shuffle.shuffleArray(Array.from(json), randomFunction);
+        return l78z.join("");
+    }
+    deserializeStr(str: string) {
+        let randomFunction = new Rnd(str.length);
+        str = Shuffle.shuffleArrayReverse(Array.from(str), randomFunction);
+        for (const [a, b] of replaceArr2) {
+            str = str.replaceAll(b, a);
+        }
+        return str;
+    }
+}
+
+class Rnd {
+    x: number;
+    constructor(x: number) { this.x = x; }
+    next() {
+        this.x = ((this.x + 0x19da44d9) + (this.x << 8)) >>> 0;
+        this.x = (this.x ^ (this.x >>> 4)) >>> 0;
+        this.x = ((this.x * 0xb5502e5) + (this.x >>> 0)) >>> 0;
+        return (this.x >>> 0) / 0x100000000;
+    }
+}
+class Shuffle {
+    // static seedrandom(seed: number) {
+    //     let x = Math.sin(seed) * 1e4;
+    //     return function () {
+    //         // Jenkins Hash
+    //         x = ((x + 0x19da44d9) + (x << 8)) >>> 0;
+    //         x = (x ^ (x >>> 4)) >>> 0;
+    //         x = ((x * 0xb5502e5) + (x >>> 0)) >>> 0;
+    //         return (x >>> 0) / 0x100000000;
+    //     };
+    // }
+
+    static shuffleArray(array: any[], randomFunction:Rnd) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(randomFunction.next() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    static shuffleArrayReverse(array: any[], randomFunction:Rnd) {
+        const nums = new Array(array.length).fill(0).map((_, i) => i);
+        Shuffle.shuffleArray(nums, randomFunction);
+        const res = new Array(array.length);
+        for (const [i, j] of nums.entries()) {
+            res[j] = array[i];
+        }
+        return res.join("");
     }
 }

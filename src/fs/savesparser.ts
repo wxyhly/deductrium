@@ -6,16 +6,7 @@ type SerilizedDeductionStep = [string, number[], string[]];
 type SerilizedDeduction = [string, string, SerilizedDeductionStep[]] | [string, string, SerilizedDeductionStep[], string[]];
 type SerilizedProposition = [string, SerilizedDeductionStep];
 
-const dict = {
-    ',"aE0","aPair","aPow","aUnion","areg","arepl","asep","ainf",': "a#`",
-    '"0","1","2","3","4","5","6","7","8","9","10"': "b#`",
-    '"{}","Union","Pow","S"': "c#`",
-    ',"apn1","apn2","apn3","d1","d2","d3","d4","d5","d6","d7","d8","d9",': "d#`",
-    '","a': 'a`',
-    '","d': 'd`',
-};
-const replaceArr1 = Object.entries(dict);
-const replaceArr2 = replaceArr1.slice(0).reverse();
+
 const astparser = new ASTParser;
 export class SavesParser {
     creative = false;
@@ -66,9 +57,9 @@ export class SavesParser {
             userD[n] = this.serializeDeduction(d);
         }
         const props = gui.getProps();
-        return this.serializeStr(JSON.stringify([
+        return JSON.stringify([
             Array.from(fs.fns), Array.from(fs.consts), userD, dlist, props.map(s => this.serializeProposition(s))
-        ]));
+        ]);
     }
     deserializeArr(fs: FormalSystem, arr: any[]) {
         const [arrC, arrFn, dictD, arrD, arrP] = arr;
@@ -89,7 +80,7 @@ export class SavesParser {
     }
     deserialize(gui: FSGui, str: string) {
         const fsArrD = initFormalSystem(this.creative);
-        const fsdata = this.deserializeArr(fsArrD.fs, JSON.parse(this.deserializeStr(str)));
+        const fsdata = this.deserializeArr(fsArrD.fs, JSON.parse(str));
         const savedMetarules = gui.formalSystem.fastmetarules;
         gui.formalSystem = fsdata.fs;
         gui.formalSystem.fastmetarules = savedMetarules;
@@ -98,16 +89,5 @@ export class SavesParser {
         gui.updateDeductionList();
     }
 
-    serializeStr(json: string) {
-        for (const [a, b] of replaceArr1) {
-            json = json.replaceAll(a, b);
-        }
-        return json;
-    }
-    deserializeStr(str: string) {
-        for (const [a, b] of replaceArr2) {
-            str = str.replaceAll(b, a);
-        }
-        return str;
-    }
+    
 }
