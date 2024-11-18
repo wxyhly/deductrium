@@ -70,6 +70,7 @@ export class Game {
         }
         this.fsGui = new FSGui(document.getElementById("prop-list"), document.getElementById("deduct-list"), document.getElementById("meta-list"), document.getElementById("action-input"), document.getElementById("hint"), document.getElementById("display-p-layer"), document.querySelectorAll(".cmd-btns button"), this.creative);
         this.ttGui = new TTGui(this.creative);
+        document.getElementById("panel").classList.remove("hide");
         this.hyperGui = new HyperGui();
         document.querySelectorAll("#panel>button").forEach((btn, idx) => {
             btn.onclick = () => {
@@ -661,6 +662,7 @@ export class Game {
         this.hyperGui.world.onStateChange = this.ttGui.onStateChange = this.fsGui.onStateChange = () => gameSaveLoad.stateChange(this);
         if (saves)
             gameSaveLoad.load(this, saves);
+        document.getElementById("loading").classList.add("hide");
     }
     checkAllZFC(mute) {
         let r = this.fsGui.deductions.includes("aUnion");

@@ -12,11 +12,11 @@ const dict = {
     '3,3,3,3,': '3`',
     '2,2,2,2,2,2,': '6`',
     '1,1,1,1,1,1,': '1`',
-    '素食主义者（累计获40µg推理素）': '#4`',
-    '你推出你，他推出他（⊢$0>$0）': '#2`',
-    '会跑的“⊢”（演绎元定理）': '#3`',
-    '第一次消费': '#1`',
-    '[["progL","[ach]解锁了成就",': 'ch`',
+    '素食主义者（累计获40µg推理素）': '4#`',
+    '你推出你，他推出他（⊢$0>$0）': '2#`',
+    '会跑的“⊢”（演绎元定理）': '3#`',
+    '第一次消费': '1#`',
+    '[["progL","[ach]解锁了成就",': 'h`',
     '","[ach]': '2`',
     '","录制*",[["': '*`',
     ',["mp",[': 'm`',
@@ -130,6 +130,7 @@ export class GameSaveLoad {
         for (const [a, b] of replaceArr1) {
             json = json.replaceAll(a, b);
         }
+        json = Shuffle.replaceZh(json);
         let randomFunction = new Rnd(this.storageKey === "deductrium-save" ? json.length : (json.length - 1));
         console.log(json);
         const l78z = Shuffle.shuffleArray(Array.from(json), randomFunction);
@@ -137,7 +138,7 @@ export class GameSaveLoad {
     }
     deserializeStr(str) {
         let randomFunction = new Rnd(this.storageKey === "deductrium-save" ? str.length : (str.length - 1));
-        str = Shuffle.shuffleArrayReverse(Array.from(str), randomFunction);
+        str = Shuffle.recoverZh(Shuffle.shuffleArrayReverse(Array.from(str), randomFunction));
         for (const [a, b] of replaceArr2) {
             str = str.replaceAll(b, a);
         }
@@ -170,6 +171,39 @@ class Shuffle {
             res[j] = array[i];
         }
         return res.join("");
+    }
+    static replaceZh(a) {
+        let r = "";
+        for (let i = 0; i < a.length; i++) {
+            if (a.charCodeAt(i) > 0xFF) {
+                r += "U`" + a.charCodeAt(i).toString(36) + ".";
+            }
+            else
+                r += a[i];
+        }
+        return r;
+    }
+    static recoverZh(a) {
+        let r = a[0];
+        let code = "?";
+        for (let i = 1; i < a.length; i++) {
+            if (code !== "?") {
+                if (a[i] !== ".")
+                    code += a[i];
+                else {
+                    r = r.slice(0, -1);
+                    r += String.fromCharCode(Number.parseInt(code, 36));
+                    code = "?";
+                }
+            }
+            else if (a[i] === "`" && a[i - 1] === "U") {
+                code = "";
+            }
+            else {
+                r += a[i];
+            }
+        }
+        return r;
     }
 }
 //# sourceMappingURL=saveload.js.map

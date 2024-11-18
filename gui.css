@@ -321,3 +321,11 @@ div.hintbar {
 .achievement.locked div{
     font-size: 0em;
 }
+
+div#loading div {
+    width: 90vw;
+    height: 90vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}

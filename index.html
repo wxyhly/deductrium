@@ -6,8 +6,28 @@
 <link href="gui.css" rel="stylesheet" type="text/css">
 </head>
 <body>
+    
 <h1 style="user-select: none;">Deductrium<span id="gamemode">[生存模式]</span></h1>
-<div id="panel"><button>几何层</button><button id="deduct-btn" class="hide">推理层</button><button id="type-btn"
+<div id="loading">
+    <div><svg width="200" height="80" version="1.1" xmlns="http://www.w3.org/2000/svg"
+            xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 100 100" enable-background="new 0 0 0 0"
+            xml:space="preserve">
+            <circle fill="#000" stroke="none" cx="6" cy="50" r="6">
+                <animate attributeName="opacity" dur="1s" values="0;1;0" repeatCount="indefinite" begin="0.1">
+                </animate>
+            </circle>
+            <circle fill="#000" stroke="none" cx="26" cy="50" r="6">
+                <animate attributeName="opacity" dur="1s" values="0;1;0" repeatCount="indefinite" begin="0.2">
+                </animate>
+            </circle>
+            <circle fill="#000" stroke="none" cx="46" cy="50" r="6">
+                <animate attributeName="opacity" dur="1s" values="0;1;0" repeatCount="indefinite" begin="0.3">
+                </animate>
+            </circle>
+        </svg>
+    </div></div>
+<div id="panel" class="hide">
+    <button>几何层</button><button id="deduct-btn" class="hide">推理层</button><button id="type-btn"
         class="hide">类型层</button><button id="progress-btn" class="hide">进度层</button>
     <div id="panel-0" class="show" style="user-select: none;">
         <label style="position: absolute;"><input type="checkbox"/>以输入形式(ascii)显示谜题</label>

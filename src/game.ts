@@ -71,6 +71,8 @@ export class Game {
             this.creative
         );
         this.ttGui = new TTGui(this.creative);
+        
+        document.getElementById("panel").classList.remove("hide");
         this.hyperGui = new HyperGui();
 
         document.querySelectorAll("#panel>button").forEach((btn, idx) => {
@@ -403,6 +405,7 @@ export class Game {
         this.hyperGui.world.onStateChange = this.ttGui.onStateChange = this.fsGui.onStateChange = () => gameSaveLoad.stateChange(this);
 
         if (saves) gameSaveLoad.load(this, saves);
+        document.getElementById("loading").classList.add("hide");
     }
     checkAllZFC(mute: boolean) {
         let r = this.fsGui.deductions.includes("aUnion");
@@ -473,4 +476,5 @@ export class Game {
         document.getElementById("metarule-subpanel").classList.remove("hide");
     }
 }
+
 new Game;
