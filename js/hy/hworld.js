@@ -112,7 +112,7 @@ export class HWorld {
     updateCharactor(x, y) {
         x *= 10;
         y *= 10;
-        const R = Quaternion.expset(-x, 0, x * 0.05 + 0.0001, y, 0, 0.000063);
+        const R = Quaternion.expset(-x, 0, x * 0.05 + 0.001, y, 0, 0.001414);
         this.localDraw.rotorL.mulsl(R[0]).norms();
         this.localDraw.rotorR.mulsr(R[1]).norms();
     }

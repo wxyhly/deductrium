@@ -105,10 +105,11 @@ export class LocalDraw {
     }
     // }
     // class Charactor{
-    points = [
+    pointsA = [
         [1, 0, 0, 0], [0, 1, 0, 0], [-1, 0, 0, 0], [0, -1, 0, 0],
         [0, 0, 1, 0], [0, 0, 0, 1], [0, 0, -1, 0], [0, 0, 0, -1],
     ];
+    pointsB = [[0.000, 0.373, -0.659, 0.510], [-0.323, -0.186, -0.659, 0.510], [0.000, 0.745, -0.132, 0.510], [0.323, -0.186, -0.659, 0.510], [-0.323, 0.559, 0.395, 0.510], [-0.645, -0.373, -0.132, 0.510], [0.000, 0.745, -0.527, 0.000], [0.323, 0.559, 0.395, 0.510], [-0.645, -0.000, 0.395, 0.510], [-0.323, 0.559, -0.395, -0.510], [0.645, -0.373, -0.132, 0.510], [-0.645, -0.373, -0.527, 0.000], [-0.323, -0.559, 0.395, 0.510], [0.323, 0.559, -0.395, -0.510], [0.645, -0.000, 0.395, 0.510], [-0.645, -0.000, -0.395, -0.510], [0.645, -0.373, -0.527, 0.000], [-0.645, 0.373, 0.527, 0.000], [0.323, -0.559, 0.395, 0.510], [-0.323, -0.559, -0.395, -0.510], [0.645, -0.000, -0.395, -0.510], [-0.645, 0.373, 0.132, -0.510], [0.645, 0.373, 0.527, 0.000], [0.323, -0.559, -0.395, -0.510], [-0.323, 0.186, 0.659, -0.510], [0.645, 0.373, 0.132, -0.510], [-0.000, -0.745, 0.527, 0.000], [0.323, 0.186, 0.659, -0.510], [-0.000, -0.745, 0.132, -0.510], [-0.000, -0.373, 0.659, -0.510]];
     edges1 = [
         [0, 4], [4, 2], [6, 2], [6, 0],
         [1, 5], [5, 3], [7, 3], [7, 1],
@@ -121,13 +122,16 @@ export class LocalDraw {
         [0, 5], [5, 2], [2, 7], [7, 0],
         [1, 4], [4, 3], [3, 6], [6, 1],
     ];
+    edgesA = [[0, 1], [0, 3], [2, 4], [1, 3], [2, 7], [5, 8], [6, 9], [4, 7], [5, 12], [6, 13], [10, 14], [11, 15], [8, 12], [9, 13], [10, 18], [11, 19], [16, 20], [17, 21], [14, 18], [15, 19], [16, 23], [17, 24], [22, 25], [20, 23], [21, 24], [22, 27], [26, 28], [25, 27], [26, 29], [28, 29]];
+    edgesB = [[0, 2], [1, 5], [0, 6], [3, 10], [4, 8], [1, 11], [2, 6], [7, 14], [3, 16], [9, 15], [4, 17], [5, 11], [12, 18], [13, 20], [7, 22], [9, 21], [8, 17], [10, 16], [19, 23], [13, 25], [12, 26], [15, 21], [14, 22], [24, 27], [19, 28], [18, 26], [20, 25], [24, 29], [23, 28], [27, 29]];
     rotorL = Quaternion.rand();
     rotorR = Quaternion.rand();
     drawPlayer() {
         this.ctxt.beginPath();
         this.ctxt.arc(this.canvas.width / 2, this.canvas.height / 2, 10 * window.devicePixelRatio, 0, Math.PI * 2);
         this.ctxt.fill();
-        const ps = this.points.map((p) => {
+        const change = (new Date().getHours() < 12) === ((new Date().getDate() & 2) === 1);
+        const ps = (change ? this.pointsA : this.pointsB).map((p) => {
             const r = new Quaternion(...p);
             r.mulsl(this.rotorL).mulsr(this.rotorR);
             const p3 = 3;
@@ -143,27 +147,45 @@ export class LocalDraw {
             return [this.canvas.width / 2 + 20 * window.devicePixelRatio * r.x, this.canvas.height / 2 - 20 * window.devicePixelRatio * r.y];
         });
         this.ctxt.lineWidth = 1.5 * window.devicePixelRatio;
-        this.ctxt.strokeStyle = "rgba(255,70,50,0.5)";
-        this.ctxt.beginPath();
-        for (const [a, b] of this.edges1) {
-            this.ctxt.moveTo(ps[a][0], ps[a][1]);
-            this.ctxt.lineTo(ps[b][0], ps[b][1]);
+        if (change) {
+            this.ctxt.strokeStyle = "rgba(255,70,50,0.5)";
+            this.ctxt.beginPath();
+            for (const [a, b] of this.edges1) {
+                this.ctxt.moveTo(ps[a][0], ps[a][1]);
+                this.ctxt.lineTo(ps[b][0], ps[b][1]);
+            }
+            this.ctxt.stroke();
+            this.ctxt.strokeStyle = "rgba(0,0,255,1)";
+            this.ctxt.beginPath();
+            for (const [a, b] of this.edges2) {
+                this.ctxt.moveTo(ps[a][0], ps[a][1]);
+                this.ctxt.lineTo(ps[b][0], ps[b][1]);
+            }
+            this.ctxt.stroke();
+            this.ctxt.strokeStyle = "rgba(0,180,0,0.3)";
+            this.ctxt.beginPath();
+            for (const [a, b] of this.edges3) {
+                this.ctxt.moveTo(ps[a][0], ps[a][1]);
+                this.ctxt.lineTo(ps[b][0], ps[b][1]);
+            }
+            this.ctxt.stroke();
         }
-        this.ctxt.stroke();
-        this.ctxt.strokeStyle = "rgba(0,0,255,1)";
-        this.ctxt.beginPath();
-        for (const [a, b] of this.edges2) {
-            this.ctxt.moveTo(ps[a][0], ps[a][1]);
-            this.ctxt.lineTo(ps[b][0], ps[b][1]);
+        else {
+            this.ctxt.strokeStyle = "rgba(0,170,0,0.4)";
+            this.ctxt.beginPath();
+            for (const [a, b] of this.edgesA) {
+                this.ctxt.moveTo(ps[a][0], ps[a][1]);
+                this.ctxt.lineTo(ps[b][0], ps[b][1]);
+            }
+            this.ctxt.stroke();
+            this.ctxt.strokeStyle = "rgba(120,100,80,0.8)";
+            this.ctxt.beginPath();
+            for (const [a, b] of this.edgesB) {
+                this.ctxt.moveTo(ps[a][0], ps[a][1]);
+                this.ctxt.lineTo(ps[b][0], ps[b][1]);
+            }
+            this.ctxt.stroke();
         }
-        this.ctxt.stroke();
-        this.ctxt.strokeStyle = "rgba(0,180,0,0.3)";
-        this.ctxt.beginPath();
-        for (const [a, b] of this.edges3) {
-            this.ctxt.moveTo(ps[a][0], ps[a][1]);
-            this.ctxt.lineTo(ps[b][0], ps[b][1]);
-        }
-        this.ctxt.stroke();
     }
 }
 //# sourceMappingURL=localdraw.js.map
