@@ -1,3 +1,4 @@
+import { TRC1 } from "../lang.js";
 import { Hvec, Quaternion, Rotor } from "./algebra.js";
 export class LocalDraw {
     lineStep = 10;
@@ -36,7 +37,7 @@ export class LocalDraw {
         const scale = this.scale / (p.z + 1) * Math.min(this.canvas.width, this.canvas.height) / 2;
         const fs = Math.round(25 * window.devicePixelRatio / p.z);
         this.ctxt.font = fs + "px sans-serif"; // + "px";
-        const arr = text.split("\n");
+        const arr = TRC1(text).split("\n");
         const middle = (arr.length - 1) / 2;
         for (const [id, row] of arr.entries()) {
             this.ctxt.fillText(row, p.x * scale + this.canvas.width / 2, p.y * scale + this.canvas.height / 2 + fs * ((id - middle) * 1.3 + 1 / 4));

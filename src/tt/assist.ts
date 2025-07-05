@@ -1,3 +1,4 @@
+import { TR } from "../lang.js";
 import { AST, ASTParser } from "./astparser.js";
 import { Compute, Context, Core, wrapApply, wrapVar } from "./core.js";
 let core = new Core;
@@ -117,12 +118,12 @@ export class Assist {
             return this.intros(s);
         }
         const goal = this.goal.shift();
-        if (!goal) throw "无证明目标，请使用qed命令结束证明";
-        if (Object.keys(goal.context).includes(s)) { this.goal.unshift(goal); throw "无法重复intro相同变量名"; }
+        if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
+        if (Object.keys(goal.context).includes(s)) { this.goal.unshift(goal); throw TR("无法重复intro相同变量名"); }
         const tartgetType = goal.type;
         if (tartgetType.type !== "P" && tartgetType.type !== "->") {
             this.goal.unshift(goal);
-            throw "intro 只能作用于函数类型";
+            throw TR("intro 只能作用于函数类型");
         }
         goal.context[s] = tartgetType.nodes[0];
         // goal.ast is refferd at outter level hole,  we fill the hole first
@@ -138,14 +139,14 @@ export class Assist {
         return this;
     }
     intros(s: string) {
-        if (!s.trim()) throw "意外的空表达式";
+        if (!s.trim()) throw TR("意外的空表达式");
         s.split(" ").map(ss => ss ? this.intro(ss) : "");
         return this;
     }
     apply(ast: AST | string) {
         if (typeof ast === "string") { ast = parser.parse(ast); }
         const goal = this.goal.shift();
-        if (!goal) throw "无证明目标，请使用qed命令结束证明";
+        if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
         const astType = core.check(ast, goal.context, false);
         if (core.equal(astType, goal.type, goal.context)) {
             Core.assign(goal.ast, ast);
@@ -153,12 +154,12 @@ export class Assist {
         }
         if (astType.type !== "P" && astType.type !== "->") {
             this.goal.unshift(goal);
-            throw "无法对类型" + parser.stringify(astType) + "使用apply策略作用于类型" + parser.stringify(goal.type);
+            throw TR("无法对类型") + parser.stringify(astType) + TR("使用apply策略作用于类型") + parser.stringify(goal.type);
         }
         // skip for dependent fn, it can throw error: var not defined in the scope of the fn.
         if (astType.type === "P" && Core.getFreeVars(astType.nodes[1]).has(astType.name)) {
             this.goal.unshift(goal);
-            throw "无法对类型" + parser.stringify(astType) + "使用apply策略作用于类型" + parser.stringify(goal.type);
+            throw TR("无法对类型") + parser.stringify(astType) + TR("使用apply策略作用于类型") + parser.stringify(goal.type);
         }
         if (core.equal(astType.nodes[1], goal.type, goal.context)) {
             // goal.ast is refferd at outter level hole,  we fill the hole first
@@ -172,13 +173,13 @@ export class Assist {
     }
     rw(eq: string | AST) {
         if (typeof eq === "string") eq = parser.parse(eq);
-        if (!eq) throw "请输入用于改写的相等假设";
+        if (!eq) throw TR("请输入用于改写的相等假设");
         const goal = this.goal.shift();
-        if (!goal) throw "无证明目标，请使用qed命令结束证明";
+        if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
         const matched = Core.match(core.check(eq, goal.context, false), parser.parse("eq $2 $3"), /^\$/) || Core.match(core.check(eq, goal.context, false), parser.parse("@eq $0 $1 $2 $3"), /^\$/);
         if (!matched) {
             this.goal.unshift(goal);
-            throw "使用rewrite策略必须提供一个相等类型";
+            throw TR("使用rewrite策略必须提供一个相等类型");
         }
         const fnparam = Core.getNewName("repl", goal.context);
         const fnbody = this.genReplaceFn(goal.type, matched["$2"], fnparam);
@@ -207,13 +208,13 @@ export class Assist {
     }
     rwb(eq: string | AST) {
         if (typeof eq === "string") eq = parser.parse(eq);
-        if (!eq) throw "请输入用于改写的相等假设";
+        if (!eq) throw TR("请输入用于改写的相等假设");
         const goal = this.goal.shift();
-        if (!goal) throw "无证明目标，请使用qed命令结束证明";
+        if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
         const matched = Core.match(core.check(eq, goal.context, false), parser.parse("eq $2 $3"), /^\$/) || Core.match(core.check(eq, goal.context, false), parser.parse("@eq $0 $1 $2 $3"), /^\$/);
         if (!matched) {
             this.goal.unshift(goal);
-            throw "使用rewrite策略必须提供一个相等类型";
+            throw TR("使用rewrite策略必须提供一个相等类型");
         }
 
         const fnparam = Core.getNewName("repl", goal.context);
@@ -271,16 +272,16 @@ export class Assist {
     }
     rfl() {
         const goal = this.goal.shift();
-        if (!goal) throw "无证明目标，请使用qed命令结束证明";
+        if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
         let matched = Core.match(goal.type, parser.parse("eq $1 $2"), /^\$/);
         if (!matched) matched = Core.match(goal.type, parser.parse("@eq $3 $4 $1 $2"), /^\$/);
         if (!matched) {
             this.goal.unshift(goal);
-            throw "无法对非相等类型使用rfl策略";
+            throw TR("无法对非相等类型使用rfl策略");
         }
         if (!core.equal(matched["$1"], matched["$2"], goal.context)) {
             this.goal.unshift(goal);
-            throw "使用rfl策略失败：等式两边无法化简至相等";
+            throw TR("使用rfl策略失败：等式两边无法化简至相等");
         }
         const newAst = parser.parse("rfl");
         Core.replaceByMatch(newAst, matched, /^\$/);
@@ -288,12 +289,12 @@ export class Assist {
         return this;
     }
     qed() {
-        if (this.goal.length) throw "证明尚未完成";
+        if (this.goal.length) throw TR("证明尚未完成");
         core.checkType({ type: ":", name: "", nodes: [this.elem, this.theorem] });
     }
     simpl() {
         const goal = this.goal.shift();
-        if (!goal) throw "无证明目标，请使用qed命令结束证明";
+        if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
         if (!core.reduce(goal.type)) {
             Compute.exec(goal.type);
         };
@@ -302,12 +303,12 @@ export class Assist {
     }
     hyp(astr: string) {
         const goal = this.goal.shift();
-        if (!goal) throw "无证明目标，请使用qed命令结束证明";
+        if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
         try {
             let ast = parser.parse(astr);
             let name = Core.getNewName("hyp", goal.context);
             if (ast.type === ":" && ast.nodes[0].type === "var") {
-                if (goal.context[ast.nodes[0].name]) throw "无法引入重复名称的假设变量";
+                if (goal.context[ast.nodes[0].name]) throw TR("无法引入重复名称的假设变量");
                 name = ast.nodes[0].name;
                 ast = ast.nodes[1];
             }
@@ -331,14 +332,14 @@ export class Assist {
         const param = n.split(" ");
         n = param[0];
         const goal = this.goal.shift();
-        if (!goal) throw "无证明目标，请使用qed命令结束证明";
+        if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
         const nast = { type: "var", name: param[0] };
         const nType = core.check(nast, goal.context, false);
-        if (!this.isIndType(nType)) { this.goal.unshift(goal); throw "只能解构归纳类型的变量"; }
+        if (!this.isIndType(nType)) { this.goal.unshift(goal); throw TR("只能解构归纳类型的变量"); }
         for (const [k, v] of Object.entries(goal.context)) {
             if (Core.getFreeVars(v).has(n)) {
                 if (Core.getFreeVars(goal.type).has(k)) {
-                    this.goal.unshift(goal); throw "解构失败：其它变量依赖该变量";
+                    this.goal.unshift(goal); throw TR("解构失败：其它变量依赖该变量");
                 }
                 delete goal.context[k];
             }
@@ -379,12 +380,12 @@ export class Assist {
             const fromParam1 = param[1];
             if (fromParam1 && goal.context[fromParam1]) {
                 this.goal.unshift(goal);
-                throw "destruct引入了重复的变量名";
+                throw TR("destruct引入了重复的变量名");
             }
             const fromParam2 = param[2];
             if (fromParam2 && (goal.context[fromParam1] || fromParam2 === fromParam1)) {
                 this.goal.unshift(goal);
-                throw "destruct引入了重复的变量名";
+                throw TR("destruct引入了重复的变量名");
             }
             const destructed = fromParam1 || Core.getNewName(n, new Set(Object.keys(goal.context)));
             const induced = fromParam2 || Core.getNewName("H" + n, new Set(Object.keys(goal.context)));
@@ -485,8 +486,8 @@ export class Assist {
     }
     ex(n: string) {
         const goal = this.goal.shift();
-        if (!goal) throw "无证明目标，请使用qed命令结束证明";
-        if (goal.type.type !== "S") throw "ex策略只能作用于依赖积类型";
+        if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
+        if (goal.type.type !== "S") throw TR("ex策略只能作用于依赖积类型");
         const dfn = Core.clone(goal.type); dfn.type = "L";
         const val = parser.parse(n);
         Core.assign(goal.ast, wrapApply(wrapVar("pair"), dfn, val, wrapVar("(?#0)")), true);
@@ -497,8 +498,8 @@ export class Assist {
     }
     left() {
         const goal = this.goal.shift();
-        if (!goal) throw "无证明目标，请使用qed命令结束证明";
-        if (goal.type.type !== "+") throw "left策略只能作用于和类型";
+        if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
+        if (goal.type.type !== "+") throw TR("left策略只能作用于和类型");
         Core.assign(goal.ast, wrapApply(wrapVar("inl"), wrapVar("(?#0)")), true);
         goal.ast = goal.ast.nodes[1];
         goal.type = goal.type.nodes[0];
@@ -506,8 +507,8 @@ export class Assist {
     }
     right() {
         const goal = this.goal.shift();
-        if (!goal) throw "无证明目标，请使用qed命令结束证明";
-        if (goal.type.type !== "+") throw "left策略只能作用于和类型";
+        if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
+        if (goal.type.type !== "+") throw TR("left策略只能作用于和类型");
         Core.assign(goal.ast, wrapApply(wrapVar("inr"), wrapVar("(?#0)")), true);
         goal.ast = goal.ast.nodes[1];
         goal.type = goal.type.nodes[1];
@@ -515,8 +516,8 @@ export class Assist {
     }
     case() {
         const goal = this.goal.shift();
-        if (!goal) throw "无证明目标，请使用qed命令结束证明";
-        if (goal.type.type !== "X") throw "case策略只能作用于积类型";
+        if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
+        if (goal.type.type !== "X") throw TR("case策略只能作用于积类型");
         Core.assign(goal.ast, { type: ",", name: "", nodes: [wrapVar("(?#0)"), wrapVar("(?#0)")] }, true);
         const anotherGoal = {
             ast: goal.ast.nodes[1],
@@ -530,10 +531,10 @@ export class Assist {
     }
     expand(n: string) {
         const goal = this.goal.shift();
-        if (!goal) throw "无证明目标，请使用qed命令结束证明";
+        if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
         if (!core.expandDef(goal.type, new Set(n.split(" ")))) {
             this.goal.unshift(goal);
-            throw "未找到任何指定展开的项";
+            throw TR("未找到任何指定展开的项");
         };
         core.reduce(goal.type);
         this.goal.unshift(goal);

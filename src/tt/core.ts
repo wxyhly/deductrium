@@ -1,3 +1,4 @@
+import { TR } from "../lang.js";
 import { ASTParser, AST } from "./astparser.js";
 const parser = new ASTParser;
 
@@ -83,7 +84,7 @@ export class Core {
         return newast;
     }
     static replaceByMatch(ast: AST, res: Context, regexp: RegExp): boolean {
-        if (!res) throw "未匹配";
+        if (!res) throw TR("未匹配");
         if (!ast) return; // here not panic because aftercheck need it
         if (ast.type === "var" && ast.name.match(regexp)) {
             if (!res[ast.name]) return false;
@@ -258,7 +259,7 @@ export class Core {
                 ast.checked = wrapVar(ast.name + ":");
                 return ast.checked;
             }
-            this.error(ast, "未知的变量" + ast.name, ignoreErr);
+            this.error(ast, TR("未知的变量：") + ast.name, ignoreErr);
             return;
         }
         if (ast.type === "L" || ast.type === "P" || ast.type === "S") {
@@ -268,7 +269,7 @@ export class Core {
             // #check domain -> U
             const domain = ast.nodes[0];
             const Udomain = UniverseLevel.get(this.check(domain, context, ignoreErr));
-            if (Udomain === false) this.error(domain, `函数参数类型不合法`, ignoreErr);
+            if (Udomain === false) this.error(domain, TR(`函数参数类型不合法`), ignoreErr);
             // #check codomain
             const subCtxt = assignContext({ [ast.name]: domain }, context);
             const codomain = this.check(ast.nodes[1], subCtxt, ignoreErr);
@@ -282,7 +283,7 @@ export class Core {
                 // }
             } else if (ast.type === "P" || ast.type === "S") {
                 const Ucodomain = UniverseLevel.get(codomain);
-                if (Ucodomain === false) this.error(ast.nodes[1], `函数返回类型不合法`, ignoreErr);
+                if (Ucodomain === false) this.error(ast.nodes[1], TR(`函数返回类型不合法`), ignoreErr);
                 // todo: deal with inferred type
                 ast.checked = UniverseLevel.max(domain.checked, codomain);
             }
@@ -291,10 +292,10 @@ export class Core {
         if (ast.type === "->") {
             const domain = this.check(ast.nodes[0], context, ignoreErr);
             const Udomain = UniverseLevel.get(domain);
-            if (Udomain === false) this.error(ast.nodes[0], `函数参数类型不合法`, ignoreErr);
+            if (Udomain === false) this.error(ast.nodes[0], TR(`函数参数类型不合法`), ignoreErr);
             const codomain = this.check(ast.nodes[1], context, ignoreErr);
             const Ucodomain = UniverseLevel.get(codomain);
-            if (Ucodomain === false) this.error(ast.nodes[1], `函数返回类型不合法`, ignoreErr);
+            if (Ucodomain === false) this.error(ast.nodes[1], TR(`函数返回类型不合法`), ignoreErr);
             ast.checked = UniverseLevel.max(domain, codomain);
             return ast.checked;
         }
@@ -306,14 +307,14 @@ export class Core {
             let tfn = this.check(ast.nodes[0], context, ignoreErr);
             while (tfn?.name?.startsWith("?")) {
                 const rfn = this.state.inferValues[tfn.name];
-                if (!rfn) this.error(ast, "函数作用导致类型推断信息丢失", ignoreErr);
+                if (!rfn) this.error(ast, TR("函数作用导致类型推断信息丢失"), ignoreErr);
                 tfn = rfn;
             }
             const tap = this.check(ast.nodes[1], context, ignoreErr);
             if (!tfn || !tap) return;
-            if (!tfn.nodes) this.error(ast, "非函数尝试作用", ignoreErr);
+            if (!tfn.nodes) this.error(ast, TR("非函数尝试作用"), ignoreErr);
             if (!this.equal(tfn.nodes[0], tap, context)) {
-                this.error(ast, "函数作用类型不匹配", ignoreErr);
+                this.error(ast, TR("函数作用类型不匹配"), ignoreErr);
                 // ast.checked = wrapVar("函数作用类型不匹配");
             }
             else if (tfn.type === "->") {
@@ -344,7 +345,7 @@ export class Core {
                 ast.nodes[1],
                 context
             );
-            if (!assertion) { this.error(ast, "类型断言失败", ignoreErr); }
+            if (!assertion) { this.error(ast, TR("类型断言失败"), ignoreErr); }
 
             let maxReplacement = Object.keys(this.state.inferValues).length + 1;
             while (maxReplacement-- && Core.replaceByMatch(ast.nodes[1].checked, this.state.inferValues, /^\?/));
@@ -358,7 +359,7 @@ export class Core {
                 ast.nodes[1].checked,
                 context
             );
-            if (!assertionType) { this.error(ast, "类型断言失败", ignoreErr); }
+            if (!assertionType) { this.error(ast, TR("类型断言失败"), ignoreErr); }
             return ast.nodes[1];
         }
         if (ast.type === "===") {
@@ -373,7 +374,7 @@ export class Core {
             );
             this.check(ast.nodes[0], context, ignoreErr);
             this.check(ast.nodes[1], context, ignoreErr);
-            if (!assertion) { this.error(ast, "定义相等断言失败", ignoreErr); return; }
+            if (!assertion) { this.error(ast, TR("定义相等断言失败"), ignoreErr); return; }
             // let ta0 = ast.nodes[0].checked; while (ta0.nodes) ta0 = ta0.nodes[0];
             // let ta1 = ast.nodes[1].checked; while (ta1.nodes) ta1 = ta1.nodes[0];
             let assertionT: boolean;
@@ -397,7 +398,7 @@ export class Core {
                 // }
                 throw e;
             }
-            if (!assertionT) { this.error(ast, "定义相等断言失败", ignoreErr); return; }
+            if (!assertionT) { this.error(ast, TR("定义相等断言失败"), ignoreErr); return; }
             ast.checked = ast.nodes[0].checked;
             return ast.checked;
         }
@@ -700,7 +701,7 @@ class UniverseLevel {
     }
     static reduceLvl(ast: AST) {
         if (ast.type === "var") return false;
-        if (ast.type !== "apply") throw "未知的全类层级运算";
+        if (ast.type !== "apply") throw TR("未知的全类层级运算");
         if (ast.nodes[0].name === "@succ") {
             const modified = this.reduceLvl(ast.nodes[1]);
             if (ast.nodes[1].name[0] !== "@") return modified;
@@ -712,8 +713,8 @@ class UniverseLevel {
             }
             return modified;
         }
-        if (ast.nodes[0].type !== "apply") throw "未知的全类层级运算";
-        if (ast.nodes[0].nodes[0].name !== "@max") throw "未知的全类层级运算";
+        if (ast.nodes[0].type !== "apply") throw TR("未知的全类层级运算");
+        if (ast.nodes[0].nodes[0].name !== "@max") throw TR("未知的全类层级运算");
 
         const modified1 = this.reduceLvl(ast.nodes[0].nodes[1]);
         const modified2 = this.reduceLvl(ast.nodes[1]);
@@ -749,7 +750,7 @@ class UniverseLevel {
         if (typeof u === "number") {
             return wrapU("@" + String(u + 1));
         }
-        if (u === false) throw "尝试对非全类操作层级";
+        if (u === false) throw TR("尝试对非全类操作层级");
         return {
             type: "apply", name: "", nodes: [
                 wrapVar("U"),
@@ -767,7 +768,7 @@ class UniverseLevel {
         if (typeof u === "number" && typeof v === "number") {
             return wrapApply(wrapVar("U"), wrapVar("@" + String(Math.max(u, v))));
         }
-        if (u === false || v === false) throw "尝试对非全类操作层级";
+        if (u === false || v === false) throw TR("尝试对非全类操作层级");
         if (a.type === "var" || b.type === "var") return wrapApply(wrapVar("U"), wrapVar("?"));
         return {
             type: "apply", name: "", nodes: [

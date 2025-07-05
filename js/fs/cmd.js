@@ -1,3 +1,4 @@
+import { TR } from "../lang.js";
 import { ASTParser } from "./astparser.js";
 import { SavesParser } from "./savesparser.js";
 export class FSCmd {
@@ -50,7 +51,7 @@ export class FSCmd {
         if (this.escClear) {
             this.cmdBuffer = [];
             this.gui.actionInput.value = "";
-            this.gui.hintText.innerText = "请输入命令";
+            this.gui.hintText.innerText = TR("请输入命令");
             if (!this.gui.isMobile)
                 this.gui.actionInput.focus();
             this.gui.cmdBtns.forEach(e => {
@@ -74,7 +75,7 @@ export class FSCmd {
         try {
             switch (cmdBuffer[0]) {
                 case "copy":
-                    hintText.innerText = "可复制定理内容，按Esc取消";
+                    hintText.innerText = TR("可复制定理内容，按Esc取消");
                     return;
                 case "d": return this.execDeduct();
                 case "help": return this.execHelp();
@@ -120,19 +121,19 @@ export class FSCmd {
                     }
                 }
                 this.clearCmdBuffer();
-                hintText.innerText = `无效命令`;
+                hintText.innerText = TR(`无效命令`);
             }
         }
         catch (e) {
             this.clearCmdBuffer();
-            hintText.innerText = `意外的错误：${e}`;
+            hintText.innerText = TR(`意外的错误：`) + e;
         }
     }
     execExpand() {
         const hintText = this.gui.hintText;
         // ["expand", "(d|p).", {props}, "p.", {props}, "p.", {props},....]
         if (this.cmdBuffer.length < 2) {
-            hintText.innerText = `请输入或点击要展开的推理规则或定理\n按Esc取消`;
+            hintText.innerText = TR(`请输入或点击要展开的推理规则或定理\n按Esc取消`);
             this.escClear = true;
             return;
         }
@@ -142,7 +143,7 @@ export class FSCmd {
                 if (!this.escClear) {
                     this.cmdBuffer.pop();
                     this.execCmdBuffer();
-                    hintText.innerText += `\n要展开推理规则，请先按Esc返回`;
+                    hintText.innerText += TR(`\n要展开推理规则，请先按Esc返回`);
                     return;
                 }
                 this.cmdBuffer.push(this.gui.formalSystem.propositions);
@@ -187,21 +188,21 @@ export class FSCmd {
                 // else if clicked metarule, pop to roll back
                 this.cmdBuffer.pop();
                 this.execCmdBuffer();
-                hintText.innerText += "\n无法展开元规则";
+                hintText.innerText += TR("\n无法展开元规则");
                 return;
             }
         }
         else {
             this.gui.updatePropositionList(true);
             this.escClear = false;
-            hintText.innerHTML = `目前位于${this.cmdBuffer.map((v, idx, arr) => {
+            hintText.innerHTML = `${TR("目前位于")}${this.cmdBuffer.map((v, idx, arr) => {
                 if (idx % 2 === 0)
                     return null;
                 if (v.match(/^p[0-9]+$/)) {
                     return v + ` (${this.gui.stringifyDeductionStep(arr[idx + 1][Number(v.slice(1))].from)})`;
                 }
                 return `( ${v} )`;
-            }).filter(v => v).join(" > ")}共${(this.cmdBuffer.length - 1) / 2}层推理宏内，按Esc返回上一层定理表\n或继续输入/点击要展开的定理`.replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+            }).filter(v => v).join(" > ")}${TR(" 共")}${(this.cmdBuffer.length - 1) / 2}${TR("层推理宏内，按Esc返回上一层定理表\n或继续输入/点击要展开的定理")}`.replaceAll("<", "&lt;").replaceAll(">", "&gt;");
         }
     }
     execInline() {
@@ -210,14 +211,14 @@ export class FSCmd {
         const formalSystem = this.gui.formalSystem;
         const curLength = cmdBuffer.length;
         if (curLength === 1) {
-            hintText.innerText = "请输入或点选使用推理宏得到的定理";
+            hintText.innerText = TR("请输入或点选使用推理宏得到的定理");
             return;
         }
         if (cmdBuffer[1].startsWith("p"))
             cmdBuffer[1] = cmdBuffer[1].slice(1);
         try {
             if (!formalSystem.propositions[cmdBuffer[1]])
-                throw "该定理不存在";
+                throw TR("该定理不存在");
             const fmr = formalSystem.fastmetarules;
             const fsd = Object.assign({}, formalSystem.deductions);
             formalSystem.fastmetarules = "cvuq><:";
@@ -229,7 +230,7 @@ export class FSCmd {
         }
         catch (e) {
             this.clearCmdBuffer();
-            hintText.innerText = "展开定理出错：" + e;
+            hintText.innerText = TR("展开定理出错：") + e;
         }
     }
     execHelp() {
@@ -243,12 +244,12 @@ export class FSCmd {
         const formalSystem = this.gui.formalSystem;
         const curLength = cmdBuffer.length;
         if (curLength === 1) {
-            hintText.innerText = "请输入或点选元规则，按Esc取消";
+            hintText.innerText = TR("请输入或点选元规则，按Esc取消");
             return;
         }
         if (!this.gui.metarules.includes(cmdBuffer[1])) {
             this.clearCmdBuffer();
-            hintText.innerText = "该元规则不存在，元推理取消";
+            hintText.innerText = TR("该元规则不存在，元推理取消");
             return;
         }
         const mr = this.gui.formalSystem.metaRules[cmdBuffer[1]];
@@ -262,26 +263,26 @@ export class FSCmd {
             const idx = cmdBuffer[i];
             if (!formalSystem.generateDeduction(idx)) {
                 this.clearCmdBuffer();
-                hintText.innerText = "元推理已取消：条件推理规则不存在";
+                hintText.innerText = TR("元推理已取消：条件推理规则不存在");
                 return;
             }
             writtenConditions[j] = idx;
         }
         writtenConditions.fill("?", j);
-        let preInfo = `正在进行元推理 ${cmdBuffer[1]} ${writtenConditions.join(", ")} : \n`;
+        let preInfo = `${TR("正在进行元推理")} ${cmdBuffer[1]} ${writtenConditions.join(", ")} : \n`;
         for (let i = 2 + condLength; i < 2 + condLength + replVarsLength && i < curLength; i++) {
-            preInfo += vars[i - 2 - condLength] + `: ${cmdBuffer[i]}\n`;
+            preInfo += TR(vars[i - 2 - condLength]) + `: ${cmdBuffer[i]}\n`;
         }
         if (curLength < condLength + 2) {
             //wait for conditionIdx input
-            hintText.innerText = preInfo + "请输入条件" + this.astparser.stringify(mr.conditions[mr.conditionDeductionIdxs[cmdBuffer.length - 2]]) + "的推理规则名或点推理规则";
+            hintText.innerText = preInfo + TR("请输入条件") + this.astparser.stringify(mr.conditions[mr.conditionDeductionIdxs[cmdBuffer.length - 2]]) + TR("的推理规则名或点推理规则");
             return;
         }
         if (curLength < replVarsLength + condLength + 2) {
             // wait for replvar input
-            hintText.innerText = preInfo + "请输入替代" + vars[cmdBuffer.length - 2 - condLength] + "的内容";
+            hintText.innerText = preInfo + TR("请输入替代") + TR(vars[cmdBuffer.length - 2 - condLength]) + TR("的内容");
             if (!this.gui.actionInput.value) {
-                this.gui.actionInput.value = vars[cmdBuffer.length - 2 - condLength];
+                this.gui.actionInput.value = TR(vars[cmdBuffer.length - 2 - condLength]);
                 // this.gui.actionInput.setSelectionRange(0, this.gui.actionInput.value.length);
                 this.gui.actionInput.selectionStart = this._selStart = 0;
                 this.gui.actionInput.selectionEnd = this._selEnd = this.gui.actionInput.value.length;
@@ -352,7 +353,7 @@ export class FSCmd {
                     afterName = cmdBuffer[4];
                     break;
                 default:
-                    throw "很抱歉，该规则暂未被作者实现";
+                    throw TR("很抱歉，该规则暂未被作者实现");
             }
             // if (!formalSystem.deductions[newName].from.endsWith("*")) formalSystem.deductions[newName].from += "*";
             this.gui.addToDeductions(newName, afterName);
@@ -360,7 +361,7 @@ export class FSCmd {
         }
         catch (e) {
             this.clearCmdBuffer();
-            hintText.innerText = preInfo + "错误：" + e;
+            hintText.innerText = preInfo + TR("错误：") + e;
         }
     }
     execDeduct() {
@@ -368,14 +369,14 @@ export class FSCmd {
         const hintText = this.gui.hintText;
         const formalSystem = this.gui.formalSystem;
         if (cmdBuffer.length === 1) {
-            hintText.innerText = "请输入或点选推理规则，按Esc取消";
+            hintText.innerText = TR("请输入或点选推理规则，按Esc取消");
             return;
         }
         // a deduction is chosen, we verify vars and conditions
         const deduction = cmdBuffer[1] === "." ? this.gui.getDeduction(this.lastDeduction) : this.gui.getDeduction(cmdBuffer[1]);
         if (!deduction) {
             this.clearCmdBuffer();
-            hintText.innerText = `推理已取消：\n未找到推理规则 ${cmdBuffer[1]}`;
+            hintText.innerText = TR(`推理已取消：\n未找到推理规则`) + ` ${cmdBuffer[1]}`;
         }
         const vars = deduction.replaceNames;
         const conditions = deduction.conditions;
@@ -393,24 +394,24 @@ export class FSCmd {
             idx = idx < 0 ? formalSystem.propositions.length + idx : idx;
             if (!formalSystem.propositions[idx]) {
                 this.clearCmdBuffer();
-                hintText.innerText = "推理已取消：条件定理不存在";
+                hintText.innerText = TR("推理已取消：条件定理不存在");
                 return;
             }
             cmdBuffer[i] = idx;
             writtenConditions[j] = cmdBuffer[i];
         }
         writtenConditions.fill("?", j);
-        let preInfo = `正在进行推理 ${cmdBuffer[1] === "." ? this.lastDeduction : cmdBuffer[1]} ${writtenConditions.join(", ")} :  ${this.astparser.stringify(deduction.value)}\n`;
+        let preInfo = TR(`正在进行推理`) + ` ${cmdBuffer[1] === "." ? this.lastDeduction : cmdBuffer[1]} ${writtenConditions.join(", ")} :  ${this.astparser.stringify(deduction.value)}\n`;
         for (let i = 2 + condLength; i < 2 + condLength + replVarsLength && i < curLength; i++) {
             preInfo += vars[i - 2 - condLength] + `: ${cmdBuffer[i]}\n`;
         }
         if (curLength < condLength + 2) {
             //wait for conditionIdx input
-            hintText.innerText = preInfo + "请输入条件" + this.astparser.stringify(deduction.conditions[cmdBuffer.length - 2]) + "的定理编号，或点选定理";
+            hintText.innerText = preInfo + TR("请输入条件") + this.astparser.stringify(deduction.conditions[cmdBuffer.length - 2]) + TR("的定理编号，或点选定理");
         }
         else if (curLength < replVarsLength + condLength + 2) {
             // wait for replvar input
-            hintText.innerText = preInfo + "请输入替代" + vars[cmdBuffer.length - 2 - condLength] + "的内容";
+            hintText.innerText = preInfo + TR("请输入替代") + vars[cmdBuffer.length - 2 - condLength] + TR("的内容");
             if (!this.gui.actionInput.value) {
                 this.gui.actionInput.value = vars[cmdBuffer.length - 2 - condLength];
                 // this.gui.actionInput.setSelectionRange(0, this.gui.actionInput.value.length);
@@ -424,7 +425,7 @@ export class FSCmd {
                 const replvals = cmdBuffer.slice(2 + condLength);
                 const sharpsharpIdx = replvals.findIndex(r => r.includes("##")) + 1;
                 if (sharpsharpIdx) {
-                    throw vars[sharpsharpIdx - 1] + " 中包含了系统保留的符号“##”";
+                    throw vars[sharpsharpIdx - 1] + TR(" 中包含了系统保留的符号“##”");
                 }
                 formalSystem.deduct({
                     deductionIdx: cmdBuffer[1] === "." ? this.lastDeduction : cmdBuffer[1],
@@ -438,7 +439,7 @@ export class FSCmd {
             }
             catch (e) {
                 this.clearCmdBuffer();
-                hintText.innerText = "推理已取消\n" + e;
+                hintText.innerText = TR("推理已取消\n") + e;
             }
             return;
         }
@@ -465,13 +466,13 @@ export class FSCmd {
     }
     execDel() {
         if (this.cmdBuffer.length === 1) {
-            this.gui.hintText.innerText = "请输入要删除的推理规则名称";
+            this.gui.hintText.innerText = TR("请输入要删除的推理规则名称");
             return;
         }
         try {
             const pos = this.gui.deductions.indexOf(this.cmdBuffer[1]);
             if (pos === -1)
-                throw "列表中无此规则";
+                throw TR("列表中无此规则");
             this.gui.formalSystem.removeDeduction(this.cmdBuffer[1]);
             this.gui.deductions.splice(pos, 1);
             this.gui.updateDeductionList();
@@ -479,7 +480,7 @@ export class FSCmd {
         }
         catch (e) {
             this.clearCmdBuffer();
-            this.gui.hintText.innerText = "删除推理规则失败：" + e;
+            this.gui.hintText.innerText = TR("删除推理规则失败：") + e;
         }
     }
     execClear() {
@@ -502,11 +503,11 @@ export class FSCmd {
             }
             catch (e) {
                 this.clearCmdBuffer();
-                hintText.innerText = `解析错误：` + e;
+                hintText.innerText = TR(`解析错误：`) + e;
                 return;
             }
         }
-        hintText.innerText = `请输入假设命题p${formalSystem.propositions.length}，或按“Esc”结束`;
+        hintText.innerText = TR(`请输入假设命题p`) + formalSystem.propositions.length + TR(`，或按“Esc”结束`);
     }
     onClickSubAst(idx, inserted) {
         const cmdBuffer = this.cmdBuffer;
@@ -519,6 +520,12 @@ export class FSCmd {
         }
         if (!cmdBuffer.length || (cmdBuffer.length === 1 && (cmdBuffer[0] === "d" || cmdBuffer[0] === "meta"))) {
             // click item to start a cmd
+            if (cmdBuffer[0] === "d" && cmdBuffer.length === 1) {
+                if (!this.gui.formalSystem.deductions[idx]) {
+                    this.gui.hintText.innerText += TR("\n请点选推理规则！");
+                    return;
+                }
+            }
             cmdBuffer.push(idx);
             this.execCmdBuffer();
             return;
@@ -531,7 +538,7 @@ export class FSCmd {
             if (conditions + 2 > cmdBuffer.length) {
                 //wait for conditionIdx input
                 if (!idx.match(/^p[0-9]+$/)) {
-                    this.gui.hintText.innerText += "\n请点选定理！";
+                    this.gui.hintText.innerText += TR("\n请点选定理！");
                     return;
                 }
                 cmdBuffer.push(Number(idx.slice(1)));
@@ -552,7 +559,7 @@ export class FSCmd {
             if (conditions + 2 > cmdBuffer.length) {
                 //wait for conditionIdx input
                 if (!this.gui.formalSystem.deductions[idx]) {
-                    this.gui.hintText.innerText += "\n请点选推理规则！";
+                    this.gui.hintText.innerText += TR("\n请点选推理规则！");
                     return;
                 }
                 cmdBuffer.push(idx);
@@ -594,7 +601,7 @@ export class FSCmd {
             this.gui.actionInput.value = "s" + i;
             this.gui.actionInput.selectionStart = 1;
             this.gui.actionInput.selectionEnd = this.gui.actionInput.value.length;
-            this.gui.hintText.innerText = cmdLen === 1 ? "请输入在哪个规则后方插入新规则。若直接输入新规则名称，则默认插入至规则表最后" : "请输入新规则名称";
+            this.gui.hintText.innerText = cmdLen === 1 ? TR("请输入在哪个规则后方插入新规则。若直接输入新规则名称，则默认插入至规则表最后") : TR("请输入新规则名称");
             // ["m", pos] || ["m", name] || ["m", pos, null, name]
             return false;
         }
@@ -618,13 +625,13 @@ export class FSCmd {
         if (n.match(/^[<>uvdcamp\.]/)) {
             this.cmdBuffer.pop();
             const res = this.getInputNewDeductionPos(prevLength);
-            this.gui.hintText.innerText = "以.<>uvdcamp开头的推理规则名称由系统保留，请重新命名";
+            this.gui.hintText.innerText = TR("以.<>uvdcamp开头的推理规则名称由系统保留，请重新命名");
             return res;
         }
         if (this.gui.formalSystem.deductions[n]) {
             this.cmdBuffer.pop();
             const res = this.getInputNewDeductionPos(prevLength);
-            this.gui.hintText.innerText = `推理规则名称${n}已存在或被系统保留，请重新命名`;
+            this.gui.hintText.innerText = TR(`推理规则名称`) + n + TR(`已存在或被系统保留，请重新命名`);
             return res;
         }
         return true;

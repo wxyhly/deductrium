@@ -1,6 +1,7 @@
 import { FSCmd } from "./cmd.js";
 import { initFormalSystem } from "./initial.js";
 import { FormalSystem } from "./formalsystem.js";
+import { TR } from "../lang.js";
 export class FSGui {
     formalSystem = new FormalSystem();
     actionInput;
@@ -38,7 +39,7 @@ export class FSGui {
             });
         });
         document.querySelectorAll("input[name='show-d']").forEach((sd) => {
-            const from = sd.parentNode.innerText;
+            const from = sd.parentNode.getAttribute("data-tr");
             this.displayDs.add(from);
             sd.addEventListener("change", () => {
                 sd.checked ? this.displayDs.add(from) : this.displayDs.delete(from);
@@ -338,7 +339,7 @@ export class FSGui {
     updatePropositionList(refresh) {
         this.updateGuiList("p", this.formalSystem.propositions, this.propositionList, (p) => true, (p, itInfo, it) => {
             if (!p.from) {
-                itInfo[0].innerText = "假设";
+                itInfo[0].innerText = TR("假设");
                 return;
             }
             itInfo[0].innerHTML = this.stringifyDeductionStep(p.from).replaceAll("<", "&lt;").replaceAll(">", "&gt;");
@@ -353,19 +354,19 @@ export class FSGui {
                 types.add("添加的规则");
         }
         document.querySelectorAll("input[name='show-d']").forEach((sd) => {
-            const from = sd.parentNode.innerText;
+            const from = sd.parentNode.getAttribute("data-tr");
             if (types.has(from))
                 sd.parentElement.classList.remove("hide");
             else
                 sd.parentElement.classList.add("hide");
         });
         this.updateGuiList("", ds, this.deductionList, (p) => (this.displayDs.has(p.from) || (this.displayDs.has("添加的规则") && p.from.endsWith("*"))), (p, itInfo, it) => {
-            itInfo[0].innerText = p.from.replaceAll("<", "&lt;").replaceAll(">", "&gt;") + (p.steps?.length ? "[宏]" : "");
+            itInfo[0].innerText = TR(p.from).replace(/s$/, "").replaceAll("<", "&lt;").replaceAll(">", "&gt;") + (p.steps?.length ? TR("[宏]") : "");
         }, true, this.deductions);
     }
     updateMetaRuleList(refresh) {
         this.updateGuiList("m", this.formalSystem.metaRules, this.metaRuleList, (p, idx) => this.metarules.includes(idx), (p, itInfo, it) => {
-            itInfo[0].innerHTML = p.from.replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+            itInfo[0].innerHTML = TR(p.from).replaceAll("<", "&lt;").replaceAll(">", "&gt;");
         }, refresh, Object.keys(this.formalSystem.metaRules).map(e => "m" + e));
     }
     stringifyDeductionStep(step) {

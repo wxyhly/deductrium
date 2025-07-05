@@ -1,3 +1,4 @@
+import { TR } from "../lang.js";
 import { ASTMgr } from "./astmgr.js";
 const astmgr = new ASTMgr;
 const logicSyms = ["<>", ">", "~", "&", "|"];
@@ -238,9 +239,9 @@ export class AssertionSystem {
     // if nth === -1, replace all
     crp(ast, src, dst, nth, right, varTypes) {
         if (typeof nth === "string" && !nth.match(/^\$/))
-            throw `替换表达式中指定的匹配序号"${nth}"必须为整数`;
+            throw TR(`替换表达式中指定的匹配序号`) + nth + TR('必须为整数');
         if (typeof nth === "number" && Math.floor(nth) !== nth)
-            throw `替换表达式中指定的匹配序号"${nth}"必须为整数`;
+            throw TR("替换表达式中指定的匹配序号") + nth + TR('必须为整数');
         // item always can be replaced, so no need to check ast == src situation 
         if (this.getAstType(ast, varTypes))
             return T;
@@ -288,7 +289,7 @@ export class AssertionSystem {
         if (ast.type === "replvar") {
             res[ast.name] ??= isItem;
             if (res[ast.name] !== isItem)
-                throw `变量${ast.name}不能同时为项和公式`;
+                throw TR(`变量`) + ast.name + TR('不能同时为项和公式');
             return res;
         }
         for (const [idx, n] of ast.nodes.entries()) {
@@ -588,7 +589,7 @@ export class AssertionSystem {
                 if (res === T)
                     vars.delete(v);
                 if (res === F)
-                    throw "断言失败：变量" + v + "自由出现";
+                    throw TR("断言失败：变量") + v + TR("自由出现");
             }
             // then check if quants can be eliminated
             const toRemove = [];
@@ -660,7 +661,7 @@ export class AssertionSystem {
             if (tf === T)
                 this.removeFn(ast);
             if (tf === F)
-                throw "断言失败：#crp执行替换后自由变量将被量词约束";
+                throw TR("断言失败：#crp执行替换后自由变量将被量词约束");
             // todo
         }
         const rpParams = this.getRpParams(ast);
@@ -669,7 +670,7 @@ export class AssertionSystem {
             const [sub, src, dst, nth, right] = rpParams;
             const tf = this.crp(sub, src, dst, nth, right, varLists);
             if (tf === F)
-                throw "函数#rp执行失败：自由变量将被量词约束";
+                throw TR("函数#rp执行失败：自由变量将被量词约束");
             if (this.astEq(src, dst) === T) {
                 this.removeFn(ast);
                 return;
@@ -699,7 +700,7 @@ export class AssertionSystem {
             result[pattern.name] ??= ast;
             this.getReplVarsType(ast, varTable, isItem);
             if (!astmgr.equal(result[pattern.name], ast))
-                throw `模式匹配失败：匹配多个替代变量${pattern.name}时值不相同`;
+                throw TR(`模式匹配失败：匹配多个替代变量`) + pattern.name + TR(`时值不相同`);
             return;
         }
         if (pattern.type === "fn" && pattern.name.match(/^#(v*nf|crp)/)) {
@@ -709,9 +710,9 @@ export class AssertionSystem {
             return;
         }
         if (ast.type !== pattern.type || ast.name !== pattern.name)
-            throw "模式匹配失败";
+            throw TR("模式匹配失败");
         if (ast.nodes?.length !== pattern.nodes?.length)
-            throw "模式匹配失败";
+            throw TR("模式匹配失败");
         if (ast.nodes?.length) {
             for (let i = 0; i < ast.nodes.length; i++) {
                 this.match(ast.nodes[i], pattern.nodes[i], replNameReg, this.getSubAstType(ast, i, isItem), result, varTable, assertions);
@@ -760,28 +761,28 @@ export class AssertionSystem {
     checkGrammer(ast, type, consts) {
         if (type === "v") {
             if (!this.getVarName(ast))
-                throw `表达式出现在了变量的位置中`;
+                throw TR(`表达式出现在了变量的位置中`);
         }
         if (ast.type === "meta") {
             if (ast.name === "⊢M")
                 if (type !== "m")
-                    throw "元推理符号⊢M只能出现在元推理规则中";
+                    throw TR("元推理符号⊢M只能出现在元推理规则中");
             if (ast.name === "⊢")
                 if (type !== "d")
-                    throw "推理符号⊢只能出现在推理规则中";
+                    throw TR("推理符号⊢只能出现在推理规则中");
             if (ast.name !== "⊢" && ast.name !== "⊢M")
-                throw "未知的推理符号 " + ast.name;
+                throw TR("未知的推理符号 ") + ast.name;
             if (ast.nodes?.length !== 2)
-                throw "元推理/推理符号子节点数目必须为2";
+                throw TR("元推理/推理符号子节点数目必须为2");
             const [cond, conc] = ast.nodes;
             if (cond.type !== "fn" || cond.name !== "#array")
-                throw "元推理/推理符号的条件格式必须为数组";
+                throw TR("元推理/推理符号的条件格式必须为数组");
             if (conc.type !== "fn" || conc.name !== "#array")
-                throw "元推理/推理符号的结论格式必须为数组";
+                throw TR("元推理/推理符号的结论格式必须为数组");
             if (ast.name === "⊢" && conc.nodes?.length !== 1)
-                throw "推理符号的结论数必须为1";
+                throw TR("推理符号的结论数必须为1");
             if (ast.name === "⊢M" && !conc.nodes?.length)
-                throw "元推理符号的结论不能为空";
+                throw TR("元推理符号的结论不能为空");
             if (type === "m")
                 return; // skip metarule check: check it by hand
             if (cond.nodes?.length) {
@@ -790,7 +791,7 @@ export class AssertionSystem {
                         this.checkGrammer(cd, "p", consts);
                     }
                     catch (e) {
-                        throw `条件中` + e;
+                        throw TR(`条件中`) + e;
                     }
                 }
             }
@@ -799,45 +800,45 @@ export class AssertionSystem {
                     this.checkGrammer(cc, "p", consts);
                 }
                 catch (e) {
-                    throw `结论中` + e;
+                    throw TR(`结论中`) + e;
                 }
             }
             return;
         }
         if (type === "m")
-            throw "未找到元推理符号";
+            throw TR("未找到元推理符号");
         if (type === "d")
-            throw "未找到推理符号";
+            throw TR("未找到推理符号");
         if (ast.type === "sym") {
             if (quantSyms.includes(ast.name)) {
                 if (type !== "p")
-                    return "意外出现了量词" + ast.name;
+                    return TR("意外出现了量词") + ast.name;
                 const varName = this.getVarName(ast.nodes[0]);
                 if (!varName)
-                    throw `非变量表达式出现在了量词${ast.name}的约束变量中`;
+                    throw TR(`非变量表达式出现在了量词`) + ast.name + TR(`的约束变量中`);
                 if (consts.has(varName)) {
-                    throw `常数符号${varName}禁止出现在量词${ast.name}的约束变量中`;
+                    throw TR(`常数符号`) + varName + TR('禁止出现在量词') + ast.name + TR('的约束变量中');
                 }
                 this.checkGrammer(ast.nodes[1], "p", consts);
                 return;
             }
             if (fnSyms.includes(ast.name)) {
                 if (type !== "i")
-                    throw "意外出现集合表达式";
+                    throw TR("意外出现集合表达式");
                 this.checkGrammer(ast.nodes[0], "i", consts);
                 this.checkGrammer(ast.nodes[1], "i", consts);
                 return;
             }
             if (verbSyms.includes(ast.name)) {
                 if (type !== "p")
-                    throw "意外出现谓词符号" + ast.name;
+                    throw TR("意外出现谓词符号") + ast.name;
                 this.checkGrammer(ast.nodes[0], "i", consts);
                 this.checkGrammer(ast.nodes[1], "i", consts);
                 return;
             }
             if (logicSyms.includes(ast.name)) {
                 if (type !== "p")
-                    throw "意外出现逻辑连词" + ast.name;
+                    throw TR("意外出现逻辑连词") + ast.name;
                 this.checkGrammer(ast.nodes[0], "p", consts);
                 if (ast.nodes[1])
                     this.checkGrammer(ast.nodes[1], "p", consts);
@@ -847,7 +848,7 @@ export class AssertionSystem {
         if (ast.type === "fn") {
             if (ast.name === "#rp" || ast.name === "#crp") {
                 if (ast.nodes?.length !== 3 && ast.nodes?.length !== 4)
-                    throw `系统函数${ast.name}的参数个数必须为三个或四个`;
+                    throw TR('系统函数') + ast.name + TR(`的参数个数必须为三个或四个`);
                 this.checkGrammer(ast.nodes[0], type, consts);
                 this.checkGrammer(ast.nodes[1], "i", consts);
                 this.checkGrammer(ast.nodes[2], "i", consts);
@@ -857,57 +858,57 @@ export class AssertionSystem {
             }
             if (ast.name.match(/^#v*nf$/)) {
                 if (!(ast.nodes?.length > ast.name.length - 2))
-                    throw `系统函数${ast.name}的参数个数必须至少有${ast.name.length - 1}个`;
+                    throw TR('系统函数') + ast.name + TR(`的参数个数必须至少有`) + (ast.name.length - 1) + TR(`个`);
                 this.checkGrammer(ast.nodes[0], type, consts);
                 for (let i = 1; i < ast.nodes.length; i++) {
                     try {
                         this.checkGrammer(ast.nodes[i], "v", consts);
                     }
                     catch (e) {
-                        throw `系统函数${ast.name}第${i + 1}个参数中：${e}`;
+                        throw TR('系统函数') + ast.name + TR(`第${i + 1}个参数中：`) + e;
                     }
                 }
                 return;
             }
             if (ast.name === "Prime") {
                 if (type !== "p")
-                    throw "意外出现算数谓词表达式";
+                    throw TR("意外出现算数谓词表达式");
                 if (ast.nodes?.length !== 1)
-                    throw `算数谓词${ast.name}仅接受一个类型为项的参数`;
+                    throw TR(`算数谓词 Prime 仅接受一个类型为项的参数`);
                 for (const n of ast.nodes)
                     this.checkGrammer(n, "i", consts);
                 return;
             }
             if (ast.name === "Equiv") {
                 if (type !== "p")
-                    throw "意外出现双射谓词表达式";
+                    throw TR("意外出现双射谓词表达式");
                 if (ast.nodes?.length !== 2)
-                    throw `双射谓词${ast.name}仅接受两个类型为项的参数`;
+                    throw TR(`双射谓词 Equiv 仅接受两个类型为项的参数`);
                 for (const n of ast.nodes)
                     this.checkGrammer(n, "i", consts);
                 return;
             }
             if (ast.name === "Order" || ast.name === "WellOrder") {
                 if (type !== "p")
-                    throw "意外出现序关系谓词表达式";
+                    throw TR("意外出现序关系谓词表达式");
                 if (ast.nodes?.length !== 2)
-                    throw `序关系谓词${ast.name}仅接受两个类型为项的参数`;
+                    throw TR(`序关系谓词${ast.name}仅接受两个类型为项的参数`);
                 for (const n of ast.nodes)
                     this.checkGrammer(n, "i", consts);
                 return;
             }
             if (ast.name === "Rel") {
                 if (type !== "p")
-                    throw "意外出现二元关系谓词表达式";
+                    throw TR("意外出现二元关系谓词表达式");
                 if (ast.nodes?.length !== 3)
-                    throw `二元关系谓词${ast.name}仅接受3个类型为项的参数`;
+                    throw TR(`二元关系谓词 Rel 仅接受3个类型为项的参数`);
                 for (const n of ast.nodes)
                     this.checkGrammer(n, "i", consts);
                 return;
             }
             if (fnSyms.includes(ast.name)) {
                 if (type !== "i")
-                    throw "意外出现集合表达式";
+                    throw TR("意外出现集合表达式");
                 for (const n of ast.nodes)
                     this.checkGrammer(n, "i", consts);
                 return;
@@ -915,7 +916,7 @@ export class AssertionSystem {
         }
         if (ast.type === "replvar" && consts.has(ast.name)) {
             if (type === "p")
-                throw "无法将集合常量符号“" + ast.name + "”作为原子公式符号";
+                throw TR("无法将集合常量符号“") + ast.name + TR("”作为原子公式符号");
             return;
         }
         // remained are unknown fns, keep type in subnodes
@@ -943,17 +944,17 @@ export class AssertionSystem {
         if (nfp) {
             for (const v of nfp[2]) {
                 if (this.nf(v, nfp[0], nfp[1]) !== T)
-                    throw `变量${v}自由出现断言失败`;
+                    throw TR(`变量`) + v + TR(`自由出现断言失败`);
             }
             return;
         }
         const crp = this.getCrpParams(ast);
         if (crp) {
             if (this.crp(...crp, varTypes) !== T)
-                throw `表达式可被替换断言失败`;
+                throw TR(`表达式可被替换断言失败`);
             return;
         }
-        throw "未找到断言函数";
+        throw TR("未找到断言函数");
     }
 }
 //# sourceMappingURL=assertion.js.map

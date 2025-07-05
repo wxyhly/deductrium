@@ -1,3 +1,4 @@
+import { TR } from "../lang.js";
 export class ASTParser {
     keywords = ["E!", "⊢M", "<>", "Union", "{}", "Equiv"];
     symChar = "VEMUI()@~^<>|&=,;:[]!⊢+-*/{}";
@@ -114,7 +115,7 @@ export class ASTParser {
     expectVar() {
         if (this.acceptVar())
             return true;
-        throw `语法错误：未找到变量`;
+        throw TR(`语法错误：未找到变量`);
     }
     acceptSym(s) {
         if (s === this.token) {
@@ -126,7 +127,7 @@ export class ASTParser {
     expectSym(s) {
         if (this.acceptSym(s))
             return true;
-        throw `语法错误：未找到符号"${s}"`;
+        throw TR(`语法错误：未找到符号`) + `"${s}"`;
     }
     itemTerm() {
         if (this.acceptVar()) {
@@ -164,11 +165,11 @@ export class ASTParser {
                 return { type: "replvar", name: "-" + this.prevToken(1) };
             }
             else {
-                throw "语法错误";
+                throw TR("语法错误");
             }
         }
         else {
-            throw "语法错误";
+            throw TR("语法错误");
         }
     }
     boolTerm6() {

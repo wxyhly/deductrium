@@ -1,6 +1,7 @@
 import { SavesParser as FsSavesParser } from "./fs/savesparser.js";
 import { calcMaxReachOrd } from "./hy/ordinal.js";
 import { SavesParser as HySavesParser } from "./hy/savesparser.js";
+import { TR } from "./lang.js";
 import { SavesParser as TtSavesParser } from "./tt/savesparser.js";
 const splittor = "-(=)-";
 const dict = {
@@ -32,13 +33,16 @@ export class GameSaveLoad {
     constructor(gamemode) {
         if (gamemode === "creative") {
             this.storageKey = "deductrium-creative-save";
-            document.getElementById("gamemode").innerText = "[创造模式]";
+            document.getElementById("gamemode").innerText = TR("[创造模式]");
             const panels = document.querySelectorAll("#panel>button");
             panels[0].classList.add("hide");
             panels[1].classList.remove("hide");
             panels[2].classList.remove("hide");
             panels[3].classList.remove("hide");
             panels[3].click();
+        }
+        else {
+            document.getElementById("gamemode").innerText = TR("[生存模式]");
         }
     }
     stateChangeTimer = false;
@@ -55,6 +59,7 @@ export class GameSaveLoad {
         const rollback = this.save(game);
         try {
             const [globaldata, hydata, fsdata, ttdata] = this.deserializeStr(str).split(splittor);
+            console.log([globaldata, hydata, fsdata, ttdata]);
             this.deserialize(game, globaldata);
             new HySavesParser().deserialize(game.hyperGui.world, hydata);
             game.hyperGui.needUpdate = true;
@@ -88,7 +93,7 @@ export class GameSaveLoad {
         dom.focus();
     }
     reset() {
-        if (confirm("确定要放弃所有游戏进度吗？")) {
+        if (confirm(TR("确定要放弃所有游戏进度吗？"))) {
             localStorage.removeItem(this.storageKey);
             window.location.href = window.location.href || "?";
         }
@@ -132,7 +137,7 @@ export class GameSaveLoad {
         }
         json = Shuffle.replaceZh(json);
         let randomFunction = new Rnd(this.storageKey === "deductrium-save" ? json.length : (json.length - 1));
-        console.log(json);
+        // console.log(json);
         const l78z = Shuffle.shuffleArray(Array.from(json), randomFunction);
         return l78z.join("");
     }

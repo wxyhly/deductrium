@@ -1,3 +1,4 @@
+import { TR } from "../lang.js";
 import { AST, ASTParser } from "./astparser.js";
 export type Context = { [variable: string]: AST };
 
@@ -166,7 +167,7 @@ export class HoTT {
             this.expandDefinition(t, context);
             return t;
         };
-        throw "类型断言失败：“:” 左边表达式类型为" + this.print(t);
+        throw TR("类型断言失败：“:” 左边表达式类型为") + this.print(t);
     }
     isNatLiteral(ast: AST) {
         return ast.type === "var" && (ast.name === "0" && ast.name.match(/^[1-9][0-9]*$/));
@@ -284,9 +285,9 @@ export class HoTT {
         }
         while (ast.type === "apply") {
             const t1 = this.check(ast.nodes[0], context);
-            if (t1.type !== "P") throw "非函数尝试作用";
+            if (t1.type !== "P") throw TR("非函数尝试作用");
             const t2 = this.check(ast.nodes[1], context);
-            if (!this.equal(t2, t1.nodes[0], context)) throw "函数与作用目标类型不匹配:函数" + this.print(ast.nodes[0]) + "需要接受的参数类型为" + this.print(t1.nodes[0]) + "，作用对象" + this.print(ast.nodes[1]) + "类型为" + this.print(t2);
+            if (!this.equal(t2, t1.nodes[0], context)) throw TR("函数与作用目标类型不匹配：函数") + this.print(ast.nodes[0]) + TR("需要接受的参数类型为") + this.print(t1.nodes[0]) + TR("，作用对象") + this.print(ast.nodes[1]) + TR("类型为") + this.print(t2);
             if (ast.nodes[0].type === "L") {
                 const nt1 = this.clone(ast.nodes[0].nodes[1]);
                 this.replaceVar(nt1, ast.nodes[0].name, ast.nodes[1]);
@@ -322,7 +323,7 @@ export class HoTT {
         return res;
     }
     replaceByMatch(ast: AST, res: { [variable: string]: AST }) {
-        if (!res) throw "未匹配";
+        if (!res) throw TR("未匹配");
         if (ast.type === "var" && axioms[ast.name]) {
             const levels = Number(res[".U"]?.name);
             if (levels) ast.name = ast.name.padEnd(levels + ast.name.length, "'");
@@ -339,7 +340,7 @@ export class HoTT {
     mergeUniverse(us: AST[]) {
         let l = 1;
         for (const u of us) {
-            if (u.type !== "var" || u.name[0] !== "U") throw "意外出现非全类：" + this.print(u);
+            if (u.type !== "var" || u.name[0] !== "U") throw TR("意外出现非全类：") + this.print(u);
             l = Math.max(l, u.name.length);
         }
         return { type: "var", name: "U".padEnd(l, "'") };
@@ -347,7 +348,7 @@ export class HoTT {
     check(ast: AST, context: Context = {}): AST {
         if (this.beginTime && this.beginTimeFlag++ === 0xFF) {
             if (new Date().getTime() - this.beginTime > 1000) {
-                throw "由于系统性能问题，递归大数字超时";
+                throw TR("由于系统性能问题，递归大数字超时");
             }
             this.beginTimeFlag = 0;
         }
@@ -380,7 +381,7 @@ export class HoTT {
                 this.replaceVar(clonet, "union", { type: "var", name: "union".padEnd(level + 4, "'") })
                 return clonet;
             }
-            throw "未知的变量：" + ast.name;
+            throw TR("未知的变量：") + ast.name;
         }
         if (ast.type === "L" || ast.type === "P" || ast.type === "S") {
             const domain = this.check(ast.nodes[0], context);
@@ -405,9 +406,9 @@ export class HoTT {
         }
         if (ast.type === "apply") {
             const t1 = this.check(ast.nodes[0], context);
-            if (t1.type !== "P") throw "非函数尝试作用";
+            if (t1.type !== "P") throw TR("非函数尝试作用");
             const t2 = this.check(ast.nodes[1], context);
-            if (!this.equal(t2, t1.nodes[0], context)) throw "函数与作用目标类型不匹配:函数" + parser.stringify(ast.nodes[0]) + "需要接受的参数类型为" + parser.stringify(t1.nodes[0]) + "，作用对象" + parser.stringify(ast.nodes[1]) + "类型为" + parser.stringify(t2);
+            if (!this.equal(t2, t1.nodes[0], context)) throw TR("函数与作用目标类型不匹配：函数") + parser.stringify(ast.nodes[0]) + TR("需要接受的参数类型为") + parser.stringify(t1.nodes[0]) + TR("，作用对象") + parser.stringify(ast.nodes[1]) + TR("类型为") + parser.stringify(t2);
             const nt1 = this.clone(t1.nodes[1]);
             this.replaceVar(nt1, t1.name, ast.nodes[1]);
             this.expandDefinition(nt1, context);
@@ -441,7 +442,7 @@ export class HoTT {
         if (ast.type === "*") {
             return this.check(this.expandComposite(ast, context), context);
         }
-        throw "未知的语法树";
+        throw TR("未知的语法树");
     }
     expandHomotopy(ast: AST, context: Context) {
         const typeA = this.check(ast.nodes[0], context);
@@ -551,7 +552,7 @@ export class HoTT {
     }
     parse(aststr: string) {
         const ast = parser.parse(aststr);
-        if (!ast) throw "意外的空表达式";
+        if (!ast) throw TR("意外的空表达式");
         this.unbeautify(ast);
         return ast;
     }
@@ -661,20 +662,20 @@ export class HoTT {
         if (Number(n1) + Number(n2) < Number.MAX_SAFE_INTEGER) {
             return (Number(n1) + Number(n2)).toString();
         }
-        throw "整数太大超过表示上限";
+        throw TR("整数太大超过表示上限");
     }
     mulNatLiteral(n1: string, n2: string) {
         if (Number(n1) * Number(n2) < Number.MAX_SAFE_INTEGER) {
             return (Number(n1) * Number(n2)).toString();
         }
-        throw "整数太大超过表示上限";
+        throw TR("整数太大超过表示上限");
     }
     powNatLiteral(n1: string, n2: string) {
         const res = Math.pow(Number(n1), Number(n2));
         if (res < Number.MAX_SAFE_INTEGER) {
             return res.toString();
         }
-        throw "整数太大超过表示上限";
+        throw TR("整数太大超过表示上限");
     }
     expandOperatorNatLiteral(ast: AST): boolean {
         let modified = false;

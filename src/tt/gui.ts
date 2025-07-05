@@ -1,3 +1,4 @@
+import { TR } from "../lang.js";
 import { Assist } from "./assist.js";
 import { AST, ASTParser } from "./astparser.js";
 import { Context } from "./check.js";
@@ -106,7 +107,7 @@ export class TTGui {
         const div = document.getElementById("tactic-autofill");
         const inp = document.getElementById("tactic-input") as HTMLInputElement;
         const exec = document.getElementById("tactic-begin");
-        div.innerHTML = tactics.length ? "推荐策略：<br>" : "";
+        div.innerHTML = tactics.length ? TR("推荐策略：<br>") : "";
         for (const t of tactics) {
             const btn = document.createElement("button");
             div.appendChild(btn);
@@ -125,7 +126,7 @@ export class TTGui {
     }
     private updateTacticStateDisplay(assist: Assist, statediv: HTMLDivElement) {
         if (!assist.goal.length) {
-            this.addSpan(statediv, "无目标，请输入qed结束");
+            this.addSpan(statediv, TR("无目标，请输入qed结束"));
         }
 
         for (let count = assist.goal.length - 1; count >= 0; count--) {
@@ -145,7 +146,7 @@ export class TTGui {
                 goalDiv.appendChild(document.createElement("br"));
             }
             goalDiv.appendChild(document.createElement("br"));
-            this.addSpan(goalDiv, count ? "目标" + (count) + "：" : "当前目标：");
+            this.addSpan(goalDiv, count ? TR("目标") + (count) + TR("：") : TR("当前目标："));
             try { this.core.checkType(g.type, g.context); } catch (e) { }
             goalDiv.appendChild(this.ast2HTML("", g.type, scope, g.context, this.getInhabitatArray().length));
             if (count) { goalDiv.style.opacity = "0.5"; goalDiv.style.backgroundColor = "#DDD"; }
@@ -162,7 +163,7 @@ export class TTGui {
     ast2HTML(idx: string, ast: AST, scopes: AST[] = [], context: Context = {}, userLineNumber = 0) {
         const varnode = document.createElement("span");
         if (!ast) {
-            varnode.innerText = "表达式因错误而丢失";
+            varnode.innerText = TR("表达式因错误而丢失");
             return varnode;
         }
         const astStr = parser.stringify(ast);
@@ -378,7 +379,7 @@ export class TTGui {
             list.appendChild(itIdx);
             itIdx.classList.add("idx");
             itIdx.style.width = "30px";
-            itIdx.innerText = rule.postfix;
+            itIdx.innerText = TR(rule.postfix);
 
             const itVal = document.createElement("div");
             list.appendChild(itVal);
@@ -530,10 +531,10 @@ export class TTGui {
                 try {
                     if (ast.type === ":=") {
                         if (ast.nodes[0].type !== "var") {
-                            throw ":=符号左侧仅允许出现自定义常量";
+                            throw TR(":=符号左侧仅允许出现自定义常量");
                         }
                         const defname = ast.nodes[0].name;
-                        if (this.core.checkConst(defname)) throw defname + "的定义重复";
+                        if (this.core.checkConst(defname)) throw defname + TR("的定义重复");
                         const inferedAst = {} as AST;
                         this.core.checkType(ast.nodes[1], {}, inferedAst);
                         checkInfer(inferedAst);
@@ -702,12 +703,12 @@ export class TTGui {
         try {
             this.getHottDefCtxt(this.getInhabitatArray().length);
             const ast = parser.parse(value);
-            if (!ast) throw "空表达式";
-            if (ast.type === "===") throw "不是命题类型";
-            if (ast.type === ":=") throw "不是命题类型";
-            if (ast.type === ":") throw "已断言该类型有值";
+            if (!ast) throw TR("空表达式");
+            if (ast.type === "===") throw TR("不是命题类型");
+            if (ast.type === ":=") throw TR("不是命题类型");
+            if (ast.type === ":") throw TR("已断言该类型有值");
             const type = this.core.checkType(ast);
-            if (type.type !== "apply" || type.nodes[0].name !== "U") throw "不是命题类型";
+            if (type.type !== "apply" || type.nodes[0].name !== "U") throw TR("不是命题类型");
             const assist = new Assist(this.core, value);
             this.mode = [assist];
             this.autofillTactics(assist);
@@ -721,7 +722,7 @@ export class TTGui {
             window.scrollTo(0, document.body.clientHeight);
 
         } catch (e) {
-            document.getElementById("tactic-hint").innerText = "命题格式有误：" + e;
+            document.getElementById("tactic-hint").innerText = TR("命题格式有误：") + e;
             this.mode = null;
         }
     }
@@ -729,7 +730,7 @@ export class TTGui {
         const input = document.getElementById("tactic-input") as HTMLInputElement;
         const hint = document.getElementById("tactic-hint");
         if (!this.mode) {
-            hint.innerText = "请在定理列表中点选待证命题";
+            hint.innerText = TR("请在定理列表中点选待证命题");
             this.mode = "tactic-begin";
         }
         if (this.mode instanceof Array) {
@@ -760,7 +761,7 @@ export class TTGui {
                     return;
                 } else if (assist[cmd]) assist[cmd](param);
                 else {
-                    throw "未知的证明策略";
+                    throw TR("未知的证明策略");
                 }
                 assist.markTargets();
                 hint.innerText = "";

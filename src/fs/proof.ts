@@ -1,3 +1,4 @@
+import { TR } from "../lang.js";
 import { AssertionSystem } from "./assertion.js";
 import { AST, ASTMgr } from "./astmgr.js";
 import { FormalSystem } from "./formalsystem.js";
@@ -11,13 +12,13 @@ export class Proof {
     }
     prove(ast: AST) {
         const varTable = assert.getReplVarsType(ast, {}, false);
-        if (Object.values(varTable).includes(true)) throw "无法对非命题逻辑符号进行真值指派";
+        if (Object.values(varTable).includes(true)) throw TR("无法对非命题逻辑符号进行真值指派");
         const vars = Object.keys(varTable);
         const hypEnums = 1 << vars.length;
         const proofEnumsTable: number[] = [];
         for (let i = 0; i < hypEnums; i++) {
             const [t, p] = this.enumProve(ast, vars, i);
-            if (!t) throw "条件重言式测试失败：真值指派" + vars.map((v, idx) => (v + `为` + (((1 << idx) & i) ? "真" : "假"))).join("、") + "时命题为假";
+            if (!t) throw TR("条件重言式测试失败：真值指派") + vars.map((v, idx) => (v + TR(`为`) + (((1 << idx) & i) ? TR("真") : TR("假")))).join(TR("、")) + TR("时命题为假");
             proofEnumsTable.push(p);
         }
         for (let idx = 0; idx < vars.length; idx++) {
@@ -84,7 +85,7 @@ export class Proof {
                 const replaceValues = !ta ? [ast.nodes[1]] : !tb ? [ast.nodes[0]] : [];
                 return [ta && tb, this.fs.deduct({ deductionIdx: prefix + ".&" + dname, conditionIdxs, replaceValues })];
             }
-            throw "无法对非命题逻辑符号进行真值指派";
+            throw TR("无法对非命题逻辑符号进行真值指派");
         }
     }
     cca1(vars: string[], id: number, hyps: number): PropWithTruth {

@@ -7,7 +7,7 @@
 </head>
 <body>
     
-<h1 style="user-select: none;">Deductrium<span id="gamemode">[生存模式]</span></h1>
+<h1 style="user-select: none;">Deductrium<span id="gamemode">[...Loading...]</span></h1>
 <div id="loading">
     <div><svg width="200" height="80" version="1.1" xmlns="http://www.w3.org/2000/svg"
             xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 100 100" enable-background="new 0 0 0 0"
@@ -38,6 +38,7 @@
             <button>保存</button>
             <button class="danger">加载</button>
             <button class="danger">清除进度</button>
+            <button>Toggle Game Language to English</button>
         </div>
         <div>
             <p></p>
@@ -46,12 +47,12 @@
         </div>
         <div id="stat"><h3>数据统计：</h3>
         <ul>
-            <li>拥有推理素：<span id="deductrium-amount">0</span></li>
-            <li>累计消耗推理素：<span id="deductrium-consumed">0</span></li>
-            <li>拆除门个数：<span id="destructed-gates">0</span>块</li>
-            <li>总方块步数：<span id="parcours-tiles">1</span>块</li>
-            <li>到达过的最大序数：<span id="max-ord">0</span></li>
-            <li>能前往的最大序数：<span id="next-ord">1</span> (逢<span id="ord-base">0</span>进位<span id="next-ord-stepw"></span>)</li>
+            <li><label>拥有推理素：</label><span id="deductrium-amount">0</span></li>
+            <li><label>累计消耗推理素：</label><span id="deductrium-consumed">0</span></li>
+            <li><label>拆除门个数：</label><span id="destructed-gates">0</span><label>块</label></li>
+            <li><label>总方块步数：</label><span id="parcours-tiles">1</span><label>块</label></li>
+            <li><label>到达过的最大序数：</label><span id="max-ord">0</span></li>
+            <li><label>能前往的最大序数：</label><span id="next-ord">1</span> (<label>逢</label><span id="ord-base">0</span><label>进位</label><span id="next-ord-stepw"></span>)</li>
         </ul></div>
         <div id="ach">
             <h3>成就统计：(手机横屏最佳)</h3>
@@ -155,13 +156,13 @@
             
         </div>
         <div id="creer" class="hide">
-            <p>注意：创造模式与生存模式不共享进度系统。创造模式下无法体验双曲空间以及序数系统等游戏内容，前往生存模式<a href="?" target="_blank">请点击这里</a>。</p>
+            <p data-tr-mark="@p">注意：创造模式与生存模式不共享进度系统。创造模式下无法体验双曲空间以及序数系统等游戏内容，前往生存模式<a href="?" target="_blank">请点击这里</a>。</p>
         </div>
         <h3>若遇Bug或其它任何问题：</h3>
-        <p>欢迎联系游戏作者<a target="_blank" href="https://wxyhly.github.io/about/">Hqak</a></p>
+        <p><label>欢迎联系游戏作者</label><a target="_blank" href="https://wxyhly.github.io/about/">Hqak</a></p>
     </div>
     <div id="panel-1">
-        <div id="metarule-subpanel" class="hide">[M]元规则：
+        <div id="metarule-subpanel" class="hide"><label>[M]元规则：</label>
             <div class="list-wrapper">
                 <div class="list" id="meta-list">
                 </div>
@@ -185,7 +186,7 @@
             <div class="list" id="deduct-list">
             </div>
         </div>
-        [P]定理：
+        <label>[P]定理：</label>
         <div class="list-wrapper">
             <div class="list" id="prop-list">
             </div>
@@ -229,7 +230,7 @@
                 </div>
             </div>
             <div id="copygate"></div>
-            <label>证明策略：<span id="tactic-hint"></span></label>
+            <label>证明策略：</label><span id="tactic-hint"></span>
             <div class="list-wrapper">
                 <div id="tactic-list">
                     <div id="tactic-state"></div>

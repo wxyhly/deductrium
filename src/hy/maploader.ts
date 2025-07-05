@@ -1,3 +1,4 @@
+import { langMgr } from "../lang.js";
 import { mapData } from "./map.js"
 import { genOrdTiles } from "./ordinal.js";
 import { Polygon, TileHash } from "./tiling.js";
@@ -61,4 +62,7 @@ export function initMap(p: Polygon) {
         }
         if (!(parent && parent[1] === "%*")) prevTilehash = t;
     });
+    // console.log(Array.from(blockMap.values()).filter(e=>e.type!=TileBlockType.Ordinal&&(e.text.startsWith("["))));
+    console.log(JSON.stringify(Array.from(blockMap.values()).map(e=>langMgr.trc1(langMgr.trc(e.text))).filter(e=>(/[\u4e00-\u9fa5]/.test(e)))));
+    // console.log(JSON.stringify(Array.from(blockMap.values()).filter(e=>(/[\u4e00-\u9fa5]/.test(e.text))).map(e=>e.text)));
 }

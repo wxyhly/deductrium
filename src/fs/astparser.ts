@@ -1,4 +1,5 @@
 import { AST } from "astmgr.js"
+import { TR } from "../lang.js";
 export class ASTParser {
     keywords = ["E!", "⊢M", "<>", "Union", "{}", "Equiv"];
     symChar = "VEMUI()@~^<>|&=,;:[]!⊢+-*/{}";
@@ -104,7 +105,7 @@ export class ASTParser {
     }
     private expectVar() {
         if (this.acceptVar()) return true;
-        throw `语法错误：未找到变量`;
+        throw TR(`语法错误：未找到变量`);
     }
     private acceptSym(s: string) {
         if (s === this.token) {
@@ -115,7 +116,7 @@ export class ASTParser {
     }
     private expectSym(s: string) {
         if (this.acceptSym(s)) return true;
-        throw `语法错误：未找到符号"${s}"`;
+        throw TR(`语法错误：未找到符号`)+`"${s}"`;
     }
 
 
@@ -151,10 +152,10 @@ export class ASTParser {
             if (this.acceptVar()) {
                 return { type: "replvar", name: "-"+this.prevToken(1) };
             }else{
-                throw "语法错误";
+                throw TR("语法错误");
             }
         } else {
-            throw "语法错误";
+            throw TR("语法错误");
         }
     }
     private boolTerm6(): AST {

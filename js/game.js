@@ -3,6 +3,7 @@ import { FSGui } from "./fs/gui.js";
 import { HyperGui } from "./hy/gui.js";
 import { TileBlockType } from "./hy/maploader.js";
 import { calcMaxReachOrd, cmp, printOrd } from "./hy/ordinal.js";
+import { langMgr, TR } from "./lang.js";
 import { GameSaveLoad } from "./saveload.js";
 import { TTGui } from "./tt/gui.js";
 function parseDeductriumAmout(str) {
@@ -65,6 +66,7 @@ export class Game {
     };
     constructor() {
         const gamemode = window.location.search === "?creative" ? "creative" : "survival";
+        langMgr.init();
         if (gamemode === "creative") {
             this.creative = true;
         }
@@ -163,7 +165,7 @@ export class Game {
             if (achievement)
                 this.finishAchievement(achievement);
             if (this.rewards.includes("delgate") && !this.rewards.includes("hash") && tile.type !== 4) {
-                tile.text += "\n（此门已拆除）";
+                tile.text += "\n （此门已拆除）";
                 tile.type = 0;
                 this.destructedGates++;
                 this.updateProgressParam();
@@ -177,12 +179,16 @@ export class Game {
         };
         this.hyperGui.world.onGetReward = (hash, tile, isLoading) => {
             if (tile.type === TileBlockType.Gate) {
-                tile.text += "\n（此门已拆除）";
+                tile.text += "\n （此门已拆除）";
                 if (tile.name && !this.rewards.includes(tile.name))
                     this.rewards.push(tile.name);
                 else if (hash && !this.rewards.includes(hash))
                     this.rewards.push(hash);
                 return;
+            }
+            if (tile.name === "zh-en" && !isLoading) {
+                langMgr.setLang(langMgr.lang === "en" ? "zh" : "en");
+                window.location.reload();
             }
             if (tile.name) {
                 if (!this.rewards.includes(tile.name))
@@ -209,14 +215,14 @@ export class Game {
                     return;
                 case "omega":
                     const tileOmega = this.hyperGui.world.getBlock("w");
-                    tileOmega.text += "\n（此门已拆除）";
+                    tileOmega.text += "\n （此门已拆除）";
                     tileOmega.type = 0;
                     this.destructedGates++;
                     this.updateProgressParam();
                     return;
                 case "delAl":
                     const tileAleph = this.hyperGui.world.getBlock("Aleph");
-                    tileAleph.text += "\n（此门已拆除）";
+                    tileAleph.text += "\n （此门已拆除）";
                     tileAleph.type = 0;
                     this.destructedGates++;
                     this.updateProgressParam();
@@ -275,21 +281,21 @@ export class Game {
                     return;
                 case "del<>":
                     const tileIFF = this.hyperGui.world.getBlock("port-iff");
-                    tileIFF.text += "\n（此门已拆除）";
+                    tileIFF.text += "\n （此门已拆除）";
                     tileIFF.type = 0;
                     this.destructedGates++;
                     this.updateProgressParam();
                     return;
                 case "delK":
                     const tileK = this.hyperGui.world.getBlock("K");
-                    tileK.text += "\n（此门已拆除）";
+                    tileK.text += "\n （此门已拆除）";
                     tileK.type = 0;
                     this.destructedGates++;
                     this.updateProgressParam();
                     return;
                 case "delL":
                     const tileL = this.hyperGui.world.getBlock("L");
-                    tileL.text += "\n（此门已拆除）";
+                    tileL.text += "\n （此门已拆除）";
                     tileL.type = 0;
                     this.destructedGates++;
                     this.updateProgressParam();
@@ -465,7 +471,7 @@ export class Game {
                     return;
                 case "mcvt":
                     const tileV = this.hyperGui.world.getBlock("V");
-                    tileV.text += "\n（此门已拆除）";
+                    tileV.text += "\n （此门已拆除）";
                     tileV.type = 0;
                     this.destructedGates++;
                     this.updateProgressParam();
@@ -647,9 +653,9 @@ export class Game {
         const gameSaveLoad = new GameSaveLoad(gamemode);
         progressBtns[0].addEventListener("click", () => gameSaveLoad.save(this, txtarea));
         progressBtns[1].addEventListener("click", () => {
-            const str = prompt("请粘贴进度代码：");
+            const str = prompt(TR("请粘贴进度代码："));
             if (!str.trim()) {
-                alert("进度代码为空！");
+                alert(TR("进度代码为空！"));
             }
             else {
                 gameSaveLoad.load(this, str);
@@ -657,12 +663,15 @@ export class Game {
             }
         });
         progressBtns[2].addEventListener("click", () => gameSaveLoad.reset());
+        progressBtns[3].addEventListener("click", () => { langMgr.setLang(langMgr.lang === "en" ? "zh" : "en"); window.location.reload(); });
         const saves = localStorage.getItem(gameSaveLoad.storageKey);
         // autosave while updated within a time interval
         this.hyperGui.world.onStateChange = this.ttGui.onStateChange = this.fsGui.onStateChange = () => gameSaveLoad.stateChange(this);
         if (saves)
             gameSaveLoad.load(this, saves);
         document.getElementById("loading").classList.add("hide");
+        langMgr.setLang(langMgr.lang);
+        this.hyperGui.needUpdate = true;
     }
     checkAllZFC(mute) {
         let r = this.fsGui.deductions.includes("aUnion");
@@ -679,7 +688,7 @@ export class Game {
     }
     addDeductriums(amount) {
         this.deductriums += amount;
-        this.showHint("推理素" + (amount >= 0 ? "+" : "") + stringifyDeductriumAmout(amount) + "<br>共" + stringifyDeductriumAmout(this.deductriums));
+        this.showHint(TR("推理素") + (amount >= 0 ? "+" : "") + stringifyDeductriumAmout(amount) + "<br>" + TR("共") + stringifyDeductriumAmout(this.deductriums));
         if (amount < 0)
             this.finishAchievement("第一次消费");
         if (amount > 0)
@@ -702,7 +711,7 @@ export class Game {
         document.getElementById("max-ord").innerText = printOrd(this.maxOrd);
         document.getElementById("ord-base").innerText = (this.ordBase + 1).toString();
         document.getElementById("next-ord").innerText = cmp(this.nextOrd, [1, 2, 3, 4, 5]) > 0 ? "？？" : printOrd(this.nextOrd);
-        document.getElementById("next-ord-stepw").innerText = this.rewards.includes("stepw") ? "、后继指数提升" : "";
+        document.getElementById("next-ord-stepw").innerText = this.rewards.includes("stepw") ? TR("、后继指数提升") : "";
     }
     showHint(text) {
         const dom = document.createElement("div");
@@ -717,14 +726,15 @@ export class Game {
         if (this.rewards.includes("[ach]" + a))
             return;
         for (const d of document.querySelectorAll(".achievement div")) {
-            if (d.innerText === a) {
+            // if (d.innerText === a) {
+            if (d.getAttribute("data-tr") === a) {
                 d.classList.add("achieved");
                 d.parentElement.classList.remove("locked");
                 break;
             }
         }
         if (!mute)
-            this.showHint("<br><br><br><div style='border:solid;border-radius:0.3em; padding:0.3em'>获得成就：<br>" + a + "</div>");
+            this.showHint("<br><br><br><div style='border:solid;border-radius:0.3em; padding:0.3em'>" + TR("获得成就：") + "<br>" + TR(a) + "</div>");
         this.rewards.push("[ach]" + a);
     }
     unlockMetarule(name) {

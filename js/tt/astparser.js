@@ -1,3 +1,4 @@
+import { TR } from "../lang.js";
 export class ASTParser {
     keywords = [":=", "->", "~=", "===", "@ind_Sum", "ind_Sum", "@Sum", "Sum", "@ind_S1", "ind_S1", "S1", "@ind_Prod", "ind_Prod", "@Prod", "Prod"];
     symChar = ".:,()PSLX~*+";
@@ -7,7 +8,7 @@ export class ASTParser {
     token;
     stringify(ast) {
         if (!ast)
-            return '表达式丢失';
+            return TR('表达式丢失');
         const nd = ast.nodes;
         if (ast.type === "->") {
             return `(${this.stringify(nd[0])}→${this.stringify(nd[1])})`;
@@ -70,26 +71,26 @@ export class ASTParser {
                 this.nextSym();
                 const postfix = this.type();
                 if (!postfix)
-                    throw "不完整的表达式";
+                    throw TR("不完整的表达式");
                 if (this.tokens.length !== this.cursor - 1) {
                     if (token === ":=" && this.token === ":") {
                         // def := expr : type
                         this.nextSym();
                         const type = this.type();
                         if (!type)
-                            throw "不完整的表达式";
+                            throw TR("不完整的表达式");
                         return {
                             type: token, name: "", nodes: [ret, {
                                     type: ":", name: "", nodes: [postfix, type]
                                 }]
                         };
                     }
-                    throw "未知的语法错误";
+                    throw TR("未知的语法错误");
                 }
                 return { type: token, name: "", nodes: [ret, postfix] };
             }
             else {
-                throw "未知的语法错误";
+                throw TR("未知的语法错误");
             }
         }
         return ret;
@@ -154,7 +155,7 @@ export class ASTParser {
             this.expectSym(":");
             const paramType = this.type();
             if (!(this.acceptSym(".") || this.acceptSym(",")))
-                throw "Lambda未匹配“.”号";
+                throw TR("Lambda未匹配“.”号");
             const fnbody = this.type();
             val = { type: "L", name: param, nodes: [paramType, fnbody] };
         }
@@ -164,7 +165,7 @@ export class ASTParser {
             this.expectSym(":");
             const paramType = this.type();
             if (!(this.acceptSym(".") || this.acceptSym(",")))
-                throw "Pi未匹配“,”号";
+                throw TR("Pi未匹配“,”号");
             const fnbody = this.type();
             val = { type: "P", name: param, nodes: [paramType, fnbody] };
         }
@@ -247,7 +248,7 @@ export class ASTParser {
             val = { type: "apply", name: "", nodes: [val, this.typeTerm()] };
         }
         if (!val)
-            throw "表达式不完整";
+            throw TR("表达式不完整");
         return val;
     }
     acceptVar() {
@@ -262,7 +263,7 @@ export class ASTParser {
     expectVar() {
         if (this.acceptVar())
             return true;
-        throw `语法错误：未找到变量`;
+        throw TR(`语法错误：未找到变量`);
     }
     acceptSym(s) {
         if (s === this.token) {
@@ -274,7 +275,7 @@ export class ASTParser {
     expectSym(s) {
         if (this.acceptSym(s))
             return true;
-        throw `语法错误：未找到符号"${s}"`;
+        throw TR(`语法错误：未找到符号"`) + s + `"`;
     }
 }
 //# sourceMappingURL=astparser.js.map
