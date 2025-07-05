@@ -335,6 +335,8 @@ class LangMgr {
         "[创造模式]": "[Creative Mode]",
         "[生存模式]": "[Survival Mode]",
         "确定要放弃所有游戏进度吗？": "Are you sure you want to give up all game progress?",
+        "进度代码格式错误：": "Format Error of Progress Code: ",
+        "进度已回滚。": "Progress rollbacked",
         // fs/gui.ts
         "[宏]": "[M]",
         "录制*": "Recorded*",

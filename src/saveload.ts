@@ -69,10 +69,10 @@ export class GameSaveLoad {
             localStorage.setItem(this.storageKey, str);
         } catch (e) {
             if (!skipRollback) {
-                alert("进度代码格式错误：" + e);
-                console.warn("进度代码格式错误：");
+                alert(TR("进度代码格式错误：") + e);
+                console.warn(TR("进度代码格式错误："));
                 console.warn(str);
-                console.warn("进度已回滚。");
+                console.warn(TR("进度已回滚。"));
                 this.load(game, rollback, true);
             } else {
                 console.error(e);
