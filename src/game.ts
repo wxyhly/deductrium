@@ -399,7 +399,8 @@ export class Game {
 
         progressBtns[0].addEventListener("click", () => gameSaveLoad.save(this, txtarea));
         progressBtns[1].addEventListener("click", () => {
-            const str = prompt(TR("请粘贴进度代码："));
+            if(!confirm(TR("请粘贴进度代码至保存加载按钮下方的文本框内。粘贴好了请点确定，还未粘贴请先点取消\n注意：加载新进度后，当前游戏进度会丢失！"))) return;
+            const str = txtarea.value;
             if (!str.trim()) { alert(TR("进度代码为空！")); } else {
                 gameSaveLoad.load(this, str);
                 window.location.href = window.location.href || "?";

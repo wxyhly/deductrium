@@ -605,6 +605,12 @@ export class FSCmd {
             this.gui.hintText.innerText = TR("以.<>uvdcamp开头的推理规则名称由系统保留，请重新命名");
             return res;
         }
+        if (n.includes(",")||n.includes(":")) {
+            this.cmdBuffer.pop();
+            const res = this.getInputNewDeductionPos(prevLength);
+            this.gui.hintText.innerText = TR("推理规则名称中禁止出现由系统保留的“:”或“,”符号，请重新命名");
+            return res;
+        }
         if (this.gui.formalSystem.deductions[n]) {
             this.cmdBuffer.pop();
             const res = this.getInputNewDeductionPos(prevLength);
