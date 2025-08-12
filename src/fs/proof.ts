@@ -16,25 +16,34 @@ export class Proof {
         const vars = Object.keys(varTable);
         const hypEnums = 1 << vars.length;
         const proofEnumsTable: number[] = [];
-        for (let i = 0; i < hypEnums; i++) {
-            const [t, p] = this.enumProve(ast, vars, i);
-            if (!t) throw TR("条件重言式测试失败：真值指派") + vars.map((v, idx) => (v + TR(`为`) + (((1 << idx) & i) ? TR("真") : TR("假")))).join(TR("、")) + TR("时命题为假");
-            proofEnumsTable.push(p);
-        }
-        for (let idx = 0; idx < vars.length; idx++) {
-            for (let i = 0; i < hypEnums >> (idx + 1); i++) {
-                const prefix = "".padEnd(vars.length - idx - 1, "c");
-                const p1 = proofEnumsTable[i];
-                const p2 = proofEnumsTable[i + (hypEnums >> (idx + 1))];
-                const p3 = this.fs.deduct({
-                    deductionIdx: prefix + ".m2",
-                    conditionIdxs: [p2, p1], replaceValues: [],
-                })
-                proofEnumsTable[i] = p3;
+        const fastrules = this.fs.fastmetarules;
+        this.fs.fastmetarules = "cvuq><:";
+        try {
+            for (let i = 0; i < hypEnums; i++) {
+                const [t, p] = this.enumProve(ast, vars, i);
+                if (!t) {
+                    this.fs.fastmetarules = fastrules;
+                    throw TR("条件重言式测试失败：真值指派") + vars.map((v, idx) => (v + TR(`为`) + (((1 << idx) & i) ? TR("真") : TR("假")))).join(TR("、")) + TR("时命题为假");
+                }
+                proofEnumsTable.push(p);
             }
+            for (let idx = 0; idx < vars.length; idx++) {
+                for (let i = 0; i < hypEnums >> (idx + 1); i++) {
+                    const prefix = "".padEnd(vars.length - idx - 1, "c");
+                    const p1 = proofEnumsTable[i];
+                    const p2 = proofEnumsTable[i + (hypEnums >> (idx + 1))];
+                    const p3 = this.fs.deduct({
+                        deductionIdx: prefix + ".m2",
+                        conditionIdxs: [p2, p1], replaceValues: [],
+                    })
+                    proofEnumsTable[i] = p3;
+                }
+            }
+        } catch (e) {
+            this.fs.fastmetarules = fastrules;
+            throw e;
         }
-
-
+        this.fs.fastmetarules = fastrules;
     }
     enumProve(ast: AST, vars: string[], hyps: number): PropWithTruth {
         const varsLen = vars.length;
