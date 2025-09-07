@@ -61,6 +61,11 @@ export class FormalSystem {
             from: ""
         };
     }
+    getdependency(name, deductionIdx) {
+        if (!deductionIdx)
+            return false;
+        return name === deductionIdx || deductionIdx.match(new RegExp("^[vc<>u:]*" + name + "(,.+$)?$"));
+    }
     removeDeduction(name) {
         if (!this.deductions[name])
             throw TR("规则名称 ") + name + TR(" 不存在");
@@ -71,13 +76,13 @@ export class FormalSystem {
             if (name === n)
                 continue;
             for (const s of d.steps) {
-                if (name === s.deductionIdx) {
+                if (this.getdependency(name, s.deductionIdx)) {
                     throw TR("无法删除规则 ") + name + TR("，请先删除对其有依赖的规则 ") + n;
                 }
             }
         }
         for (const [n, p] of this.propositions.entries()) {
-            if (name === p.from?.deductionIdx) {
+            if (this.getdependency(name, p.from?.deductionIdx)) {
                 throw TR("无法删除规则 ") + name + TR("，请先删除对其有依赖的定理 p") + n;
             }
         }
@@ -463,10 +468,10 @@ export class FormalSystem {
             throw TR("该定理为假设，无推理步骤可展开");
         const { deductionIdx, conditionIdxs, replaceValues } = p.from;
         if (!this.deductions[deductionIdx])
-            this.generateDeduction(deductionIdx);
+            this.deductions[deductionIdx] = this.generateDeduction(deductionIdx);
         const from = this.deductions[deductionIdx].from;
         if (!this.deductions[deductionIdx].steps)
-            throw TR(`该定理由来自<`) + TR(deductionIdx[0] === "v" ? "一阶逻辑公理模式" : from) + TR(`>的原子推理规则得到，无子步骤`);
+            throw TR(`该定理由来自<`) + TR(deductionIdx[0] === "v" ? TR("一阶逻辑公理模式") : from) + TR(`>的原子推理规则得到，无子步骤`);
         const hyps = conditionIdxs.map(c => this.propositions[c].value);
         this.removePropositions();
         // expandMode set true to skip local var check in addHypothese
@@ -481,7 +486,7 @@ export class FormalSystem {
             throw TR("该定理为假设，无推理步骤可展开");
         const { deductionIdx, conditionIdxs, replaceValues } = p.from;
         if (!this.deductions[deductionIdx])
-            this.generateDeduction(deductionIdx);
+            this.deductions[deductionIdx] = this.generateDeduction(deductionIdx);
         if (!this.deductions[deductionIdx].steps)
             throw TR(`该定理由来自<`) + TR(this.deductions[deductionIdx].from) + TR(`>的原子推理规则得到，无子步骤`);
         const suivant = [];

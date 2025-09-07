@@ -65,6 +65,10 @@ export class FormalSystem {
             from: ""
         };
     }
+    getdependency(name: string, deductionIdx: string) {
+        if (!deductionIdx) return false;
+        return name === deductionIdx || deductionIdx.match(new RegExp("^[vc<>u:]*" + name + "(,.+$)?$"));
+    }
     removeDeduction(name: string) {
         if (!this.deductions[name]) throw TR("规则名称 ") + name + TR(" 不存在");
         // if (this.deductions[name].from.match(/$/)) throw "无法删除系统规则";
@@ -72,14 +76,14 @@ export class FormalSystem {
             if (!d.steps) continue;
             if (name === n) continue;
             for (const s of d.steps) {
-                if (name === s.deductionIdx) {
+                if (this.getdependency(name, s.deductionIdx)) {
                     throw TR("无法删除规则 ") + name + TR("，请先删除对其有依赖的规则 ") + n;
                 }
             }
         }
 
         for (const [n, p] of this.propositions.entries()) {
-            if (name === p.from?.deductionIdx) {
+            if (this.getdependency(name, p.from?.deductionIdx)) {
                 throw TR("无法删除规则 ") + name + TR("，请先删除对其有依赖的定理 p") + n;
             }
         }
@@ -314,7 +318,7 @@ export class FormalSystem {
     deduct(step: DeductionStep, inlineMode?: DeductInlineMode | ((step: DeductionStep, conclusion: AST) => DeductInlineMode)) {
         const { conditionIdxs, deductionIdx, replaceValues } = step;
         const deduction = this.generateDeduction(deductionIdx);
-        const errorMsg = TR(`规则 `)+deductionIdx+TR(` 推理失败:`);
+        const errorMsg = TR(`规则 `) + deductionIdx + TR(` 推理失败:`);
         if (!deduction) throw errorMsg + TR("规则不存在");
         const { conditions, conclusion, replaceNames, steps, replaceTypes } = deduction;
 
@@ -332,13 +336,13 @@ export class FormalSystem {
         for (const [conditionIdx, condition] of conditions.entries()) {
             const condPropIdx = conditionIdxs[conditionIdx];
             const condProp = this.propositions[condPropIdx];
-            if (!condProp) throw errorMsg + TR(`第${conditionIdx + 1}个`)+TR(`条件对应的定理p`)+condPropIdx+TR(`不存在`);
+            if (!condProp) throw errorMsg + TR(`第${conditionIdx + 1}个`) + TR(`条件对应的定理p`) + condPropIdx + TR(`不存在`);
             try {
                 assert.match(condProp.value, condition, /^\$/, false, matchTable, replacedVarTypeTable, assertions);
                 while (assertionsFrom.length < assertions.length) assertionsFrom.push(conditionIdx);
             } catch (e) {
                 // match failed
-                throw errorMsg + TR(`第${conditionIdx + 1}个`)+TR(`条件`) + e;
+                throw errorMsg + TR(`第${conditionIdx + 1}个`) + TR(`条件`) + e;
             }
         }
 
@@ -350,7 +354,7 @@ export class FormalSystem {
             // todo: how to get assert's type
             try { assert.assertUnwrap(cas, replacedVarTypeTable); } catch (e) {
                 // assertion in condition failed (first layer must be T)
-                throw errorMsg + TR(`第${assertionsFrom[idx] + 1}个`)+TR(`条件中:`) + e;
+                throw errorMsg + TR(`第${assertionsFrom[idx] + 1}个`) + TR(`条件中:`) + e;
             }
         }
 
@@ -408,7 +412,7 @@ export class FormalSystem {
                 lastPos = this.deduct({ deductionIdx: substep.deductionIdx, replaceValues, conditionIdxs: replacedConditionIdxs }, netInlineMode === "deep" ? inlineMode : null);
             } catch (e) {
                 // if one substep is wrong, remove newly added substeps from proplist
-                const substepErrMsg = errorMsg + TR(`子步骤`)+`${substepIdx + 1}(${substep.deductionIdx}`+TR(`)中 `) + e;
+                const substepErrMsg = errorMsg + TR(`子步骤`) + `${substepIdx + 1}(${substep.deductionIdx}` + TR(`)中 `) + e;
                 while (this.propositions.length > startPropositions) {
                     this.propositions.pop();
                 }
@@ -424,9 +428,9 @@ export class FormalSystem {
         const p = this.propositions[propositionIdx];
         if (!p.from) throw TR("该定理为假设，无推理步骤可展开");
         const { deductionIdx, conditionIdxs, replaceValues } = p.from;
-        if (!this.deductions[deductionIdx]) this.generateDeduction(deductionIdx);
+        if (!this.deductions[deductionIdx]) this.deductions[deductionIdx] = this.generateDeduction(deductionIdx);
         const from = this.deductions[deductionIdx].from;
-        if (!this.deductions[deductionIdx].steps) throw TR(`该定理由来自<`)+TR(deductionIdx[0] === "v" ? "一阶逻辑公理模式" : from)+TR(`>的原子推理规则得到，无子步骤`);
+        if (!this.deductions[deductionIdx].steps) throw TR(`该定理由来自<`) + TR(deductionIdx[0] === "v" ? TR("一阶逻辑公理模式") : from) + TR(`>的原子推理规则得到，无子步骤`);
         const hyps = conditionIdxs.map(c => this.propositions[c].value);
         this.removePropositions();
         // expandMode set true to skip local var check in addHypothese
@@ -439,8 +443,8 @@ export class FormalSystem {
         const p = this.propositions[propositionIdx];
         if (!p.from) throw TR("该定理为假设，无推理步骤可展开");
         const { deductionIdx, conditionIdxs, replaceValues } = p.from;
-        if (!this.deductions[deductionIdx]) this.generateDeduction(deductionIdx);
-        if (!this.deductions[deductionIdx].steps) throw TR(`该定理由来自<`)+TR(this.deductions[deductionIdx].from)+TR(`>的原子推理规则得到，无子步骤`);
+        if (!this.deductions[deductionIdx]) this.deductions[deductionIdx] = this.generateDeduction(deductionIdx);
+        if (!this.deductions[deductionIdx].steps) throw TR(`该定理由来自<`) + TR(this.deductions[deductionIdx].from) + TR(`>的原子推理规则得到，无子步骤`);
         const suivant: Proposition[] = [];
         while (true) {
             const p1 = this.propositions.pop();
@@ -462,7 +466,7 @@ export class FormalSystem {
     }
     expandMacroWithDefaultValue(deductionIdx: string, inlineMode: DeductInlineMode = "inline", expandAxiom?: boolean) {
         const d = this.deductions[deductionIdx] || this.generateDeduction(deductionIdx);
-        if (!d) throw TR(`推理规则 `)+deductionIdx+TR(` 不存在`);
+        if (!d) throw TR(`推理规则 `) + deductionIdx + TR(` 不存在`);
         if (!expandAxiom && !d.steps) throw TR(`无法展开原子推理规则`);
         this.removePropositions();
         d.conditions.forEach(dcond => this.addHypothese(dcond));
@@ -484,7 +488,7 @@ export class FormalSystem {
     }
     metaQuantifyAxiomSchema(deductionIdx: string, from: string) {
         const d = this.generateDeduction(deductionIdx);
-        if (!d) throw TR(`推理规则 `)+deductionIdx+TR(` 不存在`);
+        if (!d) throw TR(`推理规则 `) + deductionIdx + TR(` 不存在`);
         if (d.conditions?.length) throw TR("无法匹配带条件的推理规则");
         if (d.steps?.length) throw TR("无法匹配非公理推理规则");
         if (this.deductions["v" + deductionIdx]) return "v" + deductionIdx;
@@ -629,7 +633,7 @@ export class FormalSystem {
                 const newHyp = { type: "fn", name: "#nf", nodes: [c, s] };
                 this.addHypothese(newHyp);
                 try { assert.match(this.propositions[id].value, c, /^\$/, false, replvarTable, {}, []); } catch (e) {
-                    throw TR(`向`)+TR(`第${id + 1}个`)+TR(`条件添加不自由断言时出现不一致：`) + e;
+                    throw TR(`向`) + TR(`第${id + 1}个`) + TR(`条件添加不自由断言时出现不一致：`) + e;
                 }
             });
             d.conditions.forEach((c, id) => {

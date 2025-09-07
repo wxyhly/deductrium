@@ -80,7 +80,7 @@ export class TTGui {
         this.lastGateTarget = target;
         document.getElementById("copygate").innerText = "";
         const btn = document.createElement("button");
-        document.getElementById("copygate").appendChild(document.createTextNode("最近#t门上的目标："));
+        document.getElementById("copygate").appendChild(document.createTextNode(TR("最近#t门上的目标：")));
         btn.classList.add("inhabitat-modify"); btn.innerText = "+";
         document.getElementById("copygate").appendChild(btn);
         btn.onclick = () => {
