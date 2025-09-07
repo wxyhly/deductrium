@@ -58,16 +58,25 @@ export class GameSaveLoad {
     load(game, str, skipRollback) {
         const rollback = this.save(game);
         try {
-            const [globaldata, hydata, fsdata, ttdata] = this.deserializeStr(str).split(splittor);
+            let [globaldata, hydata, fsdata, ttdata] = this.deserializeStr(str).split(splittor);
             console.log([globaldata, hydata, fsdata, ttdata]);
+            // 2025.9.7 patch player's progress: fix bug for [[add-mul]] in peano axioms
+            if (globaldata.includes("add-mul")) {
+                if (!fsdata.includes(`,"d+1","d+2","d*1","d*2"`)) {
+                    // unlocked +/* but not found in the [D] list, add them
+                    fsdata = fsdata.replace(`,"d10"`, `,"d10","d+1","d+2","d*1","d*2"`);
+                }
+            }
             this.deserialize(game, globaldata);
             new HySavesParser().deserialize(game.hyperGui.world, hydata);
             game.hyperGui.needUpdate = true;
             new FsSavesParser(game.creative).deserialize(game.fsGui, fsdata);
             new TtSavesParser().deserialize(game.ttGui, ttdata);
             localStorage.setItem(this.storageKey, str);
+            document.getElementById("gamemode").innerText = TR(game.creative ? "[创造模式]" : "[生存模式]");
         }
         catch (e) {
+            document.getElementById("gamemode").innerText = TR(game.creative ? "[创造模式]" : "[生存模式]");
             if (!skipRollback) {
                 alert(TR("进度代码格式错误：") + e);
                 console.warn(TR("进度代码格式错误："));

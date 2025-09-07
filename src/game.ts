@@ -332,6 +332,15 @@ export class Game {
                     for (let i = 1; i <= 3; i++) this.fsGui.addToDeductions("apn" + i);
                     for (let i = 1; i <= 10; i++) this.fsGui.addToDeductions("d" + i);
                     return;
+                case "add-mul":
+                    this.fsGui.addToDeductions("d+1", "d10");
+                    this.fsGui.addToDeductions("d+2", "d+1");
+                    this.fsGui.addToDeductions("d*1", "d+2");
+                    this.fsGui.addToDeductions("d*2", "d*1");
+                    return;
+                case "dPrime":
+                    this.fsGui.addToDeductions("dPrime", "d*2");
+                    return;
 
                 case "type": return document.getElementById("type-btn").classList.remove("hide");
                 case "ttsimplFn": this.ttGui.disableSimpleFn = false; return this.ttGui.getInhabitatArray()[0].onblur({} as any);
@@ -399,15 +408,24 @@ export class Game {
 
         progressBtns[0].addEventListener("click", () => gameSaveLoad.save(this, txtarea));
         progressBtns[1].addEventListener("click", () => {
-            if(!confirm(TR("请粘贴进度代码至保存加载按钮下方的文本框内。粘贴好了请点确定，还未粘贴请先点取消\n注意：加载新进度后，当前游戏进度会丢失！"))) return;
-            const str = txtarea.value;
-            if (!str.trim()) { alert(TR("进度代码为空！")); } else {
-                gameSaveLoad.load(this, str);
-                window.location.href = window.location.href || "?";
-            }
+            const title = document.getElementById("gamemode").innerText;
+            document.getElementById("gamemode").innerText = "[...Loading...]";
+            // to update title [...Loading...]
+            setTimeout(() => {
+                if (!confirm(TR("请粘贴进度代码至保存加载按钮下方的文本框内。粘贴好了请点确定，还未粘贴请先点取消\n注意：加载新进度后，当前游戏进度会丢失！"))) {
+                    document.getElementById("gamemode").innerText = title;
+                    return;
+                }
+                const str = txtarea.value;
+                if (!str.trim()) { alert(TR("进度代码为空！")); } else {
+                    gameSaveLoad.load(this, str);
+                    window.location.href = window.location.href || "?";
+                }
+                document.getElementById("gamemode").innerText = title;
+            }, 20);
         });
         progressBtns[2].addEventListener("click", () => gameSaveLoad.reset());
-        progressBtns[3].addEventListener("click", () => {langMgr.setLang(langMgr.lang==="en"?"zh":"en");window.location.reload()});
+        progressBtns[3].addEventListener("click", () => { langMgr.setLang(langMgr.lang === "en" ? "zh" : "en"); window.location.reload() });
 
         const saves = localStorage.getItem(gameSaveLoad.storageKey);
         // autosave while updated within a time interval
