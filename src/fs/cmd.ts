@@ -69,6 +69,9 @@ export class FSCmd {
         }
         items.forEach((item, i) => {
             item.classList.toggle("active", i === currentIndex);
+            if (i === currentIndex) {
+                item.scrollIntoView({ block: "nearest" });
+            }
         });
         this.autoCompleteIdx = currentIndex;
 
@@ -102,8 +105,8 @@ export class FSCmd {
                 input.value = cmd;
                 list.style.display = "none";
                 input.focus();
-                if(html.includes("<span class='cmd'>[D]")){
-                    this.actionInputKeydown({key: "Enter"});
+                if (html.includes("<span class='cmd'>[D]")) {
+                    this.actionInputKeydown({ key: "Enter" });
                 }
             };
             list.appendChild(li);
@@ -124,9 +127,18 @@ export class FSCmd {
             }
             if (subValue) {
                 list = this.gui.deductions.filter(e => e.toLowerCase().startsWith(subValue.toLowerCase())).map(
-                    e => ["<span class='cmd'>[D] " + pre + e + "</span> <span class='hint'> " + (this.gui.formalSystem.deductions[e] ?
-                        this.astparser.stringifyTight(this.gui.formalSystem.deductions[e].value) : "") + "</span>", "d " + pre + e]
-                );
+                    e => {
+                        let d: Deduction;
+                        try {
+                            d = this.gui.formalSystem.generateDeduction(pre + e);
+
+                        } catch (e) {
+                            return [];
+                        }
+                        return ["<span class='cmd'>[D] " + `<span style="color: red">${pre.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>` + e.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</span> <span class='hint'> " + (d ?
+                            this.astparser.stringifyTight(d.value) : "") + "</span>", "d " + pre + e]
+                    }
+                ).filter(e => e.length);
             }
             if (value) {
                 list.push(...["pop", "del", "hyp", "clear", "entr", "inln"].filter(e => e.startsWith(value)).map(
@@ -162,7 +174,7 @@ export class FSCmd {
             switch (cmdBuffer[0]) {
                 case "copy": hintText.innerText = TR("可复制定理内容，按Esc取消"); return;
                 case "d": return this.execDeduct();
-                case "help": return this.execHelp();
+                // case "help": return this.execHelp();
                 case "clear": return this.execClear();
                 case "pop": return this.execPop();
                 case "meta": return this.execMetaDeduct();
@@ -306,11 +318,6 @@ export class FSCmd {
             this.clearCmdBuffer();
             hintText.innerText = TR("展开定理出错：") + e;
         }
-    }
-    execHelp() {
-        const hintText = this.gui.hintText;
-        this.clearCmdBuffer();
-        document.getElementById("github").click();
     }
     execMetaDeduct() {
         const cmdBuffer = this.cmdBuffer;
@@ -595,6 +602,14 @@ export class FSCmd {
         if (idx.startsWith("p") && !cmdBuffer.length || cmdBuffer[0] === "copy") {
             cmdBuffer.push("copy");
             this.execCmdBuffer();
+            const p = this.gui.formalSystem.propositions[Number(idx.slice(1))];
+            const from = p.from;
+            this.gui.hintText.innerText += "\n" + TR("命令：") + (from ?
+                ["d", from.deductionIdx, ...from.conditionIdxs,
+                    ...from.replaceValues.map(v => this.astparser.stringifyTight(v))
+                ].join(" ")
+                : ("hyp " + this.astparser.stringifyTight(p.value))
+            );
             this.replaceActionInputFromClick(inserted);
             return;
         }
