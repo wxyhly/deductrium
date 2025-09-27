@@ -67,6 +67,10 @@ export class GameSaveLoad {
                     fsdata = fsdata.replace(`,"d10"`, `,"d10","d+1","d+2","d*1","d*2"`);
                 }
             }
+            // 2025.9.27 patch player's progress: remove dS and d0, they are inconsistent with apn3
+            if (fsdata.includes(`,"dS","d0"`)) {
+                fsdata = fsdata.replace(`,"dS","d0"`, '');
+            }
             this.deserialize(game, globaldata);
             new HySavesParser().deserialize(game.hyperGui.world, hydata);
             game.hyperGui.needUpdate = true;

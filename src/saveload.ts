@@ -42,7 +42,7 @@ export class GameSaveLoad {
             panels[2].classList.remove("hide");
             panels[3].classList.remove("hide");
             panels[3].click();
-        }else{
+        } else {
             document.getElementById("gamemode").innerText = TR("[生存模式]");
         }
     }
@@ -64,11 +64,16 @@ export class GameSaveLoad {
 
             // 2025.9.7 patch player's progress: fix bug for [[add-mul]] in peano axioms
 
-            if(globaldata.includes("add-mul")){
-                if(!fsdata.includes(`,"d+1","d+2","d*1","d*2"`)){
+            if (globaldata.includes("add-mul")) {
+                if (!fsdata.includes(`,"d+1","d+2","d*1","d*2"`)) {
                     // unlocked +/* but not found in the [D] list, add them
-                    fsdata = fsdata.replace(`,"d10"`,`,"d10","d+1","d+2","d*1","d*2"`);
+                    fsdata = fsdata.replace(`,"d10"`, `,"d10","d+1","d+2","d*1","d*2"`);
                 }
+            }
+
+            // 2025.9.27 patch player's progress: remove dS and d0, they are inconsistent with apn3
+            if (fsdata.includes(`,"dS","d0"`)) {
+                fsdata = fsdata.replace(`,"dS","d0"`,'');
             }
 
             this.deserialize(game, globaldata);
@@ -77,9 +82,9 @@ export class GameSaveLoad {
             new FsSavesParser(game.creative).deserialize(game.fsGui, fsdata);
             new TtSavesParser().deserialize(game.ttGui, ttdata);
             localStorage.setItem(this.storageKey, str);
-            document.getElementById("gamemode").innerText = TR(game.creative?"[创造模式]":"[生存模式]");
+            document.getElementById("gamemode").innerText = TR(game.creative ? "[创造模式]" : "[生存模式]");
         } catch (e) {
-            document.getElementById("gamemode").innerText = TR(game.creative?"[创造模式]":"[生存模式]");
+            document.getElementById("gamemode").innerText = TR(game.creative ? "[创造模式]" : "[生存模式]");
             if (!skipRollback) {
                 alert(TR("进度代码格式错误：") + e);
                 console.warn(TR("进度代码格式错误："));
@@ -204,7 +209,7 @@ class Shuffle {
         for (let i = 1; i < a.length; i++) {
             if (code !== "?") {
                 if (a[i] !== ".") code += a[i]; else {
-                    r = r.slice(0,-1);
+                    r = r.slice(0, -1);
                     r += String.fromCharCode(Number.parseInt(code, 36));
                     code = "?";
                 }
