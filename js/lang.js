@@ -183,6 +183,7 @@ class LangMgr {
         "假设": "[Hyp]",
         "请输入命令": "Please enter command",
         // fs/cmd.ts
+        "命令：": "Command: ",
         " 共": ". Total ",
         "可复制定理内容，按Esc取消": "Copying propoition content is avaliable, press Esc to cancel",
         "无效命令": "Invalid command",

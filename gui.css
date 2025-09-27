@@ -211,9 +211,11 @@ h1 {
 
     }
 }
-button{
+
+button {
     user-select: none;
 }
+
 button.danger {
     font-weight: bold;
     color: red;
@@ -245,10 +247,12 @@ div.hintbar {
 .inhabitat-div:hover {
     background-color: orange;
 }
-.infering{
+
+.infering {
     border: solid;
     border-color: rgb(255, 242, 0);
 }
+
 .error {
     border: solid 1px;
     border-color: red;
@@ -258,8 +262,9 @@ div.hintbar {
 .inhabitat input {
     width: calc(100% - 32px);
 }
-.mediumlighted{
-    background-color: rgba(0,0,0,0.1);
+
+.mediumlighted {
+    background-color: rgba(0, 0, 0, 0.1);
     border-radius: 2px;
 }
 
@@ -270,12 +275,15 @@ div.hintbar {
 #tactic-errmsg {
     color: red;
 }
-#tactic-hint .highlighted{
-    color:orange;
+
+#tactic-hint .highlighted {
+    color: orange;
 }
-#tactic-list .highlighted{
-    color:orange;
+
+#tactic-list .highlighted {
+    color: orange;
 }
+
 .hide {
     display: none;
 }
@@ -290,10 +298,12 @@ div.hintbar {
     background-color: rgba(240, 240, 230, 0.9);
     border-radius: 2px;
 }
-.achievement{
+
+.achievement {
     display: flex;
 }
-.achievement div{
+
+.achievement div {
     width: 120px;
     min-height: 2.5em;
     background-color: beige;
@@ -304,7 +314,8 @@ div.hintbar {
     margin: 2px;
     display: grid;
 }
-.achievement div.achieved{
+
+.achievement div.achieved {
     width: 120px;
     min-height: 2.5em;
     background-color: greenyellow;
@@ -314,11 +325,13 @@ div.hintbar {
     border: solid;
     margin: 2px;
 }
-.achievement.locked div::before{
+
+.achievement.locked div::before {
     content: "?";
     font-size: 40px;
 }
-.achievement.locked div{
+
+.achievement.locked div {
     font-size: 0em;
 }
 
@@ -328,4 +341,67 @@ div#loading div {
     display: flex;
     justify-content: center;
     align-items: center;
+}
+
+
+.autocomplete-list {
+    position: absolute;
+    bottom: 30px;
+    font-size: small;
+    left: 0;
+    background: white;
+    border: 1px solid #aaa;
+    list-style: none;
+    margin: 0px 5px;
+    padding: 0;
+    width: calc(100% - 10px);
+    max-height: 150px;
+    overflow-y: auto;
+    z-index: 10;
+    opacity: 0.9;
+}
+
+.autocomplete-list li {
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.autocomplete-list li:nth-child(even) {
+    background: #f0f0f0;
+}
+
+.autocomplete-list li:hover {
+    background: #b1d3ef;
+    color: white;
+}
+
+.autocomplete-list li.active {
+    background: #0078d7;
+    color: white;
+}
+
+.autocomplete-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.autocomplete-list li span.cmd {
+    flex: 0 0 auto;
+    margin-right: 8px;
+}
+
+.autocomplete-list li span.hint {
+    flex: 1 1 auto;
+    text-align: right;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: #666;
+    font-size: 12px;
 }

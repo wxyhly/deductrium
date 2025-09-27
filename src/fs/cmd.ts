@@ -8,6 +8,7 @@ export class FSCmd {
     cmdBuffer: any[] = [];
     astparser = new ASTParser;
     escClear = true;
+    autoCompleteIdx = -1;
     gui: FSGui;
     lastDeduction: string = null;
     savesParser = new SavesParser;
@@ -32,15 +33,49 @@ export class FSCmd {
             this._selStart = actionInput.selectionStart;
             this._selEnd = actionInput.selectionEnd;
         })
+        actionInput.addEventListener("input", () => {
+            this.actionInputChange();
+        });
+
+        document.addEventListener("click", e => {
+            if (!(e.target as HTMLElement).closest("#action-input")) {
+                document.getElementById("autocomplete-list").style.display = "none";
+            }
+        });
     }
     actionInputKeydown(e: { key: string }) {
         const actionInput = this.gui.actionInput;
 
+        // autoComplete:
+
+        let currentIndex = this.autoCompleteIdx;
+        const list = document.getElementById("autocomplete-list") as HTMLUListElement;
         if (e.key === "Escape") {
+            this.showhints([]);
             this.clearCmdBuffer();
             return false;
         }
+        const items = list.querySelectorAll("li");
+        if (list.style.display !== "none" && items.length) {
+            if (e.key === "ArrowDown") {
+                currentIndex = (currentIndex + 1) % items.length;
+            } else if (e.key === "ArrowUp") {
+                currentIndex = (currentIndex - 1 + items.length) % items.length;
+            } else if (e.key === "Enter" || e.key === "Tab") {
+                if (currentIndex >= 0) {
+                    actionInput.value = items[currentIndex].getAttribute("data-value") || "";
+                }
+            }
+        }
+        items.forEach((item, i) => {
+            item.classList.toggle("active", i === currentIndex);
+        });
+        this.autoCompleteIdx = currentIndex;
+
+        // other logics
+
         if (e.key !== "Enter") return false;
+        this.showhints([]);
         let cmd = actionInput.value;
         if (cmd.includes("`")) cmd = cmd.replaceAll("`", "");
         if (!cmd.trim()) return;
@@ -48,7 +83,60 @@ export class FSCmd {
         actionInput.value = "";
         this.execCmdBuffer();
     }
+    // hint: [displayHTML, insertText]
+    showhints(hints: [string, string][]) {
+        const list = document.getElementById("autocomplete-list") as HTMLUListElement;
+        const input = this.gui.actionInput;
+        this.autoCompleteIdx = -1;
+        list.innerHTML = "";
+        if (!hints.length) {
+            list.style.display = "none";
+            return;
+        }
+        list.style.display = "block";
+        hints.forEach(([html, cmd]) => {
+            const li = document.createElement("li");
+            li.innerHTML = html;
+            li.setAttribute("data-value", cmd);
+            li.onclick = () => {
+                input.value = cmd;
+                list.style.display = "none";
+                input.focus();
+                if(html.includes("<span class='cmd'>[D]")){
+                    this.actionInputKeydown({key: "Enter"});
+                }
+            };
+            list.appendChild(li);
+        });
 
+    }
+    actionInputChange() {
+        const value = this.gui.actionInput.value;
+        let list = [];
+
+        if (this.cmdBuffer.length === 0) {
+            const prefix = this.gui.formalSystem.fastmetarules.replace(":", "");
+            let subValue = value;
+            let pre = "";
+            while (prefix.includes(subValue[0])) {
+                pre += subValue[0];
+                subValue = subValue.slice(1);
+            }
+            if (subValue) {
+                list = this.gui.deductions.filter(e => e.toLowerCase().startsWith(subValue.toLowerCase())).map(
+                    e => ["<span class='cmd'>[D] " + pre + e + "</span> <span class='hint'> " + (this.gui.formalSystem.deductions[e] ?
+                        this.astparser.stringifyTight(this.gui.formalSystem.deductions[e].value) : "") + "</span>", "d " + pre + e]
+                );
+            }
+            if (value) {
+                list.push(...["pop", "del", "hyp", "clear", "entr", "inln"].filter(e => e.startsWith(value)).map(
+                    e => ["<span class='cmd'>[C] " + e + "</span> <span class='hint'> " + TR("命令：") + e + "</span>", e]
+                ));
+            }
+        }
+        this.showhints(list);
+
+    }
     clearCmdBuffer() {
         if (this.escClear) {
             this.cmdBuffer = [];
@@ -359,13 +447,19 @@ export class FSCmd {
         const formalSystem = this.gui.formalSystem;
         if (cmdBuffer.length === 1) {
             hintText.innerText = TR("请输入或点选推理规则，按Esc取消");
+            this.escClear = true;
             return;
         }
         // a deduction is chosen, we verify vars and conditions
-        const deduction = cmdBuffer[1] === "." ? this.gui.getDeduction(this.lastDeduction) : this.gui.getDeduction(cmdBuffer[1]);
+        let deduction: any;
+        try {
+            deduction = cmdBuffer[1] === "." ? this.gui.getDeduction(this.lastDeduction) : this.gui.getDeduction(cmdBuffer[1]);
+        } catch (e) { }
         if (!deduction) {
+            this.escClear = true;
             this.clearCmdBuffer();
             hintText.innerText = TR(`推理已取消：\n未找到推理规则`) + ` ${cmdBuffer[1]}`;
+            return;
         }
         const vars = deduction.replaceNames;
         const conditions = deduction.conditions;
@@ -383,7 +477,6 @@ export class FSCmd {
             let idx = Number(cmdBuffer[i]);
             idx = idx < 0 ? formalSystem.propositions.length + idx : idx;
             if (!formalSystem.propositions[idx]) {
-                this.clearCmdBuffer();
                 hintText.innerText = TR("推理已取消：条件定理不存在");
                 return;
             }
@@ -396,9 +489,11 @@ export class FSCmd {
             preInfo += vars[i - 2 - condLength] + `: ${cmdBuffer[i]}\n`;
         }
         if (curLength < condLength + 2) {
+            if (curLength > 2) this.escClear = false;
             //wait for conditionIdx input
             hintText.innerText = preInfo + TR("请输入条件") + this.astparser.stringify(deduction.conditions[cmdBuffer.length - 2]) + TR("的定理编号，或点选定理");
         } else if (curLength < replVarsLength + condLength + 2) {
+            if (curLength > 2) this.escClear = false;
             // wait for replvar input
             hintText.innerText = preInfo + TR("请输入替代") + vars[cmdBuffer.length - 2 - condLength] + TR("的内容");
             if (!this.gui.actionInput.value) {
@@ -423,11 +518,11 @@ export class FSCmd {
                     ),
                     conditionIdxs: cmdBuffer.slice(2, 2 + condLength).map(n => Number(n))
                 });
+                this.escClear = true;
                 this.clearCmdBuffer();
                 this.gui.updatePropositionList();
                 if (cmdBuffer[1] !== ".") this.lastDeduction = cmdBuffer[1];
             } catch (e) {
-                this.clearCmdBuffer();
                 hintText.innerText = TR("推理已取消\n") + e;
             }
             return;
@@ -511,7 +606,12 @@ export class FSCmd {
                     return;
                 }
             }
-            cmdBuffer.push(idx);
+            if (idx[0] !== "m" && idx[0] !== "p") {
+                cmdBuffer.push("d");
+                cmdBuffer.push(idx);
+            } else {
+                cmdBuffer.push(idx);
+            }
             this.execCmdBuffer();
             return;
         }
@@ -605,7 +705,7 @@ export class FSCmd {
             this.gui.hintText.innerText = TR("以.<>uvdcamp开头的推理规则名称由系统保留，请重新命名");
             return res;
         }
-        if (n.includes(",")||n.includes(":")) {
+        if (n.includes(",") || n.includes(":")) {
             this.cmdBuffer.pop();
             const res = this.getInputNewDeductionPos(prevLength);
             this.gui.hintText.innerText = TR("推理规则名称中禁止出现由系统保留的“:”或“,”符号，请重新命名");
@@ -621,7 +721,6 @@ export class FSCmd {
         return true;
     }
     onEsc() {
-        const hintText = this.gui.hintText;
         if (this.cmdBuffer[0] === "entr") {
             // ["expand", "(d|p).", {props}, "p.", {props}, "p.", {props},....]
             this.gui.formalSystem.propositions = this.cmdBuffer.pop();
@@ -630,6 +729,10 @@ export class FSCmd {
             if (this.escClear) {
                 this.gui.updatePropositionList(true);
             }
+        } else if (this.cmdBuffer[0] === "d") {
+            this.gui.actionInput.value = this.cmdBuffer.pop();
+            if (this.cmdBuffer.length === 2) this.escClear = false;
+            this.execCmdBuffer();
         } else throw "cannot reached";
     }
 }
