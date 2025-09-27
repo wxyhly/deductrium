@@ -136,7 +136,7 @@ export class FSCmd {
                             return [];
                         }
                         return ["<span class='cmd'>[D] " + `<span style="color: red">${pre.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>` + e.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</span> <span class='hint'> " + (d ?
-                            this.astparser.stringifyTight(d.value) : "") + "</span>", "d " + pre + e]
+                            this.astparser.stringifyTight(d.value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : "") + "</span>", "d " + pre + e]
                     }
                 ).filter(e => e.length);
             }
