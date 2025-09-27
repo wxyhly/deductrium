@@ -60,7 +60,7 @@ export class GameSaveLoad {
         const rollback = this.save(game);
         try {
             let [globaldata, hydata, fsdata, ttdata] = this.deserializeStr(str).split(splittor);
-            console.log([globaldata, hydata, fsdata, ttdata]);
+            // console.log([globaldata, hydata, fsdata, ttdata]);
 
             // 2025.9.7 patch player's progress: fix bug for [[add-mul]] in peano axioms
 

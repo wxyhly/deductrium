@@ -115,12 +115,12 @@ export function initFormalSystem(creative: boolean) {
         "dUnion": ["⊢(#nf($z,$0)@Union(#nf($x,$0)))<>(V$0:(($0@#nf($x,$0))>(#nf($z,$0)@$0)))", "集合符号定义", null],
         "dU": ["⊢($z@($xU$y))<>(($z@$x)|($z@$y))", "集合符号定义", null],
         "dI": ["⊢($z@($xI$y))<>(($z@$x)&($z@$y))", "集合符号定义", null],
-        "dS": ["⊢S($0)=($0U{$0})", "集合算数连接", null],
-        "d0": ["⊢0={}", "集合算数连接", null],
+        // "dS": ["⊢S($0)=($0U{$0})", "集合算数连接", null],
+        // "d0": ["⊢0={}", "集合算数连接", null],
 
         "dPow": ["⊢($z@Pow($x))<>($z<$x)", "集合符号定义", null],
 
-        "domega": ["⊢Vn:(n@omega<> (n=0 | Ep:(p@omega & n=S(p) & (Vx:(x@p>(x=0|Ey:(y@p&x=S(y))))))))", "集合符号定义", null],
+        "domega": ["⊢Vn:(n@omega<> (n={} | Ep:(p@omega & n=pU{p} & (Vx:(x@p>(x={}|Ey:(y@p&x=yU{y})))))))", "集合符号定义", null],
         "dRel": ["⊢VaVbVr:(Rel(a,r,b) <> Ef:(f@r&f={a,{a,b}}))", "集合符号定义", null],
         "dEquiv": ["⊢VaVb:(Equiv(a,b) <> Er: (Vx:(x@a>E!y:(y@b&Rel(x,r,y))) & Vy:(y@b>E!x:(x@a&Rel(x,r,y)))))", "集合符号定义", null],
         // "dEquiv": ["⊢VaVb:(Equiv(a,b) <> Ef: (Vx:(x@a>E!y:(y@b&Er:(r@f&r={x,{y}}))) & Vy:(y@b>E!x:(x@a&Er:(r@f&r={x,{y}})))))", "集合符号定义", null],

@@ -424,7 +424,7 @@ export class TTGui {
                     rule.ast.checked = rule.ast.nodes[0].checked;
                 }
                 catch (e) {
-                    console.log(e);
+                    // console.log(e);
                 }
             }
             else {
@@ -432,7 +432,7 @@ export class TTGui {
                     this.core.checkType(rule.ast);
                 }
                 catch (e) {
-                    console.log(e);
+                    // console.log(e);
                 }
             }
             if (rule.ast.type === "var") {

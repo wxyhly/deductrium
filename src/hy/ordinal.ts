@@ -2,8 +2,8 @@ import { TileBlock } from "./maploader.js";
 import { Polygon, TileHash } from "./tiling.js";
 // genOrd([1, 2, 3, 4, 3, 2, 2, 1, 2,3,4,2,3,4]);
 // printOrd([1, 2, 3, 3, 2, 2, 1, 2, 3, 2, 2,3]);
-console.log(printOrd([1, 2, 3, 2, 3]));
-console.log(printOrd([1, 2, 3, 2, 2]));
+// console.log(printOrd([1, 2, 3, 2, 3]));
+// console.log(printOrd([1, 2, 3, 2, 2]));
 // console.log(printOrd(calcMaxReachOrd([1, 2, 3, 1, 1], 2)));
 // console.log(printOrd([1, 2, 3, 2, 2, 1, 2, 2]));
 export function genOrd(nums: number[]) {

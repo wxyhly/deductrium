@@ -132,7 +132,8 @@ export class Game {
                 }
                 if (tile.text.endsWith("#p")) {
                     // if with hyps, fail
-                    // if (!this.fsGui.formalSystem.propositions[0]?.from) return false;
+                    if (!this.fsGui.formalSystem.propositions[0]?.from)
+                        return false;
                     const ast = this.fsGui.cmd.astparser.parse(tile.text.replaceAll("\n#p", "").replaceAll("\n", ""));
                     return this.fsGui.getProps().findIndex(v => astmgr.equal(v.value, ast)) !== -1;
                 }

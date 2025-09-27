@@ -392,9 +392,13 @@ export class TTGui {
                     this.core.checkType(rule.ast.nodes[0]);
                     this.core.checkType(rule.ast.nodes[1], {}, null, this.core.state.inferValues);
                     rule.ast.checked = rule.ast.nodes[0].checked;
-                } catch (e) { console.log(e); }
+                } catch (e) {
+                    // console.log(e);
+                }
             } else {
-                try { this.core.checkType(rule.ast); } catch (e) { console.log(e); }
+                try { this.core.checkType(rule.ast); } catch (e) {
+                    // console.log(e);
+                }
             }
             if (rule.ast.type === "var") {
                 try { this.core.checkType(rule.ast.checked, {}, null, this.core.state.inferValues); } catch (e) { console.log(e); }

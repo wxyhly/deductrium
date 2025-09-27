@@ -400,7 +400,7 @@ export const mapData = `
 
 :aExt,1#[n]Vx:Vy:((Vz:z@x<>z@y)>(x=y))[n]#p
 :%,1$[[aSep]]解锁ZFC集合论[n]分离公理(aSep)
-:%*,2#[[ext<]]Vx:Vy:(x<y)>((y<x)>(x=y))[n]#p
+:%*,2#[[ext<]]Vx:Vy:((x<y)>((y<x)>(x=y)))[n]#p
 :%*,2,3#[[elV2]](($x<$y)&($y<$x)) > ($x=$y)[n]#p
 :%*,2,2$获取150µg推理素
 :%*,2,3,5$获取198µg推理素
@@ -416,7 +416,7 @@ export const mapData = `
 :%*,1#通过此门需消耗推理素5mg
 :%*,5$[[d<]]解锁谓词包含符号“⊂”(<)
 :%,2#[[empty]][n]Ey:Vz:~(z@y)[n]#p
-:%*,5#[n]Vx:Vy:~Va:~Vz:[n]z@a<>(z@x & z@y)[n]#p
+:%*,5#[n]Vx:Vy:~Va:~Vz:[n](z@a<>(z@x & z@y))[n]#p
 :%*,5,2$获取10µg推理素
 :%*,5,0#[n]Vx:Vy:E!a:Vz:[n]z@a<>(z@x & z@y)[n]#p
 :%*,5,0,5$[[dI]]解锁交集运算符[n]“∩”(I)
@@ -478,10 +478,10 @@ export const mapData = `
 // 并集、幂集、无穷公理、序数之门
 :empty,3@
 :empty,2$[[aUnion]]解锁ZFC集合论[n]并集公理(aUnion)
-:%,5#Vx:Vy:Ez:Vw:[n]w@z <> (w@x | w@y)[n]#p
+:%,5#Vx:Vy:Ez:Vw:[n](w@z <> (w@x | w@y))[n]#p
 :%*,5$[[dU]]解锁并集符号[n]“U”
 :%,2$[[aPow]]解锁ZFC集合论[n]幂集公理(aPow)
-:aUnion,4#Vx:Ey:Vz:[n]z@y <> z<x[n]#p
+:aUnion,4#Vx:Ey:Vz:[n](z@y <> z<x)[n]#p
 :%,1$[[base5]]将序数进位基底[n]降至5[n](提示：到达在#ω门后的[n]序数ω^ω后才能[n]解锁无穷公理)
 :base5,1#Ex:(omega@x &[n]Vy:(y@x > yU{y}@x))[n]#p
 :%*,3$[[ww2]]到达序数[n]ω^(ω2)
