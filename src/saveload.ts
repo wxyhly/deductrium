@@ -71,15 +71,31 @@ export class GameSaveLoad {
                 }
             }
 
+            // 2025.10.3 added new 1st-logic toolkits
+            if(!fsdata.includes(`",".Eirp","`)){
+                if(fsdata.includes(`,".Enf&",".E&nf"`)){
+                    fsdata = fsdata.replace(`,".Enf&",".E&nf"`, `,".Enf&",".E&nf",".Emp",".Vcn",".Ecn",".Vcn<>",".Ecn<>"`);
+                    fsdata = fsdata.replace(`,".Ee",".Ei"`, `,".Ee",".Ei",".Eirp"`);
+                }
+            }
+
             // 2025.9.27 patch player's progress: remove dS and d0, they are inconsistent with apn3
             if (fsdata.includes(`,"dS","d0"`)) {
-                fsdata = fsdata.replace(`,"dS","d0"`,'');
+                fsdata = fsdata.replace(`,"dS","d0"`, '');
             }
+            
+            // 2025.10.1 patch player's progress: fix bug for #rp fn, it cause deduction step wrong
+            const s4 = `"s4":["⊢(E!$0:($0=$1))","录制*",[["dE",[],["$0","$0=$1"]],["a4",[],["$0","~($0=$1)","$1"]],[".a32",[],["(V$0:~($0=$1))","$1=$1"]],["mp",[-1,-2],[]],["a7",[],["$1"]],["mp",[-2,-1],[]],[".<>2",[],["(E$0:($0=$1))","~(V$0:~($0=$1))"]],["mp",[-1,-7],[]],["mp",[-1,-3],[]],["dE!",[],["$0","##0","$0=$1"]],["<.<>2",[-1],[]],[".&m1",[-1],[]],["mp",[-1,-4],[]],["vv>.&1",[],["$0","##0","$0=$1","##0=$1"]],["vv>.&2",[],["$0","##0","$0=$1","##0=$1"]],["vvc.=s",[-1],[]],["vvc.=t",[-3,-1],[]],["mp",[-5,-1],[]]],["##0"]]`;
+            fsdata = fsdata.replace(s4, s4.replaceAll('$1',"#nf($1,$0)"));
+            const _add_asocc = `"_add_assoc":["⊢(($x+$y)+$z)=($x+($y+$z))","录制*",[["apn3",[],["(V##y:(V##z:(((x+##y)+##z)=(x+(##y+##z)))))","x"]],["vva7",[],["##y","##z","##y+##z"]],["zero_add",[],["##y"]],[".=s",[-1],[]],["<<a8",[-1,-3],["1"]],["vvzero_add",[],["##y","##z","##y+##z"]],["vv.=s",[-1],[]],["vv.=t",[-3,-1],[]],["mp",[-8,-1],[]],["v.i",[],["x","(V##y:(V##z:(((x+##y)+##z)=(x+(##y+##z)))))"]],["vcvva7",[],["x","(V##y:(V##z:(((x+##y)+##z)=(x+(##y+##z)))))","##y","##z","(S(x)+##y)+##z"]],["vcvvsucc_add",[],["x","(V##y:(V##z:(((x+##y)+##z)=(x+(##y+##z)))))","##y","##z","x","##y"]],["vcvv<<a8",[-1,-2],["1"]],["vcvvsucc_add",[],["x","(V##y:(V##z:(((x+##y)+##z)=(x+(##y+##z)))))","##y","##z","x+##y","##z"]],["vcvv.=s",[-2],[]],["vcvv.=t",[-1,-2],[]],["vcvv<<a8",[-7,-1],["-1"]],["vcvvsucc_add",[],["x","(V##y:(V##z:(((x+##y)+##z)=(x+(##y+##z)))))","##y","##z","x","##y+##z"]],["vcvv.=s",[-1],[]],["vcvv.=t",[-3,-1],[]],["mp",[-12,-1],[]],["<a4",[-1],["$x"]],["<a4",[-1],["$y"]],["<a4",[-1],["$z"]]],["##y","##z","##x"]],`
+            fsdata = fsdata.replace(_add_asocc, _add_asocc.replaceAll('["zero_add",[],["##y"]],[".=s",[-1],[]],["<<a8",[-1,-3],["1"]],',`["vvzero_add",[],["##y","##z","##y"]],["vv.=s",[-1],[]],["vv<<a8",[-1,-3],["1"]],`));
 
             this.deserialize(game, globaldata);
             new HySavesParser().deserialize(game.hyperGui.world, hydata);
             game.hyperGui.needUpdate = true;
+            const fs_enableMIFFT_RP = game.fsGui.enableMIFFT_RP;
             new FsSavesParser(game.creative).deserialize(game.fsGui, fsdata);
+            game.fsGui.enableMIFFT_RP = fs_enableMIFFT_RP;
             new TtSavesParser().deserialize(game.ttGui, ttdata);
             localStorage.setItem(this.storageKey, str);
             document.getElementById("gamemode").innerText = TR(game.creative ? "[创造模式]" : "[生存模式]");

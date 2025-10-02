@@ -49,6 +49,18 @@
     color: brown;
 }
 
+.nf * {
+    color: gray;
+}
+
+.vnf * {
+    color: gray;
+}
+
+.rp-nth * {
+    color: blue;
+}
+
 #panel>button {
     border-width: 1px;
     border-radius: 6px;

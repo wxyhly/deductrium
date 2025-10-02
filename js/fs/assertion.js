@@ -6,6 +6,7 @@ const quantSyms = ["E", "E!", "V"];
 const verbSyms = ["@", "=", "<"];
 const verbFns = ["Prime", "Equiv", "Order", "WellOrder", "Rel", "Point", "Line", "Plane", "Between", "Angle"];
 const fnSyms = ["Pair", "Union", "Pow", "U", "I", "S", "+", "-", "*", "/"];
+import { ASTParser } from "./astparser.js";
 const T = 1;
 const F = -1;
 const U = 0;
@@ -189,13 +190,16 @@ export class AssertionSystem {
             // if no quant
             if (!quants?.length)
                 return not(isEq);
-            // if quants
             let res = F;
             for (const q of quants) {
+                // if quants, check whether name is in quants, if T, then nf
                 res = or(res, not(this.nf(name, q)));
+                // we also check whether astVar is bounded by quants, if T, then nf 
+                res = or(res, not(this.nf(astName, q, [], this.getVarIsNotList(ast))));
             }
             if (res === T)
                 return T;
+            // if name is not in quants, and astVar is free, nf <=> not equal
             if (res === F)
                 return not(isEq);
             return U;
@@ -218,6 +222,27 @@ export class AssertionSystem {
                 return this.nf(name, sub, quants);
             }
             // todo: whether others can be determined?
+            return U;
+        }
+        const rpParams = this.getRpParams(ast);
+        // ast is rp
+        if (rpParams) {
+            const [sub, src, dst, nth] = rpParams;
+            if (nth === -1 && this.getVarName(src) === name) {
+                // n(#rp(n(.,d), s/d, 0), s)
+                const dstName = this.getVarName(dst);
+                if (dstName && this.nf(dstName, sub, quants, this.getVarIsNotList(dst)) === T) {
+                    return T;
+                }
+                // n(#rp(., s/n(d,s), 0), s)
+                if (this.nf(name, dst, quants, this.getVarIsNotList(dst)) === T) {
+                    return T;
+                }
+            }
+            // n(#rp(n(.,c), ./n(d,c), .), c) =>
+            if (this.nf(name, sub, quants, nameIsNot) === T && this.nf(name, dst, quants, nameIsNot) === T) {
+                return T;
+            }
             return U;
         }
         const ignore = this.ignorePropagateAst(ast);
@@ -496,8 +521,7 @@ export class AssertionSystem {
             return res;
         } // matched whole ast one time
         if (eq === U) {
-            if (nth === -1 && this.astEq(ast, newAst))
-                return res;
+            // if (nth === -1 && this.astEq(ast, newAst)) return res;
             return false; // unknown
         }
         // else not equal
@@ -515,19 +539,28 @@ export class AssertionSystem {
             scope.push(qp[0]);
             return this.getSubAstMatchTimesAndReplace(qp[1], subAst, newAst, nth, scope, res, right);
         }
+        const backup = astmgr.clone(ast);
         if (right) {
             for (let n = ast.nodes.length - 1; n >= 0; n--) {
                 const subres = this.getSubAstMatchTimesAndReplace(ast.nodes[n], subAst, newAst, nth, scope.slice(0), res, right);
                 // if unknown, don't spread, just ignore it and replace??
-                if (subres === false)
+                if (subres === false) {
+                    // No! this time all are not sure, undo all changes, remain #rp
+                    astmgr.assign(ast, backup);
                     return false;
+                }
             }
         }
-        for (const n of ast.nodes) {
-            const subres = this.getSubAstMatchTimesAndReplace(n, subAst, newAst, nth, scope.slice(0), res, right);
-            // if unknown, don't spread, just ignore it and replace??
-            if (subres === false)
-                return false;
+        else {
+            for (const n of ast.nodes) {
+                const subres = this.getSubAstMatchTimesAndReplace(n, subAst, newAst, nth, scope.slice(0), res, right);
+                // if unknown, don't spread, just ignore it and replace??
+                if (subres === false) {
+                    // No! this time all are not sure, undo all changes, remain #rp
+                    astmgr.assign(ast, backup);
+                    return false;
+                }
+            }
         }
         return res;
     }
@@ -668,6 +701,8 @@ export class AssertionSystem {
         // ast is rp
         if (rpParams) {
             const [sub, src, dst, nth, right] = rpParams;
+            if (nth === -1 && ast.nodes.length === 4)
+                ast.nodes.pop(); //omit #rp(.,./.,0)
             const tf = this.crp(sub, src, dst, nth, right, varLists);
             if (tf === F)
                 throw TR("函数#rp执行失败：自由变量将被量词约束");
@@ -675,8 +710,62 @@ export class AssertionSystem {
                 this.removeFn(ast);
                 return;
             } // id
+            // added special cases on 2025/09/28
+            // #rp(a > b,c/d) = #rp(a,c/d) > #rp(b,c/d)
+            // #rp(a @ b,c/d) = #rp(a,c/d) @ #rp(b,c/d)
+            if (nth === -1 && sub.type === "sym" &&
+                (logicSyms.includes(sub.name) || verbSyms.includes(sub.name))) {
+                for (const c of sub.nodes) {
+                    const wrapped = { type: "fn", name: "#rp", nodes: ast.nodes.slice(0) };
+                    wrapped.nodes[0] = c;
+                    astmgr.assign(c, wrapped); // wrap inside
+                }
+                astmgr.assign(ast, sub); // unwrap outside
+                console.assert(isItem === false);
+                this.expand(ast, isItem, varLists);
+                return;
+            }
+            const srcName = this.getVarName(src);
+            if (srcName && this.nf(srcName, sub, [], this.getVarIsNotList(src)) === T) {
+                // no free var to replace
+                this.removeFn(ast);
+                return;
+            }
+            const subrpParams = this.getRpParams(sub);
+            if (subrpParams) {
+                // #rp(#rp(#nf(subsub,b), a, b, ~), b, c, 0) === #rp(#nf(subsub,b),a,c,~)
+                // #rp(#rp(#nf(subsub,b), a, b, 0), b, c, ~) === #rp(#nf(subsub,b),a,c,~)
+                const [subsub, a, b, snth] = subrpParams;
+                if ((nth === -1 || snth === -1) && this.astEq(b, src) === T) {
+                    const bName = this.getVarName(b);
+                    if (bName && this.nf(bName, subsub, [], this.getVarIsNotList(b))) {
+                        // if not replace all, move inner nth to outter
+                        if (snth !== -1) {
+                            ast.nodes[3] = sub.nodes[3];
+                        }
+                        this.removeFn(sub);
+                        astmgr.assign(src, a);
+                        this.expand(ast, isItem, varLists);
+                        return;
+                    }
+                }
+            }
+            const quantParam = this.getQuantParams(sub);
+            if (quantParam) {
+                // #rp(Vx: ~, nf(.,x)/nf(.,x), .) === Vx: #rp( ~, nf(.,x)/nf(.,x), .)
+                const [q, subsub] = quantParam;
+                const qName = this.getVarName(q);
+                if (this.nf(qName, src, [], this.getVarIsNotList(q)) === T && this.nf(qName, dst, [], this.getVarIsNotList(q)) === T) {
+                    const nodes = ast.nodes;
+                    nodes[0] = subsub;
+                    astmgr.assign(ast, sub);
+                    astmgr.assign(ast.nodes[1], { type: "fn", name: "#rp", nodes });
+                    this.expand(ast.nodes[1], isItem, varLists);
+                    return;
+                }
+            }
             if (tf === U) {
-                return; // can't expand, keep it
+                return; // else can't expand, keep it
             }
             const eq = this.astEq(sub, src);
             if (eq === T) {
@@ -699,8 +788,12 @@ export class AssertionSystem {
         if (pattern.type === "replvar" && pattern.name.match(replNameReg)) {
             result[pattern.name] ??= ast;
             this.getReplVarsType(ast, varTable, isItem);
-            if (!astmgr.equal(result[pattern.name], ast))
-                throw TR(`模式匹配失败：匹配多个替代变量`) + pattern.name + TR(`时值不相同`);
+            if (!astmgr.equal(result[pattern.name], ast)) {
+                if ((!!this.getRpParams(ast)) !== (!!this.getRpParams(ast))) {
+                    throw TR(`替换函数#rp导致模式匹配`) + pattern.name + TR(`时无法顺利进行`) + `: \n` + (new ASTParser().stringify(result[pattern.name])) + " <=?=> " + (new ASTParser().stringify(ast));
+                }
+                throw TR(`模式匹配失败：匹配多个替代变量`) + pattern.name + TR(`时值不相同`) + `: \n` + (new ASTParser().stringify(result[pattern.name])) + " <=X=> " + (new ASTParser().stringify(ast));
+            }
             return;
         }
         if (pattern.type === "fn" && pattern.name.match(/^#(v*nf|crp)/)) {
@@ -709,8 +802,12 @@ export class AssertionSystem {
             assertions.push(astmgr.clone(pattern));
             return;
         }
-        if (ast.type !== pattern.type || ast.name !== pattern.name)
+        if (ast.type !== pattern.type || ast.name !== pattern.name) {
+            if ((!!this.getRpParams(pattern)) !== (!!this.getRpParams(ast))) {
+                throw TR(`替换函数#rp导致模式匹配`) + TR(`时无法顺利进行`) + `: \n` + (new ASTParser().stringify(pattern)) + " <=?=> " + (new ASTParser().stringify(ast));
+            }
             throw TR("模式匹配失败");
+        }
         if (ast.nodes?.length !== pattern.nodes?.length)
             throw TR("模式匹配失败");
         if (ast.nodes?.length) {

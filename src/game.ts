@@ -47,7 +47,7 @@ export class Game {
         "iff": "我推出你，你推出我（<>）", "andor": "逻辑门（与/或）", "pierce": "皮尔士定律((p>q)>p)>p", "lem": "排中律是真的！(p|~p)", "contra": "没毛病！~( p & ~p )", "mcpt": "命题逻辑自动推理",
         "1st": "一阶逻辑", "nf": "约束与自由", "rp": "丢掉量词，尽情替换！", "a7": "众生平等", "mvt": "概括一切（概括元定理）",
         ".prop": "命题逻辑大礼包", "mifft": "替换一切（互推替换元定理）", ".1st": "一阶逻辑大礼包", "terr1": "割让量词的领土", "terr2": "割让量词的领土",
-        "mnt": "改名换姓（换名元定理）", "elV1": "量词连连消消乐", "elV2": "量词连连消消乐", "elV3": "量词连连消消乐",
+        "mnt": "改名换姓", "elV1": "量词连连消消乐", "elV2": "量词连连消消乐", "elV3": "量词连连消消乐",
         "peano": "皮亚诺公理", "1+1": "1+1=2", "2x2": "2*2=4", "commu+": "加法交换律", "xdistr": "乘法分配率", "3<4": "3小于4",
         "5R6": "5不整除6", "dPrime": "解锁素数", "prm7": "7是素数", "ex!": "任何数都有阶乘", "infprm": "质数有无穷个",
         "aExt": "ZFC集合论", ".<i": "我包含我", "ext<": "我包含我", "empty": "千里之行，始于空集", ".zfc": "ZFC简化大礼包", "UUII": "交交并并",
@@ -189,8 +189,8 @@ export class Game {
                 case "dL": return document.getElementById("deduct-btn").classList.remove("hide");
                 case "progL": return document.getElementById("progress-btn").classList.remove("hide");
                 case "delgate": return;
-                case "macro": return document.getElementById("macro-btns").classList.remove("hide");
-                case "hyp": return document.getElementById("hyp-btn").classList.remove("hide");
+                case "macro": this.fsGui.unlockedMacro = true; return document.getElementById("macro-btns").classList.remove("hide");
+                case "hyp": this.fsGui.unlockedHyp = true; return document.getElementById("hyp-btn").classList.remove("hide");
                 case "neg": this.fsGui.addToDeductions("a3", "a2"); return;
                 case "cmpss": this.hyperGui.world.navigateDraw = true; return;
                 case "omega":
@@ -262,8 +262,9 @@ export class Game {
                     return;
                 case ".1st":
                     [
-                        ".nEVn", ".nVEn", ".nVVn", ".nEn", ".Ve", ".Vs", ".V&1", ".V&2", ".V&", ".Ee", ".Ei", ".Es", ".EV", ".E|1", ".E|2", ".E|",
+                        ".nEVn", ".nVEn", ".nVVn", ".nEn", ".Ve", ".Vs", ".V&1", ".V&2", ".V&", ".Ee", ".Ei",".Eirp", ".Es", ".EV", ".E|1", ".E|2", ".E|",
                         ".Vnf", ".Vnf>", ".V>nf", ".Vnf|", ".V|nf", ".Vnf&", ".V&nf", ".Enf", ".Enf>", ".E>nf", ".Enf|", ".E|nf", ".Enf&", ".E&nf",
+                        ".Emp", ".Vcn", ".Ecn", ".Vcn<>", ".Ecn<>",
                         ".=s", ".=t", ".=r=", ".=r@"
                     ].forEach(s => this.fsGui.addToDeductions(s));
                     this.fsGui.addToDeductions(".<>rV", ".<>r|");
@@ -315,7 +316,13 @@ export class Game {
                 case "mcmt": return this.unlockMetarule("cmt");
                 case "midt": return this.unlockMetarule("idt");
                 case "mifft": return this.unlockMetarule("ifft");
-                case "mnt": return this.unlockMetarule("nt");
+                case "mnt":
+                    const tileRP = this.hyperGui.world.getBlock("port-rp");
+                    tileRP.text += "\n （此门已拆除）"; tileRP.type = 0;
+                    this.destructedGates++; this.updateProgressParam(); return;
+                case "ifft-EU":
+                    this.fsGui.enableMIFFT_RP = true;
+                    return;
                 case "mvt":
                     if (!this.fsGui.metarules.includes("cvt")) {
                         this.unlockMetarule("cvt");

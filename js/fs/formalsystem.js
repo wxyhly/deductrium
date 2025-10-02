@@ -116,6 +116,18 @@ export class FormalSystem {
         metaRule.replaceNames = replaceNames;
         this.metaRules[name] = metaRule;
     }
+    _hasRpFn(m) {
+        if (m.type === "fn" && m.name === "#rp") {
+            return true;
+        }
+        if (!m.nodes)
+            return false;
+        for (const n of m.nodes) {
+            if (this._hasRpFn(n))
+                return true;
+        }
+        return false;
+    }
     addHypothese(m, expandMode) {
         m = astmgr.clone(m);
         assert.checkGrammer(m, "p", this.consts);
@@ -129,6 +141,8 @@ export class FormalSystem {
         catch (e) {
             throw TR("假设中") + e;
         }
+        if (!expandMode && this._hasRpFn(m))
+            throw TR("假设中不能包含未化简的#rp函数，否则匹配机制将失效");
         return this.propositions.push({ value: m, from: null }) - 1;
     }
     // find #0 in ast
@@ -1334,7 +1348,7 @@ export class FormalSystem {
             throw e;
         }
     }
-    metaIffTheorem(idx, replaceValues, name, from) {
+    metaIffTheorem(idx, replaceValues, name, from, allowIFFT_RP) {
         const d = this.generateDeduction(idx);
         if (!d)
             throw TR("推理规则不存在");
@@ -1383,10 +1397,10 @@ export class FormalSystem {
             }
             catch (e) { }
             if (!a.nodes?.length || a.nodes?.length !== b.nodes?.length) {
-                throw TR("元推理函数中替换函数##crp执行失败");
+                throw TR("元推理函数中替换函数##rp执行失败");
             }
             if (a.type !== b.type || a.name !== b.name) {
-                throw TR("元推理函数中替换函数##crp执行失败");
+                throw TR("元推理函数中替换函数##rp执行失败");
             }
             if (a.type === "sym") {
                 if (a.name === ">" || a.name === "<>" || a.name === "&" || a.name === "|") {
@@ -1412,6 +1426,16 @@ export class FormalSystem {
                     const vab = generate(a.nodes[1], b.nodes[1], [...Vs, a.nodes[0]]);
                     return this.deduct({
                         deductionIdx: prefix + ".<>rE", replaceValues: [],
+                        conditionIdxs: [vab],
+                    });
+                }
+                if (a.name === "E!") {
+                    if (!allowIFFT_RP) {
+                        throw TR("还未解锁跨越量词E!进行替换的功能");
+                    }
+                    const vab = generate(a.nodes[1], b.nodes[1], [...Vs, a.nodes[0]]);
+                    return this.deduct({
+                        deductionIdx: prefix + ".<>rE!", replaceValues: [],
                         conditionIdxs: [vab],
                     });
                 }

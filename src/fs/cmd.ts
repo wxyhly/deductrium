@@ -78,6 +78,11 @@ export class FSCmd {
         // other logics
 
         if (e.key !== "Enter") return false;
+
+        if (this.cmdBuffer[this.cmdBuffer.length - 1] === "## error") {
+            this.escClear = true;
+            this.clearCmdBuffer(); return false;
+        }
         this.showhints([]);
         let cmd = actionInput.value;
         if (cmd.includes("`")) cmd = cmd.replaceAll("`", "");
@@ -117,16 +122,28 @@ export class FSCmd {
         const value = this.gui.actionInput.value;
         let list = [];
 
-        if (this.cmdBuffer.length === 0) {
+        if (this.cmdBuffer.length === 0 || (
+            this.cmdBuffer.length === 1 && this.cmdBuffer[0] === "d"
+        ) || (this.cmdBuffer.length === 2 && (this.cmdBuffer[0] === "meta" && this.cmdBuffer[1] === "ifft"))) {
             const prefix = this.gui.formalSystem.fastmetarules.replace(":", "");
             let subValue = value;
             let pre = "";
-            while (prefix.includes(subValue[0])) {
-                pre += subValue[0];
-                subValue = subValue.slice(1);
+            if (this.cmdBuffer[0] !== "meta") {
+                while (prefix.includes(subValue[0])) {
+                    pre += subValue[0];
+                    subValue = subValue.slice(1);
+                }
             }
             if (subValue) {
-                list = this.gui.deductions.filter(e => e.toLowerCase().startsWith(subValue.toLowerCase())).map(
+                list = this.gui.deductions.filter(e => {
+                    if (this.cmdBuffer[0] === "meta" && this.cmdBuffer[1] === "ifft") {
+                        const d = this.gui.formalSystem.deductions[e];
+                        if (d.conditions.length) return false;
+                        if (d.conclusion.name !== "<>") return false;
+                        if (d.conclusion.type !== "sym") return false;
+                    }
+                    return e.toLowerCase().startsWith(subValue.toLowerCase())
+                }).map(
                     e => {
                         let d: Deduction;
                         try {
@@ -140,8 +157,12 @@ export class FSCmd {
                     }
                 ).filter(e => e.length);
             }
-            if (value) {
-                list.push(...["pop", "del", "hyp", "clear", "entr", "inln"].filter(e => e.startsWith(value)).map(
+            // cmd, only for empty cmdbuffer
+            if (value && this.cmdBuffer.length === 0) {
+                const unlockedCmd = ["pop", "clear"];
+                if (!document.getElementById("hyp-btn").classList.contains("hide")) unlockedCmd.push("hyp");
+                if (!document.getElementById("macro-btns").classList.contains("hide")) unlockedCmd.push("entr", "del", "inln");
+                list.push(...unlockedCmd.filter(e => e.startsWith(value)).map(
                     e => ["<span class='cmd'>[C] " + e + "</span> <span class='hint'> " + TR("命令：") + e + "</span>", e]
                 ));
             }
@@ -172,7 +193,19 @@ export class FSCmd {
         });
         try {
             switch (cmdBuffer[0]) {
-                case "copy": hintText.innerText = TR("可复制定理内容，按Esc取消"); return;
+                case "copy": {
+                    if (cmdBuffer.length === 2) {// copy cmd
+                        const reg = new RegExp(TR("命令：") + "(.+)$");
+                        const res = hintText.innerText.match(reg);
+                        if (res) {
+                            hintText.innerText = TR("可复制生成定理的命令，按Esc取消");
+                            this.gui.actionInput.value = res[1];
+                            return;
+                        }
+                    }
+                    hintText.innerText = TR("可复制定理内容，按Esc取消");
+                    return;
+                }
                 case "d": return this.execDeduct();
                 // case "help": return this.execHelp();
                 case "clear": return this.execClear();
@@ -239,16 +272,20 @@ export class FSCmd {
                     return;
                 }
                 this.cmdBuffer.push(this.gui.formalSystem.propositions);
+                const fs = this.gui.formalSystem;
+                const fmr = fs.fastmetarules;
+                const fsd = Object.assign({}, fs.deductions);
+                const prop = fs.propositions.slice(0);
                 try {
-                    const fs = this.gui.formalSystem;
-                    const fmr = fs.fastmetarules;
-                    const fsd = Object.assign({}, fs.deductions);
                     fs.fastmetarules = "cvuq><:";
                     fs.expandMacroWithDefaultValue(item);
                     fs.fastmetarules = fmr;
                     fs.deductions = fsd;
                     this.execCmdBuffer();
                 } catch (e) {
+                    fs.fastmetarules = fmr;
+                    fs.deductions = fsd;
+                    fs.propositions = prop;
                     this.cmdBuffer.pop();
                     this.cmdBuffer.pop();
                     this.execCmdBuffer();
@@ -257,20 +294,32 @@ export class FSCmd {
             } else if (item.startsWith("p")) {
                 const p = item.slice(1);
                 this.cmdBuffer.push(this.gui.formalSystem.propositions);
+                const fs = this.gui.formalSystem;
+                const fmr = fs.fastmetarules;
+                const fsd = Object.assign({}, fs.deductions);
+                const prop = fs.propositions.slice(0);
                 try {
-                    const fs = this.gui.formalSystem;
-                    const fmr = fs.fastmetarules;
-                    const fsd = Object.assign({}, fs.deductions);
                     fs.fastmetarules = "cvuq><:";
                     fs.expandMacroWithProp(Number(p));
                     fs.fastmetarules = fmr;
                     fs.deductions = fsd;
                     this.execCmdBuffer();
                 } catch (e) {
+                    fs.fastmetarules = fmr;
+                    fs.deductions = fsd;
+                    fs.propositions = prop;
                     this.cmdBuffer.pop();
                     this.cmdBuffer.pop();
                     this.execCmdBuffer();
-                    hintText.innerText += "\n" + e;
+                    hintText.innerText += "\n" + e + "\n";
+                    const p_ = fs.propositions[Number(p)]
+                    const from = p_.from;
+                    hintText.innerText += TR("命令：") + (from ?
+                        ["d", from.deductionIdx, ...from.conditionIdxs,
+                            ...from.replaceValues.map(v => this.astparser.stringifyTight(v))
+                        ].join(" ")
+                        : ("hyp " + this.astparser.stringifyTight(p_.value))
+                    );
                 }
             } else {
                 // else if clicked metarule, pop to roll back
@@ -281,7 +330,19 @@ export class FSCmd {
         } else {
             this.gui.updatePropositionList(true);
             this.escClear = false;
-            hintText.innerHTML = `${TR("目前位于")}${this.cmdBuffer.map((v, idx, arr) => {
+            const pData = this.cmdBuffer[this.cmdBuffer.length - 2];
+            let pcmd = "";
+            if (pData && pData.match(/^p[0-9]+$/)) {
+                const p = this.cmdBuffer[this.cmdBuffer.length - 1][Number(pData.slice(1))];
+                const from = p.from;
+                pcmd = TR("上层命令：") + (from ?
+                    ["d", from.deductionIdx.replaceAll("<", "&lt;").replaceAll(">", "&gt;"), ...from.conditionIdxs,
+                        ...from.replaceValues.map(v => this.astparser.stringifyTight(v))
+                    ].join(" ")
+                    : ("hyp " + this.astparser.stringifyTight(p.value).replaceAll("<", "&lt;").replaceAll(">", "&gt;"))
+                ) + "<br>";
+            }
+            hintText.innerHTML = pcmd + `${TR("目前位于")}${this.cmdBuffer.map((v, idx, arr) => {
                 if (idx % 2 === 0) return null;
                 if (v.match(/^p[0-9]+$/)) {
                     return v + ` (${this.gui.stringifyDeductionStep(
@@ -289,7 +350,7 @@ export class FSCmd {
                     )})`;
                 }
                 return `( ${v} )`;
-            }).filter(v => v).join(" > ")}${TR(" 共")}${(this.cmdBuffer.length - 1) / 2}${TR("层推理宏内，按Esc返回上一层定理表\n或继续输入/点击要展开的定理")}`.replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+            }).filter(v => v).join(" > ")}${TR(" 共")}${(this.cmdBuffer.length - 1) / 2}${TR("层推理宏内，按Esc返回上一层定理表，或继续输入/点击要展开的定理")}`.replaceAll("<", "&lt;").replaceAll(">", "&gt;");
         }
 
 
@@ -416,7 +477,7 @@ export class FSCmd {
                     if (!this.getInputNewDeductionPos(5)) return;
                     newName = formalSystem.metaIffTheorem(cmdBuffer[2], [cmdBuffer[3], cmdBuffer[4]].map(
                         v => this.astparser.parse(v)
-                    ), cmdBuffer[7], "元规则生成*");
+                    ), cmdBuffer[7], "元规则生成*", this.gui.enableMIFFT_RP);
                     afterName = cmdBuffer[5];
                     break;
                 case "cpt":
@@ -473,7 +534,7 @@ export class FSCmd {
 
         // cmdBuffer : [
         //    "d", d_idx: string, ...conditionIdxs: number[]
-        //    ...replVars:ast[], 
+        //    ...replVars:ast[], ["## error"]?
         // ]
         const replVarsLength = vars.length;
         const condLength = conditions.length;
@@ -484,6 +545,7 @@ export class FSCmd {
             let idx = Number(cmdBuffer[i]);
             idx = idx < 0 ? formalSystem.propositions.length + idx : idx;
             if (!formalSystem.propositions[idx]) {
+                cmdBuffer.push("## error");
                 hintText.innerText = TR("推理已取消：条件定理不存在");
                 return;
             }
@@ -530,6 +592,7 @@ export class FSCmd {
                 this.gui.updatePropositionList();
                 if (cmdBuffer[1] !== ".") this.lastDeduction = cmdBuffer[1];
             } catch (e) {
+                cmdBuffer.push("## error");
                 hintText.innerText = TR("推理已取消\n") + e;
             }
             return;
@@ -745,6 +808,7 @@ export class FSCmd {
                 this.gui.updatePropositionList(true);
             }
         } else if (this.cmdBuffer[0] === "d") {
+            if (this.cmdBuffer[this.cmdBuffer.length - 1] === "## error") this.cmdBuffer.pop();
             this.gui.actionInput.value = this.cmdBuffer.pop();
             if (this.cmdBuffer.length === 2) this.escClear = false;
             this.execCmdBuffer();
