@@ -323,6 +323,8 @@ export class Game {
                 case "ifft-EU":
                     this.fsGui.enableMIFFT_RP = true;
                     return;
+                case "met":
+                    this.unlockMetarule("et");
                 case "mvt":
                     if (!this.fsGui.metarules.includes("cvt")) {
                         this.unlockMetarule("cvt");
@@ -506,6 +508,7 @@ export class Game {
             "idt": "<",
             "cvt": "v",
             "vt": "u",
+            "et": "e",
             "cmt": ":",
             "q": "q",
         }[name] || "";

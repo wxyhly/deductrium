@@ -29,6 +29,8 @@ export function initFormalSystem(creative: boolean) {
     addMetaRule("cvt", "(...$$0 ⊢ $$1 ) ⊢M (##map($$0, V$#0 #0) ⊢ V$#0: $$1 )", [0], []);
     deductionFrom = "[u]概括元定理";
     addMetaRule("vt", "(...$$0⊢ $$1 ) ⊢M (##map($$0, #nf(#0,$#0)) ⊢ V$#0:$$1 )", [0], []);
+    deductionFrom = "[e]特称元定理";
+    addMetaRule("et", "($$0⊢ $$1 ) ⊢M (E$#0:$$0 ⊢ E$#0:$$1 )", [0], []);
     // deductionFrom = "换名元定理";
     // addMetaRule("nt", "(⊢M (⊢ V...$$0:$$1 <> V...$$2:##rp($$1,...$$0,...$$2)))", [], ["前束范式V...$$0:$$1", "$$2（多个新变量名请用“,”或空格隔开）"]);
 

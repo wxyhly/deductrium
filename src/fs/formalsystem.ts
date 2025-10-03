@@ -265,7 +265,7 @@ export class FormalSystem {
     }
     generateDeductionNameTokens(name: string, cursor = 0, res: string[]) {
         switch (name[cursor]) {
-            case "<": case ">": case "c": case "u": case "v":
+            case "<": case ">": case "c": case "u": case "v": case "e":
                 res.push(name[cursor]);
                 return this.generateDeductionNameTokens(name, cursor + 1, res);
             case ":":
@@ -293,6 +293,8 @@ export class FormalSystem {
                 return [tokens[cursor] + n, this.deductions[this.metaDeductTheorem(n, "元规则生成*")], c];
             case "c": if (!unlocked.includes("c")) throw "null";[n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
                 return [tokens[cursor] + n, this.deductions[this.metaConditionTheorem(n, "元规则生成*")], c];
+            case "e": if (!unlocked.includes("e")) throw "null";[n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
+                return [tokens[cursor] + n, this.deductions[this.metaExistTheorem(n, "元规则生成*")], c];
             case "v":
                 if (!unlocked.includes("v")) {
                     if (!unlocked.includes("q")) throw "null";
@@ -540,6 +542,62 @@ export class FormalSystem {
         // this.expandReplFn(deduction, this.deductionReplNameRule, this.localNameRule, this.replacedLocalNameRule, "##repl");
         this.consts.add(constAst.name);
         return this.addDeduction("d" + constAst.name, deduction, from);
+    }
+    metaExistTheorem(idx: string, from: string) {
+        // Hilbert公理体系还有哪些有用的比较通用的元定理，如我知道演绎元定理、概括元定理。
+        const d = this.generateDeduction(idx);
+        if (d.conditions.length !== 1) throw TR("匹配条件推理规则($$0 ⊢ $$1)失败");
+        if (this.deductions["e" + idx]) return "e" + idx;
+        const oldP = this.propositions;
+        try {
+            this.removePropositions();
+            const s = this._findNewReplName(idx);
+            let pidx = 0;
+            // |- a>b   |- v(a>b)  |- Ea > Eb
+
+            this.addHypothese({
+                type: "sym", name: "E", nodes: [
+                    s, d.conditions[0]
+                ]
+            }); pidx++;
+            const vd = this.generateDeduction(("v>" + idx).replace("><",""));
+            this.deduct({
+                deductionIdx: ("v>" + idx).replace("><",""),
+                replaceValues: vd.replaceNames.map(e => ({ type: "replvar", name: e })),
+                conditionIdxs: []
+            }); pidx++;
+            this.deduct({
+                deductionIdx: ">>.Emp",
+                replaceValues: [s, d.conditions[0], d.conclusion],
+                conditionIdxs: []
+            }); pidx++;
+            this.deduct({
+                deductionIdx: ".cs",
+                replaceValues: [],
+                conditionIdxs: [pidx - 1]
+            }); pidx++;
+            this.deduct({
+                deductionIdx: "mp",
+                replaceValues: [],
+                conditionIdxs: [pidx - 1, pidx - 3]
+            }); pidx++;
+            this.deduct({
+                deductionIdx: "mp",
+                replaceValues: [],
+                conditionIdxs: [pidx - 1, 0]
+            });
+
+
+
+            const ret = this.addMacro("e" + idx, from);
+            this.propositions = oldP;
+            return ret;
+        } catch (e) {
+            this.propositions = oldP;
+            throw e;
+        }
+
+
     }
     metaConditionUniversalTheorem(idx: string, from: string) {
         // mp
@@ -1237,7 +1295,7 @@ export class FormalSystem {
             throw e;
         }
     }
-    metaIffTheorem(idx: string, replaceValues: AST[], name: string, from: string, allowIFFT_RP:boolean) {
+    metaIffTheorem(idx: string, replaceValues: AST[], name: string, from: string, allowIFFT_RP: boolean) {
         const d = this.generateDeduction(idx);
         if (!d) throw TR("推理规则不存在");
         if (d.conditions?.length) throw TR("条件推理规则( ⊢ ($$0 <> $$1))匹配失败");
@@ -1312,7 +1370,7 @@ export class FormalSystem {
                     });
                 }
                 if (a.name === "E!") {
-                    if(!allowIFFT_RP){
+                    if (!allowIFFT_RP) {
                         throw TR("还未解锁跨越量词E!进行替换的功能");
                     }
                     const vab = generate(a.nodes[1], b.nodes[1], [...Vs, a.nodes[0]]);

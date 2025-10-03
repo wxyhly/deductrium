@@ -70,7 +70,7 @@ export class FSGui {
     }
     initCreative() {
         this.metarules = Object.keys(this.formalSystem.metaRules);
-        this.formalSystem.fastmetarules = "cvuq><:";
+        this.formalSystem.fastmetarules = "cvuqe><:";
         document.getElementById("metarule-subpanel").classList.remove("hide");
         document.getElementById("macro-btns").classList.remove("hide");
         this.unlockedHyp = true;

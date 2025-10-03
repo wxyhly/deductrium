@@ -284,6 +284,7 @@ export class FormalSystem {
             case "c":
             case "u":
             case "v":
+            case "e":
                 res.push(name[cursor]);
                 return this.generateDeductionNameTokens(name, cursor + 1, res);
             case ":":
@@ -324,6 +325,11 @@ export class FormalSystem {
                     throw "null";
                 [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
                 return [tokens[cursor] + n, this.deductions[this.metaConditionTheorem(n, "元规则生成*")], c];
+            case "e":
+                if (!unlocked.includes("e"))
+                    throw "null";
+                [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
+                return [tokens[cursor] + n, this.deductions[this.metaExistTheorem(n, "元规则生成*")], c];
             case "v":
                 if (!unlocked.includes("v")) {
                     if (!unlocked.includes("q"))
@@ -603,6 +609,64 @@ export class FormalSystem {
         // this.expandReplFn(deduction, this.deductionReplNameRule, this.localNameRule, this.replacedLocalNameRule, "##repl");
         this.consts.add(constAst.name);
         return this.addDeduction("d" + constAst.name, deduction, from);
+    }
+    metaExistTheorem(idx, from) {
+        // Hilbert公理体系还有哪些有用的比较通用的元定理，如我知道演绎元定理、概括元定理。
+        const d = this.generateDeduction(idx);
+        if (d.conditions.length !== 1)
+            throw TR("匹配条件推理规则($$0 ⊢ $$1)失败");
+        if (this.deductions["e" + idx])
+            return "e" + idx;
+        const oldP = this.propositions;
+        try {
+            this.removePropositions();
+            const s = this._findNewReplName(idx);
+            let pidx = 0;
+            // |- a>b   |- v(a>b)  |- Ea > Eb
+            this.addHypothese({
+                type: "sym", name: "E", nodes: [
+                    s, d.conditions[0]
+                ]
+            });
+            pidx++;
+            const vd = this.generateDeduction(("v>" + idx).replace("><", ""));
+            this.deduct({
+                deductionIdx: ("v>" + idx).replace("><", ""),
+                replaceValues: vd.replaceNames.map(e => ({ type: "replvar", name: e })),
+                conditionIdxs: []
+            });
+            pidx++;
+            this.deduct({
+                deductionIdx: ">>.Emp",
+                replaceValues: [s, d.conditions[0], d.conclusion],
+                conditionIdxs: []
+            });
+            pidx++;
+            this.deduct({
+                deductionIdx: ".cs",
+                replaceValues: [],
+                conditionIdxs: [pidx - 1]
+            });
+            pidx++;
+            this.deduct({
+                deductionIdx: "mp",
+                replaceValues: [],
+                conditionIdxs: [pidx - 1, pidx - 3]
+            });
+            pidx++;
+            this.deduct({
+                deductionIdx: "mp",
+                replaceValues: [],
+                conditionIdxs: [pidx - 1, 0]
+            });
+            const ret = this.addMacro("e" + idx, from);
+            this.propositions = oldP;
+            return ret;
+        }
+        catch (e) {
+            this.propositions = oldP;
+            throw e;
+        }
     }
     metaConditionUniversalTheorem(idx, from) {
         // mp

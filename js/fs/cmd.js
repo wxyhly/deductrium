@@ -278,7 +278,7 @@ export class FSCmd {
                 const fsd = Object.assign({}, fs.deductions);
                 const prop = fs.propositions.slice(0);
                 try {
-                    fs.fastmetarules = "cvuq><:";
+                    fs.fastmetarules = "cvuqe><:";
                     fs.expandMacroWithDefaultValue(item);
                     fs.fastmetarules = fmr;
                     fs.deductions = fsd;
@@ -302,7 +302,7 @@ export class FSCmd {
                 const fsd = Object.assign({}, fs.deductions);
                 const prop = fs.propositions.slice(0);
                 try {
-                    fs.fastmetarules = "cvuq><:";
+                    fs.fastmetarules = "cvuqe><:";
                     fs.expandMacroWithProp(Number(p));
                     fs.fastmetarules = fmr;
                     fs.deductions = fsd;
@@ -373,7 +373,7 @@ export class FSCmd {
                 throw TR("该定理不存在");
             const fmr = formalSystem.fastmetarules;
             const fsd = Object.assign({}, formalSystem.deductions);
-            formalSystem.fastmetarules = "cvuq><:";
+            formalSystem.fastmetarules = "cvuqe><:";
             formalSystem.inlineMacroInProp(Number(cmdBuffer[1]));
             formalSystem.fastmetarules = fmr;
             formalSystem.deductions = fsd;
@@ -457,6 +457,10 @@ export class FSCmd {
                     break;
                 case "dt":
                     newName = formalSystem.metaDeductTheorem(cmdBuffer[2], "元规则生成*");
+                    afterName = cmdBuffer[2];
+                    break;
+                case "et":
+                    newName = formalSystem.metaExistTheorem(cmdBuffer[2], "元规则生成*");
                     afterName = cmdBuffer[2];
                     break;
                 case "idt":
@@ -794,10 +798,10 @@ export class FSCmd {
         }
         // ["m", pos, null, name]
         const n = this.cmdBuffer[prevLength + 2];
-        if (n.match(/^[<>uvdcamp\.]/)) {
+        if (n.match(/^[<>acdempuv\.]/)) {
             this.cmdBuffer.pop();
             const res = this.getInputNewDeductionPos(prevLength);
-            this.gui.hintText.innerText = TR("以.<>uvdcamp开头的推理规则名称由系统保留，请重新命名");
+            this.gui.hintText.innerText = TR("以.<>acdempuv开头的推理规则名称由系统保留，请重新命名");
             return res;
         }
         if (n.includes(",") || n.includes(":")) {
