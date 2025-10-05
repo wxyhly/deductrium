@@ -553,7 +553,7 @@ export class FormalSystem {
             this.removePropositions();
             const s = this._findNewReplName(idx);
             let pidx = 0;
-            // |- a>b   |- v(a>b)  |- Ea > Eb
+            // |- Ea   |- v(a>b)  |- Ea > Eb
 
             this.addHypothese({
                 type: "sym", name: "E", nodes: [
@@ -567,25 +567,10 @@ export class FormalSystem {
                 conditionIdxs: []
             }); pidx++;
             this.deduct({
-                deductionIdx: ">>.Emp",
-                replaceValues: [s, d.conditions[0], d.conclusion],
-                conditionIdxs: []
-            }); pidx++;
-            this.deduct({
-                deductionIdx: ".cs",
+                deductionIdx: ".Emp",
                 replaceValues: [],
-                conditionIdxs: [pidx - 1]
+                conditionIdxs: [1,0]
             }); pidx++;
-            this.deduct({
-                deductionIdx: "mp",
-                replaceValues: [],
-                conditionIdxs: [pidx - 1, pidx - 3]
-            }); pidx++;
-            this.deduct({
-                deductionIdx: "mp",
-                replaceValues: [],
-                conditionIdxs: [pidx - 1, 0]
-            });
 
 
 

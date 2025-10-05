@@ -45,7 +45,7 @@ export class SavesParser {
         for (const [n, d] of Object.entries(fs.deductions)) {
             if (!d.from.endsWith("*"))
                 continue;
-            if (n.startsWith("c") || n.startsWith("<") || n.startsWith(">") || n.startsWith("v") || n.startsWith("u")) {
+            if (n.startsWith("c") || n.startsWith("<") || n.startsWith(">") || n.startsWith("v") || n.startsWith("u") || n.startsWith("e")) {
                 continue;
             }
             userD[n] = this.serializeDeduction(d);

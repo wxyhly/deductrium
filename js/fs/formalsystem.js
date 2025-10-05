@@ -622,7 +622,7 @@ export class FormalSystem {
             this.removePropositions();
             const s = this._findNewReplName(idx);
             let pidx = 0;
-            // |- a>b   |- v(a>b)  |- Ea > Eb
+            // |- Ea   |- v(a>b)  |- Ea > Eb
             this.addHypothese({
                 type: "sym", name: "E", nodes: [
                     s, d.conditions[0]
@@ -637,28 +637,11 @@ export class FormalSystem {
             });
             pidx++;
             this.deduct({
-                deductionIdx: ">>.Emp",
-                replaceValues: [s, d.conditions[0], d.conclusion],
-                conditionIdxs: []
+                deductionIdx: ".Emp",
+                replaceValues: [],
+                conditionIdxs: [1, 0]
             });
             pidx++;
-            this.deduct({
-                deductionIdx: ".cs",
-                replaceValues: [],
-                conditionIdxs: [pidx - 1]
-            });
-            pidx++;
-            this.deduct({
-                deductionIdx: "mp",
-                replaceValues: [],
-                conditionIdxs: [pidx - 1, pidx - 3]
-            });
-            pidx++;
-            this.deduct({
-                deductionIdx: "mp",
-                replaceValues: [],
-                conditionIdxs: [pidx - 1, 0]
-            });
             const ret = this.addMacro("e" + idx, from);
             this.propositions = oldP;
             return ret;

@@ -133,6 +133,7 @@ export class AssertionSystem {
     addNf(ast: AST, qs: AST[], vs: Set<string>) {
         if (!vs.size) return;
         const nodes = [ast];
+        qs.sort((a, b) => a.name > b.name ? 1 : a.name === b.name ? 0 : -1);
         for (let i = 0; i < qs.length; i++) {
             let repeated = false;
             const x = qs[i];
@@ -147,7 +148,7 @@ export class AssertionSystem {
             name: "#".padEnd(nodes.length, "v") + "nf",
             nodes
         };
-        for (const v of vs) {
+        for (const v of Array.from(vs).sort()) {
             nodes.push({ type: "replvar", name: v });
         }
         astmgr.assign(ast, wrappeed);
