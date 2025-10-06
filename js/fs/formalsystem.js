@@ -20,6 +20,7 @@ export class FormalSystem {
     consts = new Set(); // [constName -> defineDeductionIdx]
     fns = new Set(); // [fnName -> defineDeductionIdx]
     propositions = [];
+    assert = assert;
     ast2deduction(ast) {
         assert.checkGrammer(ast, "d", this.consts);
         const [conditions, conclusions] = ast.nodes;
@@ -64,7 +65,7 @@ export class FormalSystem {
     getdependency(name, deductionIdx) {
         if (!deductionIdx)
             return false;
-        return name === deductionIdx || deductionIdx.match(new RegExp("^[vc<>u:]*" + name + "(,.+$)?$"));
+        return name === deductionIdx || deductionIdx.match(new RegExp("^[vc<>ue:]*" + name + "(,.+$)?$"));
     }
     removeDeduction(name) {
         if (!this.deductions[name])

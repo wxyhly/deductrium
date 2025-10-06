@@ -454,6 +454,8 @@ export const mapData = `
 :%,5$[[d{}]]解锁空集常量符号[n]“{}”
 :dE!,2#(Ex:Ey:(#nf($a,y)&#nf($b,x)))<>(Ex:#nf($a,y)&Ey:#nf($b,x))[n]#p
 :%,5$获取399µg推理素
+:dE!,4#通过此门需消耗推理素2mg
+:%,1$[[omit-fn]]解锁简化显示#nf等系统函数
 // 配对公理、正规公理
 
 :beforePair,4$[[aPair]]解锁ZFC集合论[n]配对公理(aPair)

@@ -60,6 +60,19 @@
 .rp-nth * {
     color: blue;
 }
+span.omit-nf{
+    border-bottom: lightgreen solid;
+    background-color: rgba(0,255,0,0.1);
+    border-radius: 4px;
+}
+span.omit-nf.rp{
+    border-bottom: lightpink solid;
+    background-color: rgba(255,0,255,0.1);
+    border-radius: 4px;
+}
+sub.omit-nf,sup.omit-nf{
+    font-size: xx-small;
+}
 
 #panel>button {
     border-width: 1px;

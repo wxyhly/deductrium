@@ -8,6 +8,7 @@ export class FSGui {
     formalSystem = new FormalSystem();
     actionInput: HTMLInputElement;
     hintText: HTMLDivElement;
+    omitNfFn = false;
     propositionList: HTMLOListElement;
     deductionList: HTMLOListElement;
     metaRuleList: HTMLOListElement;
@@ -53,6 +54,13 @@ export class FSGui {
                 this.updateDeductionList();
             });
         });
+        const simplSysFn = document.getElementById("simpl-sysfn") as HTMLInputElement;
+        simplSysFn.addEventListener("change",()=>{
+            this.omitNfFn = simplSysFn.checked;
+            this.updateMetaRuleList();
+            this.updateDeductionList();
+            this.updatePropositionList();
+        })
         document.querySelectorAll(".footer .right button").forEach((btn: HTMLElement) => {
             btn.addEventListener("click", () => {
                 if (btn.innerText === "OK") {
@@ -78,6 +86,7 @@ export class FSGui {
         this.enableMIFFT_RP = true;
         document.getElementById("hyp-btn").classList.remove("hide");
         document.getElementById("ach").classList.add("hide");
+        document.getElementById("wrap-simpl-sysfn").classList.remove("hide");
         document.getElementById("stat").classList.add("hide");
         document.getElementById("creer").classList.remove("hide");
     }
@@ -132,26 +141,37 @@ export class FSGui {
                 }
                 this.addSpan(varnode, "}");
             } else {
-                const fnName = this.addSpan(varnode, ast.name);
-                if (ast.name.startsWith("#")) fnName.classList.add("sysfn");
-                if (this.formalSystem.fns.has(ast.name)) fnName.classList.add("fn");
-                this.addSpan(varnode, "(");
+                // todo: add show/hide #nf/vnf
+                const omitNfFn = (ast.name.match(/^#(v*)nf$/) || ast.name.match(/^#rp$/)) && this.omitNfFn;
+                if (!omitNfFn) {
+                    const fnName = this.addSpan(varnode, ast.name);
+                    if (ast.name.startsWith("#")) fnName.classList.add("sysfn");
+                    if (this.formalSystem.fns.has(ast.name)) fnName.classList.add("fn");
+                    this.addSpan(varnode, "(");
+                }
                 const fonts = []; // 0 for mormal, 1 for sup, -1 for sub
                 for (const [nidx, n] of ast.nodes.entries()) {
                     let font = 0;
+                    const node = this.ast2HTML(idx, n, scopes);
                     if (ast.name.match(/^#(v*)nf/)) {
                         font = (nidx > ast.name.length - 3) ? -1 : 1;
                     }
                     if (ast.name.match(/^#(#match)?rp/)) {
+                        if (nidx === 0) node.classList.add("rp");
                         font = nidx === 2 ? -1 : nidx === 1 ? 1 : 0;
                     }
-                    if (!nidx) font = 0;
+                    if (!nidx) {
+                        font = 0;
+                    }else{
+                        if (ast.name.match(/^#(v*)nf/)) node.setAttribute("ast-string", astStr);
+                    }
                     fonts.push(font);
                     const noComma = (nidx >= 1);
                     if (nidx && !font && !fonts[nidx - 1]) this.addSpan(varnode, ", ");
-                    const node = this.ast2HTML(idx, n, scopes);
+                    if (omitNfFn && !nidx) node.classList.add("omit-nf");
                     if (font) {
                         const wrappedNode = document.createElement(font === 1 ? "sup" : "sub");
+                        wrappedNode.classList.add("omit-nf");
                         varnode.appendChild(wrappedNode);
                         if (ast.name.match(/^#(v*)nf/) && nidx > ast.name.length - 3) wrappedNode.classList.add("nf");
                         if (ast.name.match(/^#(v*)nf/) && nidx === 1 && nidx <= ast.name.length - 3) {
@@ -180,7 +200,7 @@ export class FSGui {
                         }
                     }
                 }
-                this.addSpan(varnode, ")");
+                if (!omitNfFn) this.addSpan(varnode, ")");
             }
         } else if (ast.type === "replvar") {
             const el = this.addSpan(varnode, ast.name === "omega" ? "ω" : ast.name);
@@ -281,14 +301,16 @@ export class FSGui {
             });
             node.addEventListener('click', ev => {
                 ev.stopPropagation();
-                this.cmd.onClickSubAst(idx, astStr);
+                this.cmd.onClickSubAst(idx, varnode.getAttribute("ast-string"));
             });
         }
         return varnode;
     }
     private _convert(d: Deduction) {
         let str = this.cmd.astparser.stringifyTight(d.value);
-        let steps = d.steps?.map(step => [step.deductionIdx, step.conditionIdxs, step.replaceValues.map(v => this.cmd.astparser.stringifyTight(v))]);
+        let steps = d.steps?.map(step => [step.deductionIdx, step.conditionIdxs, step.replaceValues.map((v, i) => this.cmd.astparser.stringifyTight(
+            v, this.formalSystem.assert.expand(v, d.replaceTypes[i])
+        ))]);
         if (d.tempvars?.size) {
             console.log(JSON.stringify([str, "内置宏", steps, Array.from(d.tempvars)]));
             return [str, JSON.stringify(steps), Array.from(d.tempvars)];

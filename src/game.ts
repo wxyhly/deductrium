@@ -351,6 +351,7 @@ export class Game {
                     this.fsGui.addToDeductions("dPrime", "d*2");
                     return;
 
+                case "omit-fn": return document.getElementById("wrap-simpl-sysfn").classList.remove("hide");
                 case "type": return document.getElementById("type-btn").classList.remove("hide");
                 case "ttsimplFn": this.ttGui.disableSimpleFn = false; return this.ttGui.getInhabitatArray()[0].onblur({} as any);
                 case "ttnotFn": return this.ttGui.unlock("(False)0", true);
