@@ -5,7 +5,7 @@ const logicSyms = ["<>", ">", "~", "&", "|"];
 const quantSyms = ["E", "E!", "V"];
 const verbSyms = ["@", "=", "<"];
 const verbFns = ["Prime", "Equiv", "Order", "WellOrder", "Rel", "Point", "Line", "Plane", "Between", "Angle"];
-const fnSyms = ["Pair", "Union", "Pow", "U", "I", "S", "+", "-", "*", "/"];
+const fnSyms = ["Pair", "Union", "Pow", "U", "I", "S", "+", "-", "*", "/", "{"];
 
 // type: item for true, boolean for false
 export type ReplvarTypeTable = { [varname: string]: boolean };
@@ -215,6 +215,10 @@ export class AssertionSystem {
             }
             return U;
         }
+        // n({x@y|z}) <=> n(y) && vn(z,x)
+        if (ast.type === "sym" && ast.name === "{|") {
+            return and(this.nf(name, ast.nodes[1], quants, nameIsNot), this.nf(name, ast.nodes[2], [ast.nodes[0], ...quants], nameIsNot));
+        }
         const ignore = this.ignorePropagateAst(ast);
         // ast is complex fns which cant be mapped in nor decided
         if (ignore) return U;
@@ -233,7 +237,8 @@ export class AssertionSystem {
         if (typeof nth === "string" && !nth.match(/^\$/)) throw TR(`替换表达式中指定的匹配序号`) + nth + TR('必须为整数');
         if (typeof nth === "number" && Math.floor(nth) !== nth) throw TR("替换表达式中指定的匹配序号") + nth + TR('必须为整数');
         // item always can be replaced, so no need to check ast == src situation 
-        if (this.getAstType(ast, varTypes)) return T;
+        // update: added {x@y|P(x)}, this is not true
+        // if (this.getAstType(ast, varTypes)) return T;
         // if src=dst, id T
         if (this.astEq(src, dst) === T) return T;
         // todo: verify: if contains assertions, just match them exactly is ok?
@@ -291,9 +296,11 @@ export class AssertionSystem {
         if (ast.type === "sym") {
             if (logicSyms.includes(ast.name)) return false;
             if (quantSyms.includes(ast.name)) return false;
+            if (ast.name === "{|") return true;
             return true;
         }
         if (ast.type === "fn") {
+            if (ast.name === "{") return true;
             if (ast.name.match(/^#v*nf/) || ast.name.match(/^#c?rp/)) {
                 return this.getAstType(ast.nodes[0], varLists);
             }
@@ -409,6 +416,24 @@ export class AssertionSystem {
             scope.push(qp[0]);
             return this.getSubAstMatchTimes(qp[1], subAst, nth, dst, scope, res, right);
         }
+        if (ast.type === "sym" && ast.name === "{|") {
+            if (!right) {
+                const result = this.getSubAstMatchTimes(ast.nodes[1], subAst, nth, dst, scope.slice(0), res, right);
+                // if found exact nth
+                if (nth !== -1 && res.length === nth + 1) return res;
+                // unknown spread
+                if (result === false) return false;
+                scope.push(ast.nodes[0]);
+                return this.getSubAstMatchTimes(ast.nodes[2], subAst, nth, dst, scope, res, right);
+            } else {
+                const result = this.getSubAstMatchTimes(ast.nodes[2], subAst, nth, dst, [ast.nodes[0], ...scope], res, right);
+                // if found exact nth
+                if (nth !== -1 && res.length === nth + 1) return res;
+                // unknown spread
+                if (result === false) return false;
+                return this.getSubAstMatchTimes(ast.nodes[1], subAst, nth, dst, scope, res, right);
+            }
+        }
         if (right) {
             for (let n = ast.nodes.length - 1; n >= 0; n--) {
                 const result = this.getSubAstMatchTimes(ast.nodes[n], subAst, nth, dst, scope.slice(0), res, right);
@@ -417,10 +442,11 @@ export class AssertionSystem {
                 // unknown spread
                 if (result === false) return false;
             }
-        }
-        for (const n of ast.nodes) {
-            // unknown spread
-            if (this.getSubAstMatchTimes(n, subAst, nth, dst, scope.slice(0), res, right) === false) return false;
+        } else {
+            for (const n of ast.nodes) {
+                // unknown spread
+                if (this.getSubAstMatchTimes(n, subAst, nth, dst, scope.slice(0), res, right) === false) return false;
+            }
         }
         return res;
     }
@@ -464,7 +490,32 @@ export class AssertionSystem {
             return this.getSubAstMatchTimesAndReplace(qp[1], subAst, newAst, nth, scope, res, right);
         }
         const backup = astmgr.clone(ast);
-        if (right) {
+        if (ast.type === "sym" && ast.name === "{|") {
+            if (!right) {
+                let subres = this.getSubAstMatchTimesAndReplace(ast.nodes[1], subAst, newAst, nth, scope.slice(0), res, right);
+                if (subres === false) {
+                    astmgr.assign(ast, backup);
+                    return false;
+                }
+                scope.push(ast.nodes[0]);
+                subres = this.getSubAstMatchTimesAndReplace(ast.nodes[2], subAst, newAst, nth, scope, res, right);
+                if (subres === false) {
+                    astmgr.assign(ast, backup);
+                    return false;
+                }
+            } else {
+                let subres = this.getSubAstMatchTimesAndReplace(ast.nodes[2], subAst, newAst, nth, [ast.nodes[0], ...scope], res, right);
+                if (subres === false) {
+                    astmgr.assign(ast, backup);
+                    return false;
+                }
+                subres = this.getSubAstMatchTimesAndReplace(ast.nodes[1], subAst, newAst, nth, scope, res, right);
+                if (subres === false) {
+                    astmgr.assign(ast, backup);
+                    return false;
+                }
+            }
+        } else if (right) {
             for (let n = ast.nodes.length - 1; n >= 0; n--) {
                 const subres = this.getSubAstMatchTimesAndReplace(ast.nodes[n], subAst, newAst, nth, scope.slice(0), res, right);
                 // if unknown, don't spread, just ignore it and replace??
@@ -491,6 +542,7 @@ export class AssertionSystem {
     // this is a helper fn for recursively check sub nodes
     getSubAstType(ast: AST, idx: number, parentType: boolean) {
         if (ast.type === "sym") {
+            if (ast.name === "{|") return idx <= 1;
             if (quantSyms.includes(ast.name)) return idx === 0;
             return !logicSyms.includes(ast.name);
         }
@@ -549,7 +601,9 @@ export class AssertionSystem {
                 for (const v of vars) {
                     if (this.nf(v, q) !== T) { allNotEq = false; break; }
                 }
-                if (allNotEq) toRemove.push(q);
+                if (allNotEq || this.nf(this.getVarName(q) as string, sub, [], this.getVarIsNotList(q)) === T) {
+                    toRemove.push(q);
+                }
             }
             quants = quants.filter(q => !toRemove.includes(q));
             this.removeFn(ast); sub = ast;
@@ -585,6 +639,11 @@ export class AssertionSystem {
                 this.addNf(ast, quants, vars);
                 return;
             }
+            if (sub.type === "sym" && sub.name === "{|") {
+                this.addNf(sub.nodes[1], quants, vars);
+                this.addNf(sub.nodes[2], [sub.nodes[0], ...quants], vars);
+                return this.expand(ast, isItem, varLists);
+            }
             const ignore = this.ignorePropagateAst(sub);
             // sub is complex fns which cant be mapped in nor decided
             if (ignore) {
@@ -611,8 +670,8 @@ export class AssertionSystem {
         if (rpParams) {
             const [sub, src, dst, nth, right] = rpParams;
             if (nth === -1 && ast.nodes.length === 4) ast.nodes.pop(); //omit #rp(.,./.,0)
-            const tf = this.crp(sub, src, dst, nth, right, varLists);
-            if (tf === F) throw TR("函数#rp执行失败：自由变量将被量词约束");
+            // const tf = this.crp(sub, src, dst, nth, right, varLists);
+            // if (tf === F) throw TR("函数#rp执行失败：自由变量将被量词约束");
             if (this.astEq(src, dst) === T) { this.removeFn(ast); return; } // id
 
             // added special cases on 2025/09/28
@@ -629,7 +688,7 @@ export class AssertionSystem {
                 }
                 astmgr.assign(ast, sub); // unwrap outside
                 console.assert(isItem === false);
-                this.expand(ast, isItem, varLists);
+                this.expand(ast, verbSyms.includes(sub.name), varLists);
                 return;
             }
             const srcName = this.getVarName(src);
@@ -656,6 +715,27 @@ export class AssertionSystem {
                     }
                 }
             }
+            if (sub.type === "sym" && sub.name === "{|" && nth === -1) {
+                // #rp({x@y|z}) === {x@rp(y)|rp(Vx:z)},then (Vx:rp(z)) => rp(z)
+                const backup = astmgr.clone(ast);
+                const [q, item, prop] = sub.nodes;
+                const nodes = ast.nodes;
+                nodes[0] = item;
+                astmgr.assign(ast, sub); // {|}
+                astmgr.assign(ast.nodes[1], { type: "fn", name: "#rp", nodes }); // {x@#rp|}
+                nodes[0] = { type: "sym", name: "V", nodes: [q, prop] };
+                astmgr.assign(ast.nodes[2], { type: "fn", name: "#rp", nodes }); // {x@|#rp(Vx:)}
+                this.expand(ast.nodes[1], true, varLists);
+                this.expand(ast.nodes[2], false, varLists);
+                if (ast.nodes[2].type === "sym" && ast.nodes[2].name === "V") {
+                    // remove Vx
+                    astmgr.assign(ast.nodes[2], ast.nodes[2].nodes[1]);
+                } else {
+                    // can't remove Vx, rollback
+                    astmgr.assign(ast, backup);
+                }
+                return;
+            }
             const quantParam = this.getQuantParams(sub);
             if (quantParam) {
                 // #rp(Vx: ~, nf(.,x)/nf(.,x), .) === Vx: #rp( ~, nf(.,x)/nf(.,x), .)
@@ -671,9 +751,9 @@ export class AssertionSystem {
                 }
             }
 
-            if (tf === U) {
-                return; // else can't expand, keep it
-            }
+            // if (tf === U) {
+            //      return; // else can't expand, keep it
+            // }
             const eq = this.astEq(sub, src);
             if (eq === T) { astmgr.assign(ast, dst); return; } // exact match, todo: nth
 
@@ -681,7 +761,35 @@ export class AssertionSystem {
 
             if (eq === U) return;
             if (typeof nth === "string") return;
-            if (this.getSubAstMatchTimesAndReplace(sub, src, dst, nth, undefined, undefined, right)) {
+            const scopes = this.getSubAstMatchTimesAndReplace(sub, src, dst, nth, undefined, undefined, right);
+            if (scopes) {
+                for (const [idx, scope] of scopes.entries()) {
+                    // if not match all, just verify nth
+                    if (typeof nth === "number") {
+                        if (nth !== -1 && idx !== nth) continue;
+                        if (nth > idx) break; // short circuit
+                    }
+                    let AllF = true;
+                    let res = T;
+                    for (const bv of scope) {
+                        const bvName = this.getVarName(bv) as string;
+                        const bvIsNot = this.getVarIsNotList(bv)
+                        const nf = this.nf(bvName, dst, [], bvIsNot);
+                        res = and(res, nf);
+                        if (res !== F) AllF = false;
+                    }
+                    let crp: bool3;
+                    if (typeof nth === "number") {
+                        crp = res;
+                    } else {
+                        // [U, F] => U
+                        // [F, F] => F
+                        // [T, T] => T
+                        // [T, F] => U
+                        crp = res === T ? T : AllF ? F : U;
+                    }
+                    if (crp === F) throw TR("断言失败：#rp执行替换后自由变量将被量词约束");
+                }
                 astmgr.assign(ast, sub); // unwrap
             };
             // else keep #rp
@@ -786,11 +894,17 @@ export class AssertionSystem {
         }
         if (type === "m") throw TR("未找到元推理符号"); if (type === "d") throw TR("未找到推理符号");
         if (ast.type === "sym") {
-            if (quantSyms.includes(ast.name)) {
+            if (ast.name === "{|") {
+                if (type !== "i") throw TR("意外出现集合表达式");
+                this.checkGrammer(ast.nodes[0], "v", consts);
+                this.checkGrammer(ast.nodes[1], "i", consts);
+                this.checkGrammer(ast.nodes[2], "p", consts);
+                return;
+            } else if (quantSyms.includes(ast.name)) {
                 if (type !== "p") return TR("意外出现了量词") + ast.name;
                 const varName = this.getVarName(ast.nodes[0]);
                 if (!varName) throw TR(`非变量表达式出现在了量词`) + ast.name + TR(`的约束变量中`);
-                if (consts.has(varName)) {
+                if (this.isConst(varName, consts)) {
                     throw TR(`常数符号`) + varName + TR('禁止出现在量词') + ast.name + TR('的约束变量中');
                 }
                 this.checkGrammer(ast.nodes[1], "p", consts);
@@ -866,7 +980,7 @@ export class AssertionSystem {
                 return;
             }
         }
-        if (ast.type === "replvar" && consts.has(ast.name)) {
+        if (ast.type === "replvar" && this.isConst(ast.name, consts)) {
             if (type === "p") throw TR("无法将集合常量符号“") + ast.name + TR("”作为原子公式符号");
             return;
         }
@@ -874,6 +988,9 @@ export class AssertionSystem {
         if (ast.nodes?.length) {
             for (const n of ast.nodes) this.checkGrammer(n, type, consts);
         }
+    }
+    isConst(name: string, consts: Set<string>) {
+        return consts.has(name) || name.match(/^[1-9][0-9]+$/);
     }
     isNameQuantVarIn(name: string, ast: AST) {
         if (this.getQuantParams(ast)) {

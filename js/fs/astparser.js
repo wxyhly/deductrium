@@ -10,7 +10,7 @@ export class ASTParser {
         const nd = ast.nodes;
         if (ast.type === "fn") {
             if (ast.name === "{")
-                return `{${nd.map(n => this.stringify(n)).join(",")}}`;
+                return `{${nd.map(n => this.stringifyTight(n)).join(",")}}`;
             return `${ast.name}(${nd.map(n => this.stringifyTight(n)).join(",")})`;
         }
         if (ast.type === "replvar") {
@@ -26,6 +26,7 @@ export class ASTParser {
             case "V":
             case "E":
             case "E!": return `(${ast.name}${this.stringifyTight(nd[0])}:${this.stringifyTight(nd[1], true)})`;
+            case "{|": return `{${this.stringifyTight(nd[0])}@${this.stringifyTight(nd[1])} | ${this.stringifyTight(nd[2])}}`;
             default:
                 const sym = ast.name;
                 const c = `${this.stringifyTight(nd[0], true)}${sym}${this.stringifyTight(nd[1], true)}`;
@@ -51,6 +52,7 @@ export class ASTParser {
             case "V":
             case "E":
             case "E!": return `(${ast.name}${this.stringify(nd[0])}: ${this.stringify(nd[1])})`;
+            case "{|": return `{${this.stringify(nd[0])}@${this.stringify(nd[1])} | ${this.stringify(nd[2])}}`;
             default:
                 return `(${this.stringify(nd[0])} ${ast.name} ${this.stringify(nd[1])})`;
         }
@@ -151,6 +153,21 @@ export class ASTParser {
             return val;
         }
         else if (this.acceptSym("{")) {
+            const c = this.cursor;
+            const t = this.token;
+            if (this.acceptVar()) {
+                const v = { type: "replvar", name: this.prevToken(1) };
+                if (this.acceptSym("@")) {
+                    const nodes = [v, this.boolTerm5()];
+                    if (this.acceptSym("|")) {
+                        nodes.push(this.meta());
+                        this.expectSym("}");
+                        return { type: "sym", name: "{|", nodes };
+                    }
+                }
+            }
+            this.cursor = c;
+            this.token = t;
             const nodes = [this.meta()];
             while (this.token === ",") {
                 this.nextSym();

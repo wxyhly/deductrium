@@ -262,7 +262,7 @@ export class Game {
                     return;
                 case ".1st":
                     [
-                        ".nEVn", ".nVEn", ".nVVn", ".nEn", ".Ve", ".Vs", ".V&1", ".V&2", ".V&", ".Ee", ".Ei",".Eirp", ".Es", ".EV", ".E|1", ".E|2", ".E|",
+                        ".nEVn", ".nVEn", ".nVVn", ".nEn", ".Ve", ".Vs", ".V&1", ".V&2", ".V&", ".Ee", ".Ei", ".Eirp", ".Es", ".EV", ".E|1", ".E|2", ".E|",
                         ".Vnf", ".Vnf>", ".V>nf", ".Vnf|", ".V|nf", ".Vnf&", ".V&nf", ".Enf", ".Enf>", ".E>nf", ".Enf|", ".E|nf", ".Enf&", ".E&nf",
                         ".Emp", ".Vcn", ".Ecn", ".Vcn<>", ".Ecn<>",
                         ".=s", ".=t", ".=r=", ".=r@"
@@ -351,7 +351,9 @@ export class Game {
                     this.fsGui.addToDeductions("dPrime", "d*2");
                     return;
 
-                case "omit-fn": return document.getElementById("wrap-simpl-sysfn").classList.remove("hide");
+                case "omit-fn":
+                    document.getElementById("wrap-simpl-sysfn").classList.remove("hide");
+                    this.fsGui.onchangeOmitNF(); return;
                 case "type": return document.getElementById("type-btn").classList.remove("hide");
                 case "ttsimplFn": this.ttGui.disableSimpleFn = false; return this.ttGui.getInhabitatArray()[0].onblur({} as any);
                 case "ttnotFn": return this.ttGui.unlock("(False)0", true);

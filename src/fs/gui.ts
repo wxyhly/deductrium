@@ -21,6 +21,7 @@ export class FSGui {
     unlockedHyp = false;
     enableMIFFT_RP = false;
     onStateChange = () => { };
+    onchangeOmitNF = () => { };
 
     isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
     cmd: FSCmd;
@@ -55,12 +56,14 @@ export class FSGui {
             });
         });
         const simplSysFn = document.getElementById("simpl-sysfn") as HTMLInputElement;
-        simplSysFn.addEventListener("change",()=>{
-            this.omitNfFn = simplSysFn.checked;
-            this.updateMetaRuleList();
+        const onchangeOmitNF = () => {
+            this.omitNfFn = document.getElementById("wrap-simpl-sysfn").classList.contains("hide") ? false : simplSysFn.checked;
+            this.updateMetaRuleList(true);
             this.updateDeductionList();
-            this.updatePropositionList();
-        })
+            this.updatePropositionList(true);
+        };
+        this.onchangeOmitNF = onchangeOmitNF;
+        simplSysFn.addEventListener("change", onchangeOmitNF);
         document.querySelectorAll(".footer .right button").forEach((btn: HTMLElement) => {
             btn.addEventListener("click", () => {
                 if (btn.innerText === "OK") {
@@ -75,10 +78,11 @@ export class FSGui {
         }
         this.updateMetaRuleList();
         this.updateDeductionList();
+        onchangeOmitNF();
     }
     initCreative() {
         this.metarules = Object.keys(this.formalSystem.metaRules);
-        this.formalSystem.fastmetarules = "cvuqe><:";
+        this.formalSystem.fastmetarules = "cvuqe><:#";
         document.getElementById("metarule-subpanel").classList.remove("hide");
         document.getElementById("macro-btns").classList.remove("hide");
         this.unlockedHyp = true;
@@ -162,7 +166,7 @@ export class FSGui {
                     }
                     if (!nidx) {
                         font = 0;
-                    }else{
+                    } else {
                         if (ast.name.match(/^#(v*)nf/)) node.setAttribute("ast-string", astStr);
                     }
                     fonts.push(font);
@@ -205,7 +209,7 @@ export class FSGui {
         } else if (ast.type === "replvar") {
             const el = this.addSpan(varnode, ast.name === "omega" ? "ω" : ast.name);
             const scopeStack = scopes.slice(0);
-            if (this.formalSystem.consts.has(ast.name)) {
+            if (this.formalSystem.assert.isConst(ast.name, this.formalSystem.consts)) {
                 el.classList.add("constant");
             } else if (ast.name.replace(/^\.\.\./, "").match(this.formalSystem.deductionReplNameRule)) {
                 el.classList.add("replvar");
@@ -236,15 +240,24 @@ export class FSGui {
                     this.addSpan(varnode, this.prettyPrint(ast.name));
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], scopes));
                     break;
+                case "{|":
                 case "V": case "E": case "E!":
                     const outterLayers: HTMLSpanElement[] = [];
-                    outterLayers.push(this.addSpan(varnode, "(" + this.prettyPrint(ast.name)));
+                    outterLayers.push(this.addSpan(varnode, ast.name === "{|" ? "{" : ("(" + this.prettyPrint(ast.name))));
                     const varast = this.ast2HTML(idx, ast.nodes[0], [{ type: "quantvar", name: "quantvar" }]);
                     varast.classList.add("boundedVar");
                     outterLayers.push(varnode.appendChild(varast));
-                    outterLayers.push(this.addSpan(varnode, ":"));
-                    varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], [ast, ...scopes]));
-                    outterLayers.push(this.addSpan(varnode, ")"));
+                    if (ast.name === "{|") {
+                        outterLayers.push(this.addSpan(varnode, this.prettyPrint("@")));
+                        varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], scopes));
+                        outterLayers.push(this.addSpan(varnode, "|"));
+                        varnode.appendChild(this.ast2HTML(idx, ast.nodes[2], [ast, ...scopes]));
+                        outterLayers.push(this.addSpan(varnode, "}"));
+                    } else {
+                        outterLayers.push(this.addSpan(varnode, ":"));
+                        varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], [ast, ...scopes]));
+                        outterLayers.push(this.addSpan(varnode, ")"));
+                    }
 
                     // hightlight constrained vars
 
@@ -446,7 +459,9 @@ export class FSGui {
             this.formalSystem.generateDeductionNameTokens(id, 0, res);
             for (const it of res) {
                 if (it[0] === "." && !this.deductions.includes(it)) return null;
-                if (this.formalSystem.deductions[it] && !this.deductions.includes(it)) return null;
+                if (this.formalSystem.deductions[it] && !this.deductions.includes(it) && !(
+                    it.match(/^d([1-9][0-9]+)$/) && this.formalSystem.fastmetarules.includes("#")
+                )) return null;
             }
 
             try {

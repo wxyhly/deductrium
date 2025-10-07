@@ -277,7 +277,7 @@ export class FSCmd {
                 const fsd = Object.assign({}, fs.deductions);
                 const prop = fs.propositions.slice(0);
                 try {
-                    fs.fastmetarules = "cvuqe><:";
+                    fs.fastmetarules = "cvuqe><:#";
                     fs.expandMacroWithDefaultValue(item);
                     fs.fastmetarules = fmr;
                     fs.deductions = fsd;
@@ -299,7 +299,7 @@ export class FSCmd {
                 const fsd = Object.assign({}, fs.deductions);
                 const prop = fs.propositions.slice(0);
                 try {
-                    fs.fastmetarules = "cvuqe><:";
+                    fs.fastmetarules = "cvuqe><:#";
                     fs.expandMacroWithProp(Number(p));
                     fs.fastmetarules = fmr;
                     fs.deductions = fsd;
@@ -369,7 +369,7 @@ export class FSCmd {
             if (!formalSystem.propositions[cmdBuffer[1]]) throw TR("该定理不存在");
             const fmr = formalSystem.fastmetarules;
             const fsd = Object.assign({}, formalSystem.deductions);
-            formalSystem.fastmetarules = "cvuqe><:";
+            formalSystem.fastmetarules = "cvuqe><:#";
             formalSystem.inlineMacroInProp(Number(cmdBuffer[1]));
             formalSystem.fastmetarules = fmr;
             formalSystem.deductions = fsd;
@@ -658,6 +658,7 @@ export class FSCmd {
             } catch (e) {
                 this.clearCmdBuffer();
                 hintText.innerText = TR(`解析错误：`) + e;
+                this.cmdBuffer.push("hyp");
                 return;
             }
         }

@@ -123,6 +123,7 @@ export function initFormalSystem(creative: boolean) {
         // "d0": ["⊢0={}", "集合算数连接", null],
 
         "dPow": ["⊢($z@Pow($x))<>($z<$x)", "集合符号定义", null],
+        "d{|}": ["⊢$x@{$x@#nf($y,$x)|$z}<>$x@#nf($y,$x)&$z", "集合符号定义", null],
 
         "domega": ["⊢Vn:(n@omega<> (n={} | Ep:(p@omega & n=pU{p} & (Vx:(x@p>(x={}|Ey:(y@p&x=yU{y})))))))", "集合符号定义", null],
         "dRel": ["⊢VaVbVr:(Rel(a,r,b) <> Ef:(f@r&f={a,{a,b}}))", "集合符号定义", null],

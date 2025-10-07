@@ -266,7 +266,7 @@ export class FormalSystem {
         }
     }
     isNameCanBeNewConst(name) {
-        if (this.consts.has(name))
+        if (assert.isConst(name, this.consts))
             return `"${name}" ` + TR(`已有定义，无法重复定义`);
         for (const [idx, d] of Object.entries(this.deductions)) {
             if (assert.isNameQuantVarIn(name, d.value))
@@ -353,6 +353,9 @@ export class FormalSystem {
                 return [":" + n + "," + n2, this.deductions[this.metaCombineTheorem(n, n2, "元规则生成*")], c];
             case ",": throw ",";
             default:
+                if (tokens[cursor].match(/^d[1-9][0-9]+$/) && unlocked.includes("#")) {
+                    this.generateNatLiteralDef(tokens[cursor]);
+                }
                 if (this.deductions[tokens[cursor]])
                     return [tokens[cursor], this.deductions[tokens[cursor]], cursor + 1];
                 throw "null";
@@ -374,6 +377,13 @@ export class FormalSystem {
                 throw TR(`使用元规则生成推理规则`) + name + TR(`时：意外出现了“,”`);
             throw TR(`使用元规则生成推理规则`) + name + TR(`时：`) + e;
         }
+    }
+    generateNatLiteralDef(name) {
+        const n = name.match(/^d([1-9][0-9]+)$/);
+        if (!n || !isFinite(Number(n[1])))
+            return;
+        const num = Number(n[1]);
+        this.addDeduction(name, parser.parse(`⊢${num} =S(${num - 1})`), "算数符号定义");
     }
     deduct(step, inlineMode) {
         const { conditionIdxs, deductionIdx, replaceValues } = step;
@@ -427,7 +437,7 @@ export class FormalSystem {
             throw TR("结论中出现语法错误：") + e;
         }
         try {
-            assert.expand(replacedConclusion, true);
+            assert.expand(replacedConclusion, false);
         }
         catch (e) {
             // assertion in conclusion failed (can be T or U, only F to fail)
@@ -793,7 +803,7 @@ export class FormalSystem {
             throw "以#开头的函数被系统保留";
         if (fnAst.name.startsWith("$"))
             throw "以$开头的函数被系统保留";
-        const fnCheckRes = this.fns.has(fnAst.name) || this.consts.has(fnAst.name);
+        const fnCheckRes = this.fns.has(fnAst.name) || assert.isConst(fnAst.name, this.consts);
         if (fnCheckRes)
             throw `匹配条件##newfn($$0)时：$$0已有定义`;
         const deduction = astmgr.clone(this.metaRules["f"].value.nodes[1].nodes[0].nodes[0]);

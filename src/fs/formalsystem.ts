@@ -255,7 +255,7 @@ export class FormalSystem {
         }
     }
     isNameCanBeNewConst(name: string) {
-        if (this.consts.has(name)) return `"${name}" ` + TR(`已有定义，无法重复定义`);
+        if (assert.isConst(name, this.consts)) return `"${name}" ` + TR(`已有定义，无法重复定义`);
         for (const [idx, d] of Object.entries(this.deductions)) {
             if (assert.isNameQuantVarIn(name, d.value)) return `"${name}" 已作为量词中的约束变量出现在了规则${idx}中，无法定义为常量符号`;
         }
@@ -312,7 +312,11 @@ export class FormalSystem {
                 return [":" + n + "," + n2, this.deductions[this.metaCombineTheorem(n, n2, "元规则生成*")], c];
 
             case ",": throw ",";
-            default: if (this.deductions[tokens[cursor]]) return [tokens[cursor], this.deductions[tokens[cursor]], cursor + 1];
+            default:
+                if (tokens[cursor].match(/^d[1-9][0-9]+$/) && unlocked.includes("#")) {
+                    this.generateNatLiteralDef(tokens[cursor]);
+                }
+                if (this.deductions[tokens[cursor]]) return [tokens[cursor], this.deductions[tokens[cursor]], cursor + 1];
                 throw "null";
         }
     }
@@ -328,6 +332,12 @@ export class FormalSystem {
             if (e === ",") throw TR(`使用元规则生成推理规则`) + name + TR(`时：意外出现了“,”`);
             throw TR(`使用元规则生成推理规则`) + name + TR(`时：`) + e;
         }
+    }
+    generateNatLiteralDef(name: string) {
+        const n = name.match(/^d([1-9][0-9]+)$/);
+        if (!n || !isFinite(Number(n[1]))) return;
+        const num = Number(n[1]);
+        this.addDeduction(name, parser.parse(`⊢${num} =S(${num - 1})`), "算数符号定义");
     }
     deduct(step: DeductionStep, inlineMode?: DeductInlineMode | ((step: DeductionStep, conclusion: AST) => DeductInlineMode)) {
         const { conditionIdxs, deductionIdx, replaceValues } = step;
@@ -380,7 +390,7 @@ export class FormalSystem {
             assert.checkGrammer(replacedConclusion, "p", this.consts);
             // grammar in conclusion failed
         } catch (e) { throw TR("结论中出现语法错误：") + e }
-        try { assert.expand(replacedConclusion, true); } catch (e) {
+        try { assert.expand(replacedConclusion, false); } catch (e) {
             // assertion in conclusion failed (can be T or U, only F to fail)
             throw errorMsg + TR(`结论中：`) + e;
         }
@@ -561,16 +571,16 @@ export class FormalSystem {
                     s, d.conditions[0]
                 ]
             }); pidx++;
-            const vd = this.generateDeduction(("v>" + idx).replace("><",""));
+            const vd = this.generateDeduction(("v>" + idx).replace("><", ""));
             this.deduct({
-                deductionIdx: ("v>" + idx).replace("><",""),
+                deductionIdx: ("v>" + idx).replace("><", ""),
                 replaceValues: vd.replaceNames.map(e => ({ type: "replvar", name: e })),
                 conditionIdxs: []
             }); pidx++;
             this.deduct({
                 deductionIdx: ".Emp",
                 replaceValues: [],
-                conditionIdxs: [1,0]
+                conditionIdxs: [1, 0]
             }); pidx++;
 
 
@@ -710,7 +720,7 @@ export class FormalSystem {
         if (fnAst.type !== "replvar") throw "$$0只能为纯变量名";
         if (fnAst.name.startsWith("#")) throw "以#开头的函数被系统保留";
         if (fnAst.name.startsWith("$")) throw "以$开头的函数被系统保留";
-        const fnCheckRes = this.fns.has(fnAst.name) || this.consts.has(fnAst.name);
+        const fnCheckRes = this.fns.has(fnAst.name) || assert.isConst(fnAst.name, this.consts);
         if (fnCheckRes) throw `匹配条件##newfn($$0)时：$$0已有定义`;
         const deduction = astmgr.clone(this.metaRules["f"].value.nodes[1].nodes[0].nodes[0]);
         const replTable = {

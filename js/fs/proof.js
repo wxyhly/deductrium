@@ -16,7 +16,7 @@ export class Proof {
         const hypEnums = 1 << vars.length;
         const proofEnumsTable = [];
         const fastrules = this.fs.fastmetarules;
-        this.fs.fastmetarules = "cvuqe><:";
+        this.fs.fastmetarules = "cvuqe><:#";
         try {
             for (let i = 0; i < hypEnums; i++) {
                 const [t, p] = this.enumProve(ast, vars, i);
