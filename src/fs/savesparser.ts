@@ -51,7 +51,7 @@ export class SavesParser {
         const userD = {};
         for (const [n, d] of Object.entries(fs.deductions)) {
             if (!d.from.endsWith("*")) continue;
-            if (n.startsWith("c") || n.startsWith("<") || n.startsWith(">") || n.startsWith("v") || n.startsWith("u")|| n.startsWith("e")) {
+            if (n.startsWith("c") || n.startsWith("<") || n.startsWith(">") || n.startsWith("v") || n.startsWith("u") || n.startsWith("e") || n.startsWith(".")) {
                 continue;
             }
             userD[n] = this.serializeDeduction(d);
@@ -89,5 +89,5 @@ export class SavesParser {
         gui.updateDeductionList();
     }
 
-    
+
 }

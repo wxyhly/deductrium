@@ -460,7 +460,7 @@ export class FSGui {
     getDeduction(id) {
         if (id === ".")
             return this.getDeduction(this.cmd.lastDeduction);
-        if (id[0] === "." && !this.deductions.includes(id))
+        if (id[0] === "." && !this.deductions.includes(id) && !(this.formalSystem.fastmetarules.includes("#") && this.formalSystem.generateNatLiteralOp(id)))
             return null;
         if ("cuv".includes(id[0]) && !this.formalSystem.fastmetarules.includes(id[0])) {
             if (id[0] === "v" && this.formalSystem.fastmetarules.includes("q")) {
@@ -474,9 +474,9 @@ export class FSGui {
             const res = [];
             this.formalSystem.generateDeductionNameTokens(id, 0, res);
             for (const it of res) {
-                if (it[0] === "." && !this.deductions.includes(it))
+                if (it[0] === "." && !this.deductions.includes(it) && !(this.formalSystem.fastmetarules.includes("#") && this.formalSystem.generateNatLiteralOp(it)))
                     return null;
-                if (this.formalSystem.deductions[it] && !this.deductions.includes(it) && !(it.match(/^d([1-9][0-9]+)$/) && this.formalSystem.fastmetarules.includes("#")))
+                if (this.formalSystem.deductions[it] && !this.deductions.includes(it) && !((it.match(/^d([1-9][0-9]+)$/) || this.formalSystem.generateNatLiteralOp(it)) && this.formalSystem.fastmetarules.includes("#")))
                     return null;
             }
             try {

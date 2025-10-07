@@ -356,6 +356,7 @@ export class FormalSystem {
                 if (tokens[cursor].match(/^d[1-9][0-9]+$/) && unlocked.includes("#")) {
                     this.generateNatLiteralDef(tokens[cursor]);
                 }
+                this.generateNatLiteralOp(tokens[cursor]);
                 if (this.deductions[tokens[cursor]])
                     return [tokens[cursor], this.deductions[tokens[cursor]], cursor + 1];
                 throw "null";
@@ -382,8 +383,43 @@ export class FormalSystem {
         const n = name.match(/^d([1-9][0-9]+)$/);
         if (!n || !isFinite(Number(n[1])))
             return;
+        if (this.deductions[name])
+            return name;
         const num = Number(n[1]);
-        this.addDeduction(name, parser.parse(`⊢${num} =S(${num - 1})`), "算数符号定义");
+        return this.addDeduction(name, parser.parse(`⊢${num} =S(${num - 1})`), "算数符号定义");
+    }
+    generateNatLiteralOp(name, vnum = 0) {
+        const vpre = "v".repeat(vnum);
+        const vars = [];
+        let V = "";
+        for (let i = 0; i < vnum; i++) {
+            vars.push({ type: "replvar", name: "$" + i });
+            V += "V$" + i + ":";
+        }
+        const n = name.match(/^\.([1-9][0-9]*)([\+\*])([1-9][0-9]*)$/);
+        if (!n || !isFinite(Number(n[1])) || !isFinite(Number(n[3])))
+            return;
+        if (this.deductions[vpre + name])
+            return vpre + name;
+        const a = Number(n[1]);
+        const b = Number(n[3]);
+        const op = n[2];
+        const steps = [
+            b > 1 ?
+                { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + "." + a + op + (b - 1) } :
+                { conditionIdxs: [], replaceValues: [...vars, { type: "replvar", name: String(a) }], deductionIdx: vpre + "d" + op + "1" },
+            { conditionIdxs: [], replaceValues: [...vars, { type: "replvar", name: String(a) }, { type: "replvar", name: String(b - 1) }], deductionIdx: vpre + "d" + op + "2" },
+            { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + "d" + b },
+            op === "+" ? { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + "d" + (a + b) } : b === 1 ? { conditionIdxs: [], replaceValues: [{ type: "replvar", name: String(a) }], deductionIdx: ".0+" } :
+                { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + `.${a * (b - 1)}+${a}` },
+            { conditionIdxs: [-4, -3], replaceValues: [{ type: "replvar", name: "0" }], deductionIdx: vpre + "<<a8" },
+            op === "+" ? { conditionIdxs: [-2], replaceValues: [], deductionIdx: vpre + ".=s" } : { conditionIdxs: [-1, -2], replaceValues: [], deductionIdx: vpre + ".=t" },
+            { conditionIdxs: [-4], replaceValues: [], deductionIdx: vpre + ".=s" },
+            { conditionIdxs: [-1, -3], replaceValues: [{ type: "replvar", name: "0" }], deductionIdx: vpre + "<<a8" },
+            op === "+" ? { conditionIdxs: [-3, -1], replaceValues: [{ type: "replvar", name: "0" }], deductionIdx: vpre + "<<a8" } :
+                { conditionIdxs: [-1, -5], replaceValues: [], deductionIdx: vpre + ".=t" }
+        ];
+        return this.addDeduction(vpre + name, parser.parse(`⊢${V}(${a}${op}${b}=${op === "+" ? a + b : a * b})`), "元规则生成*", steps, new Set());
     }
     deduct(step, inlineMode) {
         const { conditionIdxs, deductionIdx, replaceValues } = step;
@@ -666,10 +702,14 @@ export class FormalSystem {
         // mp
         if (this.deductions["v" + idx])
             return "v" + idx;
+        const num = idx.match(/^(v*)/)?.[1]?.length;
+        if (num >= 0 && this.generateNatLiteralOp(idx.slice(num), 1 + num)) {
+            return "v" + idx;
+        }
         const d = this.generateDeduction(idx);
         const s = this._findNewReplName(idx);
         // axiom
-        if (!d.steps?.length) {
+        if (!d.steps?.length && !d.conditions?.length) {
             return this.metaQuantifyAxiomSchema(idx, "元规则生成*");
         }
         // macro
