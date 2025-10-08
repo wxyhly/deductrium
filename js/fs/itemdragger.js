@@ -18,8 +18,36 @@ export class ListDragger {
             };
             idx.ontouchstart = (te) => {
                 const touch = te.touches[0];
-                te.preventDefault();
-                this.startDrag(idx, { clientX: touch.clientX, clientY: touch.clientY });
+                const startX = touch.clientX;
+                const startY = touch.clientY;
+                let longPressTimer = null;
+                let moved = false;
+                longPressTimer = window.setTimeout(() => {
+                    if (!moved) {
+                        this.startDrag(idx, { clientX: startX, clientY: startY });
+                    }
+                }, 300);
+                const cancel = () => {
+                    if (longPressTimer) {
+                        clearTimeout(longPressTimer);
+                        longPressTimer = null;
+                    }
+                    document.removeEventListener("touchmove", moveCheck);
+                    document.removeEventListener("touchend", cancel);
+                    document.removeEventListener("touchcancel", cancel);
+                };
+                const moveCheck = (ev) => {
+                    const t = ev.touches[0];
+                    const dx = t.clientX - startX;
+                    const dy = t.clientY - startY;
+                    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+                        moved = true;
+                        cancel();
+                    }
+                };
+                document.addEventListener("touchmove", moveCheck);
+                document.addEventListener("touchend", cancel);
+                document.addEventListener("touchcancel", cancel);
             };
         };
         if (!dom) {
