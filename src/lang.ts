@@ -247,7 +247,7 @@ class LangMgr {
         "推理已取消\n": "Deduction canceled\n",
         "请输入要删除的推理规则名称": "Please enter the rule name to delete", "列表中无此规则": "The rule does not exist in the list", "删除推理规则失败：": "Failed to delete rule: ", "请输入假设命题p": "Please enter the hypothesis proposition p", "，或按“Esc”结束": ", or press \"Esc\" to end", "\n请点选定理！": "\nPlease select a proposition!", "\n请点选推理规则！": "\nPlease select a deduction rule!", "请输入在哪个规则后方插入新规则。若直接输入新规则名称，则默认插入至规则表最后": "Please enter the rule after which to insert the new rule. If you enter the new rule name directly, it will be inserted at the end of the rule table by default", "请输入新规则名称": "Please enter the new rule name",
         "以.<>acdempuv开头的推理规则名称由系统保留，请重新命名": "Rule names starting with .<>acdempuv are reserved by the system, please rename",
-        "推理规则名称中禁止出现由系统保留的“:”或“,”符号，请重新命名": "Rule names must not contain the system-reserved symbols “:” or “,”. Please rename it.",
+        "推理规则名称中禁止出现空格或由系统保留的“:”或“,”符号，请重新命名": "Rule names must not contain space or the system-reserved symbols “:” or “,”. Please rename it.",
         "推理规则名称": "Deduction rule name", "已存在或被系统保留，请重新命名": "already exists or is reserved by system, please rename",
         // fs/assertion.ts
         "替换表达式中指定的匹配序号": "The specified match index in the replace expression",

@@ -60,17 +60,21 @@
 .rp-nth * {
     color: blue;
 }
-span.omit-nf{
+
+span.omit-nf {
     border-bottom: lightgreen solid;
-    background-color: rgba(0,255,0,0.1);
+    background-color: rgba(0, 255, 0, 0.1);
     border-radius: 4px;
 }
-span.omit-nf.rp{
+
+span.omit-nf.rp {
     border-bottom: lightpink solid;
-    background-color: rgba(255,0,255,0.1);
+    background-color: rgba(255, 0, 255, 0.1);
     border-radius: 4px;
 }
-sub.omit-nf,sup.omit-nf{
+
+sub.omit-nf,
+sup.omit-nf {
     font-size: xx-small;
 }
 
@@ -146,6 +150,39 @@ h1 {
     background-color: ivory;
     text-align: center;
     line-height: 25px;
+}
+
+.dragging {
+    opacity: 0.4;
+}
+
+.dragging-bottom {
+    border-bottom: 2px solid orange;
+}
+
+.dragging-top {
+    border-top: 2px solid orange;
+}
+
+/* 占位符：用单个元素跨整行 */
+.row-placeholder {
+    border: 2px dashed #bbb;
+    background: #fafafa;
+    box-sizing: border-box;
+}
+
+/* 拖拽时的浮层（ghost） */
+.drag-ghost {
+    position: absolute;
+    pointer-events: none;
+    z-index: 2000;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+    opacity: 0.95;
+}
+
+/* 在拖拽中禁止选中文本 */
+.dragging-active {
+    user-select: none !important;
 }
 
 .macro-substep {

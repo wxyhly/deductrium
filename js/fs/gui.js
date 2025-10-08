@@ -2,6 +2,7 @@ import { FSCmd } from "./cmd.js";
 import { initFormalSystem } from "./initial.js";
 import { FormalSystem } from "./formalsystem.js";
 import { TR } from "../lang.js";
+import { ListDragger } from "./itemdragger.js";
 export class FSGui {
     formalSystem = new FormalSystem();
     actionInput;
@@ -20,6 +21,7 @@ export class FSGui {
     enableMIFFT_RP = false;
     onStateChange = () => { };
     onchangeOmitNF = () => { };
+    dragger = new ListDragger(document.getElementById("deduct-list"));
     isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
     cmd;
     constructor(propositionList, deductionList, metaRuleList, actionInput, hintText, displayPLayerSelect, cmdBtns, creative) {
@@ -68,6 +70,22 @@ export class FSGui {
                 }
             });
         });
+        this.dragger.onExecute = (src, dst) => {
+            const srcPos = this.deductions.indexOf(src);
+            let dstPos = this.deductions.indexOf(dst);
+            if (dstPos > srcPos)
+                dstPos--;
+            if (srcPos === -1)
+                return;
+            if (dstPos === -1 && dst !== " ")
+                return;
+            const moved = this.deductions.splice(this.deductions.indexOf(src), 1)[0];
+            if (dstPos === -1)
+                this.deductions.push(moved);
+            else
+                this.deductions.splice(dstPos, 0, moved);
+            this.updateDeductionList();
+        };
         if (creative) {
             this.initCreative();
         }
@@ -423,6 +441,7 @@ export class FSGui {
         this.updateGuiList("", ds, this.deductionList, (p) => (this.displayDs.has(p.from) || (this.displayDs.has("添加的规则") && p.from.endsWith("*"))), (p, itInfo, it) => {
             itInfo[0].innerText = TR(p.from).replace(/s$/, "").replaceAll("<", "&lt;").replaceAll(">", "&gt;") + (p.steps?.length ? TR("[宏]") : "");
         }, true, this.deductions);
+        this.dragger.attachIdxListener();
     }
     updateMetaRuleList(refresh) {
         this.updateGuiList("m", this.formalSystem.metaRules, this.metaRuleList, (p, idx) => this.metarules.includes(idx), (p, itInfo, it) => {
