@@ -347,10 +347,13 @@ export class Game {
                     this.fsGui.addToDeductions("d*1", "d+2");
                     this.fsGui.addToDeductions("d*2", "d*1");
                     return;
+                case ".filter":
+                    return this.fsGui.addToDeductions(".filter");
                 case "dPrime":
                     this.fsGui.addToDeductions("dPrime", "d*2");
                     return;
-
+                case "natop":
+                    return this.fsGui.formalSystem.fastmetarules += "#";
                 case "omit-fn":
                     document.getElementById("wrap-simpl-sysfn").classList.remove("hide");
                     this.fsGui.onchangeOmitNF(); return;
