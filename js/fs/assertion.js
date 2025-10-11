@@ -5,7 +5,7 @@ const logicSyms = ["<>", ">", "~", "&", "|"];
 const quantSyms = ["E", "E!", "V"];
 const verbSyms = ["@", "=", "<"];
 const verbFns = ["Prime", "Equiv", "Order", "WellOrder", "Rel", "Point", "Line", "Plane", "Between", "Angle"];
-const fnSyms = ["Pair", "Union", "Pow", "U", "I", "S", "+", "-", "*", "/", "{"];
+const fnSyms = ["Pair", "Union", "Pow", "U", "I", "S", "+", "-", "*", "X", "/", "{", "(", "Pr1", "Pr2"];
 import { ASTParser } from "./astparser.js";
 const T = 1;
 const F = -1;
@@ -247,7 +247,7 @@ export class AssertionSystem {
             return U;
         }
         // n({x@y|z}) <=> n(y) && vn(z,x)
-        if (ast.type === "sym" && ast.name === "{|") {
+        if (ast.type === "sym" && (ast.name === "{|" || ast.name === "|}")) {
             return and(this.nf(name, ast.nodes[1], quants, nameIsNot), this.nf(name, ast.nodes[2], [ast.nodes[0], ...quants], nameIsNot));
         }
         const ignore = this.ignorePropagateAst(ast);
@@ -342,12 +342,12 @@ export class AssertionSystem {
                 return false;
             if (quantSyms.includes(ast.name))
                 return false;
-            if (ast.name === "{|")
+            if (ast.name === "{|" || ast.name === "|}")
                 return true;
             return true;
         }
         if (ast.type === "fn") {
-            if (ast.name === "{")
+            if (ast.name === "{" || ast.name === "(")
                 return true;
             if (ast.name.match(/^#v*nf/) || ast.name.match(/^#c?rp/)) {
                 return this.getAstType(ast.nodes[0], varLists);
@@ -486,8 +486,9 @@ export class AssertionSystem {
             scope.push(qp[0]);
             return this.getSubAstMatchTimes(qp[1], subAst, nth, dst, scope, res, right);
         }
-        if (ast.type === "sym" && ast.name === "{|") {
-            if (!right) {
+        if (ast.type === "sym" && (ast.name === "{|" || ast.name === "|}")) {
+            if ((!right) === (ast.name === "{|")) {
+                // {0@1|2}
                 const result = this.getSubAstMatchTimes(ast.nodes[1], subAst, nth, dst, scope.slice(0), res, right);
                 // if found exact nth
                 if (nth !== -1 && res.length === nth + 1)
@@ -499,6 +500,7 @@ export class AssertionSystem {
                 return this.getSubAstMatchTimes(ast.nodes[2], subAst, nth, dst, scope, res, right);
             }
             else {
+                // {2|0@1}
                 const result = this.getSubAstMatchTimes(ast.nodes[2], subAst, nth, dst, [ast.nodes[0], ...scope], res, right);
                 // if found exact nth
                 if (nth !== -1 && res.length === nth + 1)
@@ -574,8 +576,8 @@ export class AssertionSystem {
             return this.getSubAstMatchTimesAndReplace(qp[1], subAst, newAst, nth, scope, res, right);
         }
         const backup = astmgr.clone(ast);
-        if (ast.type === "sym" && ast.name === "{|") {
-            if (!right) {
+        if (ast.type === "sym" && (ast.name === "{|" || ast.name === "|}")) {
+            if ((!right) === (ast.name === "{|")) {
                 let subres = this.getSubAstMatchTimesAndReplace(ast.nodes[1], subAst, newAst, nth, scope.slice(0), res, right);
                 if (subres === false) {
                     astmgr.assign(ast, backup);
@@ -631,6 +633,8 @@ export class AssertionSystem {
         if (ast.type === "sym") {
             if (ast.name === "{|")
                 return idx <= 1;
+            if (ast.name === "|}")
+                return true;
             if (quantSyms.includes(ast.name))
                 return idx === 0;
             return !logicSyms.includes(ast.name);
@@ -737,7 +741,7 @@ export class AssertionSystem {
                 this.addNf(ast, quants, vars);
                 return;
             }
-            if (sub.type === "sym" && sub.name === "{|") {
+            if (sub.type === "sym" && (ast.name === "{|" || ast.name === "|}")) {
                 this.addNf(sub.nodes[1], quants, vars);
                 this.addNf(sub.nodes[2], [sub.nodes[0], ...quants], vars);
                 return this.expand(ast, isItem, varLists);
@@ -818,7 +822,7 @@ export class AssertionSystem {
                     }
                 }
             }
-            if (sub.type === "sym" && sub.name === "{|" && nth === -1) {
+            if (sub.type === "sym" && (ast.name === "{|" || ast.name === "|}") && nth === -1) {
                 // #rp({x@y|z}) === {x@rp(y)|rp(Vx:z)},then (Vx:rp(z)) => rp(z)
                 const backup = astmgr.clone(ast);
                 const [q, item, prop] = sub.nodes;
@@ -1036,6 +1040,14 @@ export class AssertionSystem {
                 this.checkGrammer(ast.nodes[0], "v", consts);
                 this.checkGrammer(ast.nodes[1], "i", consts);
                 this.checkGrammer(ast.nodes[2], "p", consts);
+                return;
+            }
+            else if (ast.name === "|}") {
+                if (type !== "i")
+                    throw TR("意外出现集合表达式");
+                this.checkGrammer(ast.nodes[0], "v", consts);
+                this.checkGrammer(ast.nodes[1], "i", consts);
+                this.checkGrammer(ast.nodes[2], "i", consts);
                 return;
             }
             else if (quantSyms.includes(ast.name)) {

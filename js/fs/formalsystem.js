@@ -3,9 +3,12 @@ import { AssertionSystem } from "./assertion.js";
 import { Proof } from "./proof.js";
 import { ASTParser } from "./astparser.js";
 import { TR } from "../lang.js";
+import { RuleParser } from "./metarule.js";
 const astmgr = new ASTMgr;
 const assert = new AssertionSystem;
 const parser = new ASTParser;
+const r = new RuleParser();
+r.parse("m:d1,d1");
 export class FormalSystem {
     deductions = {};
     metaRules = {};
@@ -132,8 +135,6 @@ export class FormalSystem {
     addHypothese(m, expandMode) {
         m = astmgr.clone(m);
         assert.checkGrammer(m, "p", this.consts);
-        if (this.propositions.findIndex(e => e.from) !== -1)
-            throw TR("无法添加假设条件：假设须添加在其它定理之前");
         if (!expandMode && this._hasLocalNames(m))
             throw TR("假设中不能出现以#号开头的局部变量");
         try {
@@ -144,7 +145,12 @@ export class FormalSystem {
         }
         if (!expandMode && this._hasRpFn(m))
             throw TR("假设中不能包含未化简的#rp函数，否则匹配机制将失效");
-        return this.propositions.push({ value: m, from: null }) - 1;
+        this.propositions.push({ value: m, from: null });
+        const dst = this.propositions.findIndex(e => e.from);
+        if (dst !== -1) {
+            this.moveProposition(this.propositions.length - 1, dst);
+        }
+        return this.propositions.length - 1;
     }
     // find #0 in ast
     _hasLocalNames(ast) {
@@ -264,6 +270,68 @@ export class FormalSystem {
                 this.propositions.pop();
             }
         }
+    }
+    _getNewIndex(i, j, k) {
+        if (k === i) {
+            return j > i ? j - 1 : j;
+        }
+        if (i < j && k > i && k < j) {
+            return k - 1;
+        }
+        if (i > j && k >= j && k < i) {
+            return k + 1;
+        }
+        return k;
+    }
+    moveProposition(src, dst) {
+        if (dst === -1)
+            dst = this.propositions.length;
+        if (src === dst || dst === src + 1)
+            return;
+        // 0 1 2 | 3 4 
+        const hyps = this.propositions.findIndex(e => e.from);
+        if (!this.propositions[src].from) {
+            if (hyps !== -1 && dst > hyps) {
+                const sv = this.propositions[src];
+                sv.from = { conditionIdxs: [], replaceValues: [], deductionIdx: "" };
+                try {
+                    this.moveProposition(src, -1);
+                    this.propositions.pop();
+                }
+                catch (e) {
+                    throw TR("无法移动假设条件：假设须位于其它定理之前");
+                }
+                throw TR("被移动的假设条件被删除：假设须位于其它定理之前") + " - " + parser.stringify(sv.value);
+            }
+        }
+        else if (dst < hyps) {
+            throw TR("无法移动假设条件：假设须位于其它定理之前");
+        }
+        for (let i = Math.min(src, dst); i < this.propositions.length; i++) {
+            const from = this.propositions[i]?.from;
+            if (!from)
+                continue;
+            const ni = this._getNewIndex(src, dst, i);
+            for (const j of from.conditionIdxs) {
+                const nj = this._getNewIndex(src, dst, j);
+                console.assert(nj !== ni);
+                if (nj > ni)
+                    throw TR("非法移动：推出定理") + "p" + i + TR("所依赖的定理") + "p" + j + TR("无法调整至其后方");
+            }
+        }
+        for (let i = Math.min(src, dst); i < this.propositions.length; i++) {
+            const from = this.propositions[i]?.from;
+            if (!from)
+                continue;
+            from.conditionIdxs = from.conditionIdxs.map(e => this._getNewIndex(src, dst, e));
+        }
+        if (dst > src)
+            dst--;
+        const moved = this.propositions.splice(src, 1)[0];
+        if (dst === this.propositions.length)
+            this.propositions.push(moved);
+        else
+            this.propositions.splice(dst, 0, moved);
     }
     isNameCanBeNewConst(name) {
         if (assert.isConst(name, this.consts))
@@ -658,7 +726,6 @@ export class FormalSystem {
         return this.addDeduction("d" + constAst.name, deduction, from);
     }
     metaExistTheorem(idx, from) {
-        // Hilbert公理体系还有哪些有用的比较通用的元定理，如我知道演绎元定理、概括元定理。
         const d = this.generateDeduction(idx);
         if (d.conditions.length !== 1)
             throw TR("匹配条件推理规则($$0 ⊢ $$1)失败");
@@ -687,6 +754,43 @@ export class FormalSystem {
                 deductionIdx: ".Emp",
                 replaceValues: [],
                 conditionIdxs: [1, 0]
+            });
+            pidx++;
+            const ret = this.addMacro("e" + idx, from);
+            this.propositions = oldP;
+            return ret;
+        }
+        catch (e) {
+            this.propositions = oldP;
+            throw e;
+        }
+    }
+    metaTransitTheorem(idx, from, mode) {
+        const d = this.generateDeduction(idx);
+        // |- a<>b  =>  x<>a |- x<>b
+        if (d.conditions.length !== 0)
+            throw TR("匹配条件推理规则($$0 ⊢ $$1)失败");
+        // todo:
+        // if (this.deductions["e" + idx]) return "e" + idx;
+        const oldP = this.propositions;
+        const sym = d.conclusion.name;
+        try {
+            this.removePropositions();
+            const s = this._findNewReplName(idx);
+            let pidx = 0;
+            // |- Ea   |- v(a>b)  |- Ea > Eb
+            this.addHypothese({ type: "sym", name: sym, nodes: [s, d.conclusion.nodes[0]] });
+            pidx++;
+            this.deduct({
+                deductionIdx: idx,
+                replaceValues: d.replaceNames.map(e => ({ type: "replvar", name: e })),
+                conditionIdxs: []
+            });
+            pidx++;
+            this.deduct({
+                deductionIdx: sym === ">" ? ".t" : sym === "<>" ? ".<>t" : sym === "=" ? ".=t" : '',
+                replaceValues: [],
+                conditionIdxs: [0, 1]
             });
             pidx++;
             const ret = this.addMacro("e" + idx, from);

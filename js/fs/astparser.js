@@ -1,7 +1,7 @@
 import { TR } from "../lang.js";
 export class ASTParser {
     keywords = ["E!", "⊢M", "<>", "Union", "{}", "Equiv"];
-    symChar = "VEMUI()@~^<>|&=,;:[]!⊢+-*/{}";
+    symChar = "VEMUIX()@~^<>|&=,;:[]!⊢+-*/{}";
     ast;
     cursor = 0;
     tokens;
@@ -11,7 +11,7 @@ export class ASTParser {
         if (ast.type === "fn") {
             if (ast.name === "{")
                 return `{${nd.map(n => this.stringifyTight(n)).join(",")}}`;
-            return `${ast.name}(${nd.map(n => this.stringifyTight(n)).join(",")})`;
+            return `${ast.name === "(" ? "" : ast.name}(${nd.map(n => this.stringifyTight(n)).join(",")})`;
         }
         if (ast.type === "replvar") {
             return ast.name;
@@ -26,7 +26,8 @@ export class ASTParser {
             case "V":
             case "E":
             case "E!": return `(${ast.name}${this.stringifyTight(nd[0])}:${this.stringifyTight(nd[1], true)})`;
-            case "{|": return `{${this.stringifyTight(nd[0])}@${this.stringifyTight(nd[1])} | ${this.stringifyTight(nd[2])}}`;
+            case "{|": return `{${this.stringifyTight(nd[0])}@${this.stringifyTight(nd[1])}|${this.stringifyTight(nd[2])}}`;
+            case "|}": return `{${this.stringifyTight(nd[2])}|${this.stringifyTight(nd[0])}@${this.stringifyTight(nd[1])}}`;
             default:
                 const sym = ast.name;
                 const c = `${this.stringifyTight(nd[0], true)}${sym}${this.stringifyTight(nd[1], true)}`;
@@ -38,7 +39,7 @@ export class ASTParser {
         if (ast.type === "fn") {
             if (ast.name === "{")
                 return `{${nd.map(n => this.stringify(n)).join(", ")}}`;
-            return `${ast.name}(${nd.map(n => this.stringify(n)).join(", ")})`;
+            return `${ast.name === "(" ? "" : ast.name}(${nd.map(n => this.stringify(n)).join(", ")})`;
         }
         if (ast.type === "replvar") {
             return ast.name;
@@ -53,6 +54,7 @@ export class ASTParser {
             case "E":
             case "E!": return `(${ast.name}${this.stringify(nd[0])}: ${this.stringify(nd[1])})`;
             case "{|": return `{${this.stringify(nd[0])}@${this.stringify(nd[1])} | ${this.stringify(nd[2])}}`;
+            case "|}": return `{${this.stringify(nd[2])} | ${this.stringify(nd[0])}@${this.stringify(nd[1])}}`;
             default:
                 return `(${this.stringify(nd[0])} ${ast.name} ${this.stringify(nd[1])})`;
         }
@@ -148,9 +150,16 @@ export class ASTParser {
             }
         }
         else if (this.acceptSym("(")) {
-            let val = this.meta();
+            const nodes = [this.meta()];
+            while (this.token === ",") {
+                this.nextSym();
+                nodes.push(this.meta());
+            }
             this.expectSym(")");
-            return val;
+            if (nodes.length === 1) {
+                return nodes[0];
+            }
+            return { type: "fn", name: "(", nodes };
         }
         else if (this.acceptSym("{")) {
             const c = this.cursor;
@@ -174,6 +183,17 @@ export class ASTParser {
                 nodes.push(this.meta());
             }
             this.expectSym("}");
+            // {xx|x@x}
+            if (nodes.length === 1 && nodes[0].type === "sym" && nodes[0].name === "|") {
+                const sub = nodes[0].nodes[1];
+                if (sub.name === "@" && sub.type === "sym") {
+                    return {
+                        type: "sym", name: "|}", nodes: [
+                            ...sub.nodes, nodes[0].nodes[0]
+                        ]
+                    };
+                }
+            }
             return { type: "fn", name: "{", nodes };
         }
         else if (this.acceptSym("-")) {
@@ -191,7 +211,7 @@ export class ASTParser {
     }
     boolTerm6() {
         let val = this.itemTerm();
-        while (this.token === "*" || this.token === "/" || this.token === "I" || this.token?.match(/^\$\$.+/)) {
+        while (this.token === "X" || this.token === "*" || this.token === "/" || this.token === "I" || this.token?.match(/^\$\$.+/)) {
             const name = this.token;
             this.nextSym();
             let val2 = this.itemTerm();

@@ -191,16 +191,11 @@ export class FSCmd {
         try {
             switch (cmdBuffer[0]) {
                 case "copy": {
-                    if (cmdBuffer.length === 2) { // copy cmd
-                        const reg = new RegExp(TR("命令：") + "(.+)$");
-                        const res = hintText.innerText.match(reg);
-                        if (res) {
-                            hintText.innerText = TR("可复制生成定理的命令，按Esc取消");
-                            this.gui.actionInput.value = res[1];
-                            return;
-                        }
-                    }
                     hintText.innerText = TR("可复制定理内容，按Esc取消");
+                    if (cmdBuffer.length > 1) {
+                        cmdBuffer.shift();
+                        this.execCmdBuffer();
+                    }
                     return;
                 }
                 case "d": return this.execDeduct();
@@ -315,14 +310,7 @@ export class FSCmd {
                     this.cmdBuffer.pop();
                     this.cmdBuffer.pop();
                     this.execCmdBuffer();
-                    hintText.innerText += "\n" + e + "\n";
-                    const p_ = fs.propositions[Number(p)];
-                    const from = p_.from;
-                    hintText.innerText += TR("命令：") + (from ?
-                        ["d", from.deductionIdx, ...from.conditionIdxs,
-                            ...from.replaceValues.map(v => this.astparser.stringifyTight(v))
-                        ].join(" ")
-                        : ("hyp " + this.astparser.stringifyTight(p_.value)));
+                    hintText.innerText += "\n" + e;
                 }
             }
             else {
@@ -336,18 +324,7 @@ export class FSCmd {
         else {
             this.gui.updatePropositionList(true);
             this.escClear = false;
-            const pData = this.cmdBuffer[this.cmdBuffer.length - 2];
-            let pcmd = "";
-            if (pData && pData.match(/^p[0-9]+$/)) {
-                const p = this.cmdBuffer[this.cmdBuffer.length - 1][Number(pData.slice(1))];
-                const from = p.from;
-                pcmd = TR("上层命令：") + (from ?
-                    ["d", from.deductionIdx.replaceAll("<", "&lt;").replaceAll(">", "&gt;"), ...from.conditionIdxs,
-                        ...from.replaceValues.map(v => this.astparser.stringifyTight(v))
-                    ].join(" ")
-                    : ("hyp " + this.astparser.stringifyTight(p.value).replaceAll("<", "&lt;").replaceAll(">", "&gt;"))) + "<br>";
-            }
-            hintText.innerHTML = pcmd + `${TR("目前位于")}${this.cmdBuffer.map((v, idx, arr) => {
+            hintText.innerHTML = `${TR("目前位于")}${this.cmdBuffer.map((v, idx, arr) => {
                 if (idx % 2 === 0)
                     return null;
                 if (v.match(/^p[0-9]+$/)) {
@@ -659,10 +636,22 @@ export class FSCmd {
             this.clearCmdBuffer();
             return;
         }
+        let hypCount = formalSystem.propositions.findIndex(e => e.from);
         if (cmdBuffer.length > 1) {
             try {
-                formalSystem.addHypothese(this.astparser.parse(cmdBuffer.pop()));
-                this.gui.updatePropositionList();
+                let ast = cmdBuffer.pop();
+                if (ast.startsWith("d ")) {
+                    this.clearCmdBuffer();
+                    this.cmdBuffer.push(ast);
+                    this.execCmdBuffer();
+                    return;
+                }
+                if (ast.startsWith("hyp ")) {
+                    ast = ast.slice(4);
+                }
+                formalSystem.addHypothese(this.astparser.parse(ast));
+                this.gui.updatePropositionList(hypCount !== -1);
+                hypCount = formalSystem.propositions.findIndex(e => e.from);
             }
             catch (e) {
                 this.clearCmdBuffer();
@@ -671,7 +660,7 @@ export class FSCmd {
                 return;
             }
         }
-        hintText.innerText = TR(`请输入假设命题p`) + formalSystem.propositions.length + TR(`，或按“Esc”结束`);
+        hintText.innerText = TR(`请输入假设命题p`) + (hypCount === -1 ? formalSystem.propositions.length : hypCount) + TR(`，或按“Esc”结束`);
     }
     onClickSubAst(idx, inserted) {
         const cmdBuffer = this.cmdBuffer;
@@ -679,13 +668,6 @@ export class FSCmd {
         if (idx.startsWith("p") && !cmdBuffer.length || cmdBuffer[0] === "copy") {
             cmdBuffer.push("copy");
             this.execCmdBuffer();
-            const p = this.gui.formalSystem.propositions[Number(idx.slice(1))];
-            const from = p.from;
-            this.gui.hintText.innerText += "\n" + TR("命令：") + (from ?
-                ["d", from.deductionIdx, ...from.conditionIdxs,
-                    ...from.replaceValues.map(v => this.astparser.stringifyTight(v))
-                ].join(" ")
-                : ("hyp " + this.astparser.stringifyTight(p.value)));
             this.replaceActionInputFromClick(inserted);
             return;
         }

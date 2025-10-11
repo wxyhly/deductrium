@@ -21,7 +21,8 @@ export class FSGui {
     enableMIFFT_RP = false;
     onStateChange = () => { };
     onchangeOmitNF = () => { };
-    dragger = new ListDragger(document.getElementById("deduct-list"));
+    draggerD = new ListDragger(document.getElementById("deduct-list"));
+    draggerP = new ListDragger(document.getElementById("prop-list"));
     isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
     cmd;
     constructor(propositionList, deductionList, metaRuleList, actionInput, hintText, displayPLayerSelect, cmdBtns, creative) {
@@ -70,7 +71,7 @@ export class FSGui {
                 }
             });
         });
-        this.dragger.onExecute = (src, dst) => {
+        this.draggerD.onExecute = (src, dst) => {
             const srcPos = this.deductions.indexOf(src);
             let dstPos = this.deductions.indexOf(dst);
             if (dstPos > srcPos)
@@ -85,6 +86,22 @@ export class FSGui {
             else
                 this.deductions.splice(dstPos, 0, moved);
             this.updateDeductionList();
+        };
+        this.draggerP.queryAllowDrag = () => this.cmd.cmdBuffer.length === 0;
+        this.draggerP.onExecute = (src, dst) => {
+            const pl = this.formalSystem.propositions.length;
+            try {
+                const s = Number(src.slice(1));
+                const d = dst === " " ? -1 : Number(dst.slice(1));
+                this.formalSystem.moveProposition(s, d);
+                this.updatePropositionList(true);
+            }
+            catch (e) {
+                if (pl !== this.formalSystem.propositions.length) {
+                    this.updatePropositionList(true);
+                }
+                this.hintText.innerText = e;
+            }
         };
         if (creative) {
             this.initCreative();
@@ -109,7 +126,7 @@ export class FSGui {
     }
     prettyPrint(s) {
         return s.replace(/<>/g, "↔").replace(/>/g, "→").replace(/</g, "⊂").replace(/@/g, "∈")
-            .replace(/U/g, "∪").replace(/I/g, "∩").replace(/\*/g, "×").replace(/\//g, "÷").replace(/-/g, "−")
+            .replace(/U/g, "∪").replace(/I/g, "∩").replace(/\*/g, "×").replace(/X/g, "×").replace(/\//g, "÷").replace(/-/g, "−")
             .replace(/\|/g, "∨").replace(/&/g, "∧").replace(/~/g, "¬").replace(/V/g, "∀").replace(/E/g, "∃").replace(/omega/g, "ω");
     }
     addSpan(parentSpan, text) {
@@ -171,11 +188,13 @@ export class FSGui {
                 // todo: add show/hide #nf/vnf
                 const omitNfFn = (ast.name.match(/^#(v*)nf$/) || ast.name.match(/^#rp$/)) && this.omitNfFn;
                 if (!omitNfFn) {
-                    const fnName = this.addSpan(varnode, ast.name);
-                    if (ast.name.startsWith("#"))
-                        fnName.classList.add("sysfn");
-                    if (this.formalSystem.fns.has(ast.name))
-                        fnName.classList.add("fn");
+                    if (ast.name !== "(") {
+                        const fnName = this.addSpan(varnode, ast.name);
+                        if (ast.name.startsWith("#"))
+                            fnName.classList.add("sysfn");
+                        if (this.formalSystem.fns.has(ast.name))
+                            fnName.classList.add("fn");
+                    }
                     this.addSpan(varnode, "(");
                 }
                 const fonts = []; // 0 for mormal, 1 for sup, -1 for sub
@@ -279,22 +298,32 @@ export class FSGui {
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], scopes));
                     break;
                 case "{|":
+                case "|}":
                 case "V":
                 case "E":
                 case "E!":
                     const outterLayers = [];
-                    outterLayers.push(this.addSpan(varnode, ast.name === "{|" ? "{" : ("(" + this.prettyPrint(ast.name))));
+                    outterLayers.push(this.addSpan(varnode, (ast.name === "{|" || ast.name === "|}") ? "{" : ("(" + this.prettyPrint(ast.name))));
                     const varast = this.ast2HTML(idx, ast.nodes[0], [{ type: "quantvar", name: "quantvar" }]);
                     varast.classList.add("boundedVar");
-                    outterLayers.push(varnode.appendChild(varast));
                     if (ast.name === "{|") {
+                        outterLayers.push(varnode.appendChild(varast));
                         outterLayers.push(this.addSpan(varnode, this.prettyPrint("@")));
                         varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], scopes));
                         outterLayers.push(this.addSpan(varnode, "|"));
                         varnode.appendChild(this.ast2HTML(idx, ast.nodes[2], [ast, ...scopes]));
                         outterLayers.push(this.addSpan(varnode, "}"));
                     }
+                    else if (ast.name === "|}") {
+                        varnode.appendChild(this.ast2HTML(idx, ast.nodes[2], [ast, ...scopes]));
+                        outterLayers.push(this.addSpan(varnode, "|"));
+                        outterLayers.push(varnode.appendChild(varast));
+                        outterLayers.push(this.addSpan(varnode, this.prettyPrint("@")));
+                        varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], scopes));
+                        outterLayers.push(this.addSpan(varnode, "}"));
+                    }
                     else {
+                        outterLayers.push(varnode.appendChild(varast));
                         outterLayers.push(this.addSpan(varnode, ":"));
                         varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], [ast, ...scopes]));
                         outterLayers.push(this.addSpan(varnode, ")"));
@@ -416,12 +445,28 @@ export class FSGui {
     }
     updatePropositionList(refresh) {
         this.updateGuiList("p", this.formalSystem.propositions, this.propositionList, (p) => true, (p, itInfo, it) => {
+            itInfo[0].addEventListener("click", () => {
+                if (this.cmd.cmdBuffer.length === 0) {
+                    this.cmd.clearCmdBuffer();
+                    this.hintText.innerText = TR("命令：");
+                }
+                else if (this.cmd.cmdBuffer[0] !== "entr")
+                    return;
+                const from = p.from;
+                const cmd = (from ?
+                    ["d", from.deductionIdx, ...from.conditionIdxs,
+                        ...from.replaceValues.map(v => this.cmd.astparser.stringifyTight(v))
+                    ].join(" ")
+                    : ("hyp " + this.cmd.astparser.stringifyTight(p.value)));
+                this.cmd.replaceActionInputFromClick(cmd);
+            });
             if (!p.from) {
                 itInfo[0].innerText = TR("假设");
                 return;
             }
             itInfo[0].innerHTML = this.stringifyDeductionStep(p.from).replaceAll("<", "&lt;").replaceAll(">", "&gt;");
         }, refresh);
+        this.draggerP.attachIdxListener();
     }
     updateDeductionList() {
         const types = new Set;
@@ -441,7 +486,7 @@ export class FSGui {
         this.updateGuiList("", ds, this.deductionList, (p) => (this.displayDs.has(p.from) || (this.displayDs.has("添加的规则") && p.from.endsWith("*"))), (p, itInfo, it) => {
             itInfo[0].innerText = TR(p.from).replace(/s$/, "").replaceAll("<", "&lt;").replaceAll(">", "&gt;") + (p.steps?.length ? TR("[宏]") : "");
         }, true, this.deductions);
-        this.dragger.attachIdxListener();
+        this.draggerD.attachIdxListener();
     }
     updateMetaRuleList(refresh) {
         this.updateGuiList("m", this.formalSystem.metaRules, this.metaRuleList, (p, idx) => this.metarules.includes(idx), (p, itInfo, it) => {

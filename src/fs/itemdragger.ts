@@ -8,7 +8,9 @@ export class ListDragger {
     srcName: string = null;
     dstName: string = null;
     dragging = false;
+    moved = false;
     onExecute: (src: string, dst: string) => void = () => { };
+    queryAllowDrag: () => boolean = () => true;
     startY = 0;
     attachIdxListener(dom?: HTMLElement) {
         const cb = (idx: HTMLElement) => {
@@ -65,6 +67,8 @@ export class ListDragger {
     }
 
     startDrag(idxEl: HTMLElement, ev: MouseEvent) {
+        this.moved = false;
+        if (this.queryAllowDrag && !this.queryAllowDrag()) return;
         const allChildren = Array.from(this.list.children) as HTMLElement[];
         const childIndex = allChildren.indexOf(idxEl);
         if (childIndex === -1) return;
@@ -97,7 +101,7 @@ export class ListDragger {
 
     onMove(e: MouseEvent) {
         if (!this.dragging) return;
-
+        this.moved = true;
         const children = Array.from(this.list.children) as HTMLElement[];
         const rowCount = Math.ceil(children.length / this.cols);
 
@@ -133,7 +137,8 @@ export class ListDragger {
             e.classList.remove("dragging-top");
             e.classList.remove("dragging");
         });
-        this.onExecute(this.srcName, this.dstName);
+        if (this.moved) this.onExecute(this.srcName, this.dstName);
+        this.moved = false;
         this.srcName = null;
         document.removeEventListener('mousemove', this.onMove);
         document.removeEventListener('mouseup', this.onUp);
