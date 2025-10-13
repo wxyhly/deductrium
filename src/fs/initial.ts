@@ -45,7 +45,7 @@ export function initFormalSystem(creative: boolean) {
     deductionFrom = "函数定义公理模式";
     addMetaRule("f", " ⊢M ##axiom(  ⊢ (V...$$1:E$$2: $$3) > (V...$$1: ##rp($$3,$$2,##apply(##newfn($$0),...$$1)))))", [], ["$$0", "$$1" + TR("，多个变量名请用“,”隔开"), "$$2", "$$3"]);
     deductionFrom = "谓词定义公理模式";
-    addMetaRule("vb", " ⊢M ##axiom( ( ⊢ (V...$$1: (##apply(##newverb($$0),...$$1)<>$$2)))))", [], ["$$0", "$$1" + TR("，多个变量名请用“,”隔开"), "$$2"]);
+    addMetaRule("prd", " ⊢M ##axiom( ( ⊢ (V...$$1: (##apply(##newpred($$0),...$$1)<>$$2)))))", [], ["$$0", "$$1" + TR("，多个变量名请用“,”隔开"), "$$2"]);
 
     const sysAxioms = {
 

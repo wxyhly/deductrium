@@ -435,7 +435,7 @@ export class FSCmd {
                         this.gui.updatePropositionList(true);
                     }
                     break;
-                case "vb":
+                case "prd":
                     {
                         let params = (cmdBuffer[3] as string).split(",").map(v => this.astparser.parse(v));
                         let others = [cmdBuffer[2], cmdBuffer[4]].map(

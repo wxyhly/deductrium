@@ -1083,7 +1083,7 @@ export class FormalSystem {
         const fnCheckRes = this.fns.has(fnAst.name) || this.verbs.has(fnAst.name);
         if (fnCheckRes)
             throw TR(`匹配条件##newfn($$0)时：$$0已有定义`);
-        const deduction = astmgr.clone(this.metaRules["vb"].value.nodes[1].nodes[0].nodes[0]);
+        const deduction = astmgr.clone(this.metaRules["prd"].value.nodes[1].nodes[0].nodes[0]);
         const replTable = {
             "$$0": fnAst,
             "$$2": exprAst
