@@ -13,7 +13,7 @@ export class ASTParser {
                 return `{${nd.map(n => this.stringifyTight(n)).join(",")}}`;
             return `${ast.name === "(" ? "" : ast.name}(${nd.map(n => this.stringifyTight(n)).join(",")})`;
         }
-        if (ast.type === "replvar") {
+        if (ast.type === "replvar" || ast.type === "rule") {
             return ast.name;
         }
         if (ast.type === "meta") {
@@ -41,7 +41,7 @@ export class ASTParser {
                 return `{${nd.map(n => this.stringify(n)).join(", ")}}`;
             return `${ast.name === "(" ? "" : ast.name}(${nd.map(n => this.stringify(n)).join(", ")})`;
         }
-        if (ast.type === "replvar") {
+        if (ast.type === "replvar" || ast.type === "rule") {
             return ast.name;
         }
         if (ast.type === "meta") {

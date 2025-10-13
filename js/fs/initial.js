@@ -1,3 +1,4 @@
+import { TR } from "../lang.js";
 import { ASTParser } from "./astparser.js";
 import { FormalSystem } from "./formalsystem.js";
 import { SavesParser } from "./savesparser.js";
@@ -9,24 +10,25 @@ export function initFormalSystem(creative) {
         fs.addMetaRule(key, typeof str === "string" ? astparser.parse(str) : str, condIdxs, replNames, deductionFrom);
     }
     deductionFrom = "[v]一阶逻辑公理模式";
-    addMetaRule("q", "##isaxiom( ⊢ $$0 ) ⊢M ##axiom( ⊢ V$#0 $$0 )", [0], []);
-    // deductionFrom = "常数定义公理模式";
-    // addMetaRule("c", "##newconst($$0) ⊢M ( ##axiom( ⊢  (E$$1:$$2) > ##rp($$2,$$1,$$0)) )", [], ["$$0", "$$1", "$$2"]);
-    // deductionFrom = "函数定义公理模式";
-    // addMetaRule("f", "##newfn($$0) ⊢M ( ##axiom( ⊢ V$$1:E$$2: $$3) > (V$$1: ##rp($$3,$$2,$$0($$1))))", [], ["$$0", "$$1", "$$2", "$$3"]);
+    addMetaRule("q", "##axiom( ⊢ $$0 ) ⊢M ##axiom( ⊢ V$#0 $$0 )", [0], []);
     deductionFrom = "[c]条件演绎元定理";
-    addMetaRule("cdt", "(...$$0 ⊢ $$1 ) ⊢M (##map($$0, $#0 > #0) ⊢ $#0 > $$1 )", [0], []);
+    addMetaRule("cdt", "(...$$0 ⊢ $$1 ) ⊢M ($#0 > ...$$0) ⊢ $#0 > $$1 )", [0], []);
     deductionFrom = "[>]演绎元定理";
     addMetaRule("dt", "(...$$0, $$1 ⊢ $$2 ) ⊢M (...$$0 ⊢ $$1 > $$2 )", [0], []);
     deductionFrom = "[<]逆演绎元定理";
     addMetaRule("idt", "(...$$0 ⊢ $$1 > $$2 ) ⊢M (...$$0, $$1 ⊢ $$2 )", [0], []);
     deductionFrom = "[:]组合元定理";
-    addMetaRule("cmt", "( ...$$0 ⊢ $$1a),($$1b ⊢ $$2) ⊢M (...$$0 ⊢ ##rp($$2,##match($$1a,$$1b)))", [0, 1], []);
+    addMetaRule("cmt", "( ...$$0 ⊢ $$1a),($$1b,...$$2 ⊢ $$3) ⊢M (...$$0, ##rp(...$$2,##match($$1a,$$1b)) ⊢ ##rp($$3,##match($$1a,$$1b)))", [0, 1], []);
     deductionFrom = "[v]条件概括元定理";
-    addMetaRule("cvt", "(...$$0 ⊢ $$1 ) ⊢M (##map($$0, V$#0 #0) ⊢ V$#0: $$1 )", [0], []);
+    addMetaRule("cvt", "(...$$0 ⊢ $$1 ) ⊢M (V$#0: ...$$0 ⊢ V$#0: $$1 )", [0], []);
     deductionFrom = "[u]概括元定理";
-    addMetaRule("vt", "(...$$0⊢ $$1 ) ⊢M (##map($$0, #nf(#0,$#0)) ⊢ V$#0:$$1 )", [0], []);
+    addMetaRule("vt", "(...$$0⊢ $$1 ) ⊢M (#nf(...$$0,$#0) ⊢ V$#0:$$1 )", [0], []);
     deductionFrom = "[e]特称元定理";
+    // <:v>$0,>.Emp
+    // :$0,>.<>t    
+    // :.{.}=e,>.<>t : ( ⊢ ((($1 = $2) <> $0) > (({$1} = {$2}) <> $0)))
+    // <:.{.}=e,<:>>.<>t,.cs : ( ⊢ (($0 <> ({$1} = {$2})) > ($0 <> ($1 = $2))))
+    // <::v.E&nf,.<>rE,<.<>2
     addMetaRule("et", "($$0⊢ $$1 ) ⊢M (E$#0:$$0 ⊢ E$#0:$$1 )", [0], []);
     // deductionFrom = "换名元定理";
     // addMetaRule("nt", "(⊢M (⊢ V...$$0:$$1 <> V...$$2:##rp($$1,...$$0,...$$2)))", [], ["前束范式V...$$0:$$1", "$$2（多个新变量名请用“,”或空格隔开）"]);
@@ -34,6 +36,12 @@ export function initFormalSystem(creative) {
     addMetaRule("ifft", "(⊢ $$0 <> $$1) ⊢M (⊢ $$2 <> ##matchrp($$2,$$0,$$1,$$3))", [0], ["$$2", "$$3"]);
     deductionFrom = "完备性元定理";
     addMetaRule("cpt", "( ⊧ $$0) ⊢M (⊢ $$0)", [], ["纯命题逻辑$$0"]);
+    deductionFrom = "常数定义公理模式";
+    addMetaRule("c", " ⊢M ( ##axiom( ⊢ E$$1:$$2 > ##rp($$2,$$1,##newconst($$0))) )", [], ["$$0", "$$1", "$$2"]);
+    deductionFrom = "函数定义公理模式";
+    addMetaRule("f", " ⊢M ##axiom(  ⊢ (V...$$1:E$$2: $$3) > (V...$$1: ##rp($$3,$$2,##apply(##newfn($$0),...$$1)))))", [], ["$$0", "$$1" + TR("，多个变量名请用“,”隔开"), "$$2", "$$3"]);
+    deductionFrom = "谓词定义公理模式";
+    addMetaRule("vb", " ⊢M ##axiom( ( ⊢ (V...$$1: (##apply(##newverb($$0),...$$1)<>$$2)))))", [], ["$$0", "$$1" + TR("，多个变量名请用“,”隔开"), "$$2"]);
     const sysAxioms = {
         // axioms
         "mp": ["$0>$1,$0⊢$1", "命题逻辑", null],
@@ -275,10 +283,11 @@ export function initFormalSystem(creative) {
     };
     const consts = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "{}", "omega"];
     const fns = ["Union", "Pow", "S", "Pr1", "Pr2"];
+    const verbs = ["Prime", "Equiv", "Order", "WellOrder", "Rel", "Point", "Line", "Plane", "Between", "Angle"];
     const sp = new SavesParser();
-    sp.deserializeArr(fs, [consts, fns, sysAxioms, null]);
+    sp.deserializeArr(fs, [consts, fns, verbs, [], sysAxioms, null, null]);
     if (creative)
-        return sp.deserializeArr(fs, [[], [], intMacros, Object.keys(sysAxioms)]);
-    return sp.deserializeArr(fs, [[], [], intMacros, ["mp", "a1", "a2"]]);
+        return sp.deserializeArr(fs, [[], [], [], [], intMacros, Object.keys(sysAxioms), null]);
+    return sp.deserializeArr(fs, [[], [], [], [], intMacros, ["mp", "a1", "a2"], null]);
 }
 //# sourceMappingURL=initial.js.map

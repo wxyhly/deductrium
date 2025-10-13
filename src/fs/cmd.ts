@@ -1,4 +1,5 @@
 import { TR } from "../lang.js";
+import { AST } from "./astmgr.js";
 import { ASTParser } from "./astparser.js";
 import { Deduction } from "./formalsystem.js";
 import { FSGui } from "./gui.js";
@@ -208,6 +209,7 @@ export class FSCmd {
                 case "meta": return this.execMetaDeduct();
             }
             if (this.gui.unlockedMacro) switch (cmdBuffer[0]) {
+                case "metamacro": case "meta-macro": case "meta-m": case "mm": return this.execMetaMacro();
                 case "macro": case "m": return this.execMacro();
                 case "del": return this.execDel();
                 case "inln": return this.execInline();
@@ -320,7 +322,7 @@ export class FSCmd {
             hintText.innerHTML = `${TR("目前位于")}${this.cmdBuffer.map((v, idx, arr) => {
                 if (idx % 2 === 0) return null;
                 if (v.match(/^p[0-9]+$/)) {
-                    return v + ` (${this.gui.stringifyDeductionStep(
+                    return v + ` (${this.gui.stringifyDeductionStep(null,
                         arr[idx + 1][Number(v.slice(1))].from
                     )})`;
                 }
@@ -421,11 +423,27 @@ export class FSCmd {
                     newName = formalSystem.metaNewConstant([cmdBuffer[2], cmdBuffer[3], cmdBuffer[4]].map(
                         v => this.astparser.parse(v)
                     ), "元规则生成*");
+                    this.gui.updatePropositionList(true);
                     break;
                 case "f":
-                    newName = formalSystem.metaNewFunction([cmdBuffer[2], cmdBuffer[3], cmdBuffer[4], cmdBuffer[5]].map(
-                        v => this.astparser.parse(v)
-                    ), "元规则生成*");
+                    {
+                        let params = (cmdBuffer[3] as string).split(",").map(v => this.astparser.parse(v));
+                        let others = [cmdBuffer[2], cmdBuffer[4], cmdBuffer[5]].map(
+                            v => this.astparser.parse(v)
+                        );
+                        newName = formalSystem.metaNewFunction([...others, params] as [AST, AST, AST, AST[]], "元规则生成*");
+                        this.gui.updatePropositionList(true);
+                    }
+                    break;
+                case "vb":
+                    {
+                        let params = (cmdBuffer[3] as string).split(",").map(v => this.astparser.parse(v));
+                        let others = [cmdBuffer[2], cmdBuffer[4]].map(
+                            v => this.astparser.parse(v)
+                        );
+                        newName = formalSystem.metaNewVerb([...others, params] as [AST, AST, AST[]], "元规则生成*");
+                        this.gui.updatePropositionList(true);
+                    }
                     break;
                 case "cdt":
                     newName = formalSystem.metaConditionTheorem(cmdBuffer[2], "元规则生成*");
@@ -469,12 +487,6 @@ export class FSCmd {
                     if (!this.getInputNewDeductionPos(4)) return;
                     // ["m","cpt",cond0,cond1,  pos, null, name]
                     newName = formalSystem.metaCombineTheorem(cmdBuffer[2], cmdBuffer[3], "元规则生成*");
-                    afterName = cmdBuffer[4];
-                    break;
-                case "nt":
-                    if (!this.getInputNewDeductionPos(4)) return;
-                    // ["m","cpt",oldvars+body,  newvars,pos, null, name]
-                    newName = formalSystem.metaChangeNameTheorem(this.astparser.parse(cmdBuffer[2]), cmdBuffer[3].split(/[\s,]/g).filter(e => e), cmdBuffer[6], "元规则生成*");
                     afterName = cmdBuffer[4];
                     break;
                 default:
@@ -532,18 +544,27 @@ export class FSCmd {
             writtenConditions[j] = cmdBuffer[i];
         }
         writtenConditions.fill("?", j);
-        let preInfo = TR(`正在进行推理`) + ` ${cmdBuffer[1] === "." ? this.lastDeduction : cmdBuffer[1]} ${writtenConditions.join(", ")} :  ${this.astparser.stringify(deduction.value)}\n`;
+        this.gui.hintText.innerHTML = "";
+        this.gui.addSpan(this.gui.hintText, TR(`正在进行推理`) + "&nbsp; ");
+        this.gui.hintText.appendChild(this.gui.tree2HTML(
+            formalSystem.getDeductionTokens(cmdBuffer[1] === "." ? this.lastDeduction : cmdBuffer[1])
+        ));
+        this.gui.addSpan(this.gui.hintText, `&nbsp; ${writtenConditions.map(e => e !== "?" ? `<span class="rule-cond">${e}</span>` : e).join(", ")} : `);
+        this.gui.hintText.appendChild(this.gui.ast2HTML("d", deduction.value));
+        let preInfo = "\n";
+        let infoWrap = document.createElement("span");
+        this.gui.hintText.appendChild(infoWrap);
         for (let i = 2 + condLength; i < 2 + condLength + replVarsLength && i < curLength; i++) {
             preInfo += vars[i - 2 - condLength] + `: ${cmdBuffer[i]}\n`;
         }
         if (curLength < condLength + 2) {
             if (curLength > 2) this.escClear = false;
             //wait for conditionIdx input
-            hintText.innerText = preInfo + TR("请输入条件") + this.astparser.stringify(deduction.conditions[cmdBuffer.length - 2]) + TR("的定理编号，或点选定理");
+            infoWrap.innerText = preInfo + TR("请输入条件") + this.astparser.stringify(deduction.conditions[cmdBuffer.length - 2]) + TR("的定理编号，或点选定理");
         } else if (curLength < replVarsLength + condLength + 2) {
             if (curLength > 2) this.escClear = false;
             // wait for replvar input
-            hintText.innerText = preInfo + TR("请输入替代") + vars[cmdBuffer.length - 2 - condLength] + TR("的内容");
+            infoWrap.innerText = preInfo + TR("请输入替代") + vars[cmdBuffer.length - 2 - condLength] + TR("的内容");
             if (!this.gui.actionInput.value) {
                 this.gui.actionInput.value = vars[cmdBuffer.length - 2 - condLength];
                 // this.gui.actionInput.setSelectionRange(0, this.gui.actionInput.value.length);
@@ -590,6 +611,25 @@ export class FSCmd {
             this.gui.hintText.innerText = e;
         }
     }
+    execMetaMacro() {
+        this.gui.hintText.innerText = TR(["", "请输入新的元宏名称", "请输入参数，多个参数用','分隔", "请输入生成的推理规则"][this.cmdBuffer.length]);
+        if (this.cmdBuffer.length === 1) return;
+        if (this.cmdBuffer.length === 2) {
+            if (!this.cmdBuffer[1].match(/^[a-zA-Z0-9_]*$/)) {
+                this.cmdBuffer.pop();
+                this.gui.hintText.innerText = TR("元宏名称只能包含字母、数字和下划线，请重新输入");
+                return;
+            }
+            return;
+        }
+        if (this.cmdBuffer.length === 3) return;
+        const tree = this.gui.formalSystem.getDeductionTokens(this.cmdBuffer[3]);
+        this.gui.formalSystem.addMetaMacro(this.cmdBuffer[1], this.cmdBuffer[2].split(",").map(v => v.trim()).filter(v => v), tree, "元宏录制*");
+        this.gui.metarules.push(this.cmdBuffer[1]);
+        this.gui.updateMetaRuleList(true);
+        this.clearCmdBuffer();
+        this.gui.hintText.innerText = TR("元宏录制成功");
+    }
     execPop() {
         this.gui.formalSystem.removePropositions(1);
         this.gui.updatePropositionList(true);
@@ -606,6 +646,7 @@ export class FSCmd {
             this.gui.formalSystem.removeDeduction(this.cmdBuffer[1]);
             this.gui.deductions.splice(pos, 1);
             this.gui.updateDeductionList();
+            this.gui.updatePropositionList(true);
             this.clearCmdBuffer();
         } catch (e) {
             this.clearCmdBuffer();
@@ -652,6 +693,7 @@ export class FSCmd {
         hintText.innerText = TR(`请输入假设命题p`) + (hypCount === -1 ? formalSystem.propositions.length : hypCount) + TR(`，或按“Esc”结束`);
     }
     onClickSubAst(idx: string, inserted: string) {
+        if (idx === "-") return;
         const cmdBuffer = this.cmdBuffer;
         // click prop just for copy
         if (idx.startsWith("p") && !cmdBuffer.length || cmdBuffer[0] === "copy") {
@@ -761,10 +803,16 @@ export class FSCmd {
         }
         // ["m", pos, null, name]
         const n = this.cmdBuffer[prevLength + 2];
-        if (n.match(/^[<>acdempuv\.]/)) {
+        if (n.match(/^[<>acdempuv#\.]/)) {
             this.cmdBuffer.pop();
             const res = this.getInputNewDeductionPos(prevLength);
-            this.gui.hintText.innerText = TR("以.<>acdempuv开头的推理规则名称由系统保留，请重新命名");
+            this.gui.hintText.innerText = TR("以.<>acdempuv#开头的推理规则名称由系统保留，请重新命名");
+            return res;
+        }
+        if (n.match(/^\$\$/)) {
+            this.cmdBuffer.pop();
+            const res = this.getInputNewDeductionPos(prevLength);
+            this.gui.hintText.innerText = TR("以$$开头的推理规则名称由系统保留，请重新命名");
             return res;
         }
         if (n.includes(",") || n.includes(":") || n.includes(" ")) {

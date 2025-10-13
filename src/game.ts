@@ -288,6 +288,7 @@ export class Game {
                 case "dw": this.fsGui.addToDeductions("domega"); return;
                 case "dSd0": this.fsGui.addToDeductions("dS"); this.fsGui.addToDeductions("d0"); return;
                 case "dOrder": this.fsGui.addToDeductions("dOrder"); this.fsGui.addToDeductions("dWOrder"); return;
+                case "dRel": this.fsGui.addToDeductions("dRel"); return;
                 case "dEquiv": this.fsGui.addToDeductions("dEquiv"); return;
                 case "andor": this.fsGui.addToDeductions("d&"); this.fsGui.addToDeductions("d|"); return;
                 case "aExt": this.fsGui.addToDeductions("aExt"); if (this.rewards.includes(".zfc")) { this.fsGui.addToDeductions(".aext"); } this.checkAllZFC(isLoading); return;
@@ -347,6 +348,11 @@ export class Game {
                     this.fsGui.addToDeductions("d*1", "d+2");
                     this.fsGui.addToDeductions("d*2", "d*1");
                     return;
+                case "dU":
+                    this.fsGui.addToDeductions("dUnion");
+                    return this.fsGui.addToDeductions("dU");
+                case "dI":
+                    return this.fsGui.addToDeductions("dI");
                 case ".filter":
                     return this.fsGui.addToDeductions(".filter");
                 case "dPrime":

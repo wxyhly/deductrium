@@ -372,6 +372,9 @@ export class Game {
                     this.fsGui.addToDeductions("dOrder");
                     this.fsGui.addToDeductions("dWOrder");
                     return;
+                case "dRel":
+                    this.fsGui.addToDeductions("dRel");
+                    return;
                 case "dEquiv":
                     this.fsGui.addToDeductions("dEquiv");
                     return;
@@ -506,6 +509,11 @@ export class Game {
                     this.fsGui.addToDeductions("d*1", "d+2");
                     this.fsGui.addToDeductions("d*2", "d*1");
                     return;
+                case "dU":
+                    this.fsGui.addToDeductions("dUnion");
+                    return this.fsGui.addToDeductions("dU");
+                case "dI":
+                    return this.fsGui.addToDeductions("dI");
                 case ".filter":
                     return this.fsGui.addToDeductions(".filter");
                 case "dPrime":

@@ -708,9 +708,9 @@ export const mapData = `
             :%,5#Pa:U,Pb:U,aXb -> a[n]#t
             :%*,2@提示：可通过ind_Prod定义函数[n]f : aXb -> a，[n]使得对任意x:a和y:b[n]有f (x,y) === x
             :%,0$获取3mg推理素
-            :%*,4#Pa:U,Pb:U,Pc:U,(a->b->c)->((aXb)->C)[n]#t
+            :%*,4#Pa:U,Pb:U,Pc:U,(a->b->c)->((aXb)->c)[n]#t
             :%*,4,5$获取5mg推理素
-            :%*,4,5,2#Pa:U,Pb:U,Pc:U,((aXb)->C)->(a->b->c)[n]#t
+            :%*,4,5,2#Pa:U,Pb:U,Pc:U,((aXb)->c)->(a->b->c)[n]#t
             :%*,4,5,2,5$获取5mg推理素
             :%*,5#Pa:U,Pb:U,Px:aXb,eq x (pr0 x, pr1 x)[n]#t
             :%,3$[[ttpr]]解锁投影函数pr0/pr1[n]与依赖投影函数prd1

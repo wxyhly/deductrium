@@ -4,8 +4,8 @@ const astmgr = new ASTMgr;
 const logicSyms = ["<>", ">", "~", "&", "|"];
 const quantSyms = ["E", "E!", "V"];
 const verbSyms = ["@", "=", "<"];
-const verbFns = ["Prime", "Equiv", "Order", "WellOrder", "Rel", "Point", "Line", "Plane", "Between", "Angle"];
-const fnSyms = ["Pair", "Union", "Pow", "U", "I", "S", "+", "-", "*", "X", "/", "{", "(", "Pr1", "Pr2"];
+// const verbFns = ["Prime", "Equiv", "Order", "WellOrder", "Rel", "Point", "Line", "Plane", "Between", "Angle"];
+// const fnSyms = ["Pair", "Union", "Pow", "U", "I", "S", "+", "-", "*", "X", "/", "{", "(", "Pr1", "Pr2"];
 
 // type: item for true, boolean for false
 export type ReplvarTypeTable = { [varname: string]: boolean };
@@ -40,6 +40,9 @@ function eq(name1: string, name2: string): bool3 {
 }
 
 export class AssertionSystem {
+    fns = new Set<string>;
+    verbs = new Set<string>;
+    consts = new Set<string>;
     // if ast is var (with asserts) return name, else return false
     getVarName(ast: AST): string | false {
         if (ast.type === "replvar") return ast.name;
@@ -273,14 +276,19 @@ export class AssertionSystem {
         return T;
     }
     // return a ReplvarTypeTable (or add to a existed one, throw error when conflits) for ast
-    getReplVarsType(ast: AST, res: ReplvarTypeTable = {}, isItem: boolean): ReplvarTypeTable {
+    getReplVarsType(ast: AST, res: ReplvarTypeTable = {}, isItem: boolean, resfn: ReplvarTypeTable = {}): ReplvarTypeTable {
         if (ast.type === "replvar") {
             res[ast.name] ??= isItem;
             if (res[ast.name] !== isItem) throw TR(`变量`) + ast.name + TR('不能同时为项和公式');
             return res;
         }
+        if (ast.type === "fn" && !ast.name.startsWith("#")) {
+            resfn[ast.name] ??= isItem;
+            if (resfn[ast.name] !== isItem) throw `Token ` + ast.name + TR('不能同时为函数和谓词');
+            // return res;
+        }
         for (const [idx, n] of ast.nodes.entries()) {
-            this.getReplVarsType(n, res, this.getSubAstType(ast, idx, isItem));
+            this.getReplVarsType(n, res, this.getSubAstType(ast, idx, isItem), resfn);
         }
         return res;
     }
@@ -550,7 +558,7 @@ export class AssertionSystem {
             return !logicSyms.includes(ast.name);
         }
         if (ast.type === "fn") {
-            if (verbFns.includes(ast.name)) {
+            if (this.verbs.has(ast.name)) {
                 return true;
             }
             if (ast.name.match(/^#v*nf/) || ast.name.match(/^#c?rp/)) {
@@ -558,7 +566,7 @@ export class AssertionSystem {
                 // #c?rp( isItem, true, true ....);
                 return idx === 0 ? parentType : true;
             }
-            return parentType;
+            return true;
         }
     }
     // remove all assert fns without checkments
@@ -866,7 +874,9 @@ export class AssertionSystem {
     // p: proposition or bool
     // v: variable
     // i: item
-    checkGrammer(ast: AST, type: "m" | "d" | "p" | "v" | "i", consts: Set<string>) {
+    checkGrammer(
+        ast: AST, type: "m" | "d" | "p" | "v" | "i",
+    ) {
         if (type === "v") {
             if (!this.getVarName(ast)) throw TR(`表达式出现在了变量的位置中`);
         }
@@ -884,13 +894,13 @@ export class AssertionSystem {
             if (cond.nodes?.length) {
                 for (const cd of cond.nodes) {
                     try {
-                        this.checkGrammer(cd, "p", consts);
+                        this.checkGrammer(cd, "p");
                     } catch (e) { throw TR(`条件中`) + e; }
                 }
             }
             for (const cc of conc.nodes) {
                 try {
-                    this.checkGrammer(cc, "p", consts);
+                    this.checkGrammer(cc, "p");
                 } catch (e) { throw TR(`结论中`) + e; }
             }
             return;
@@ -899,60 +909,60 @@ export class AssertionSystem {
         if (ast.type === "sym") {
             if (ast.name === "{|") {
                 if (type !== "i") throw TR("意外出现集合表达式");
-                this.checkGrammer(ast.nodes[0], "v", consts);
-                this.checkGrammer(ast.nodes[1], "i", consts);
-                this.checkGrammer(ast.nodes[2], "p", consts);
+                this.checkGrammer(ast.nodes[0], "v");
+                this.checkGrammer(ast.nodes[1], "i");
+                this.checkGrammer(ast.nodes[2], "p");
                 return;
             } else if (ast.name === "|}") {
                 if (type !== "i") throw TR("意外出现集合表达式");
-                this.checkGrammer(ast.nodes[0], "v", consts);
-                this.checkGrammer(ast.nodes[1], "i", consts);
-                this.checkGrammer(ast.nodes[2], "i", consts);
+                this.checkGrammer(ast.nodes[0], "v");
+                this.checkGrammer(ast.nodes[1], "i");
+                this.checkGrammer(ast.nodes[2], "i");
                 return;
             } else if (quantSyms.includes(ast.name)) {
                 if (type !== "p") return TR("意外出现了量词") + ast.name;
                 const varName = this.getVarName(ast.nodes[0]);
                 if (!varName) throw TR(`非变量表达式出现在了量词`) + ast.name + TR(`的约束变量中`);
-                if (this.isConst(varName, consts)) {
+                if (this.isConst(varName)) {
                     throw TR(`常数符号`) + varName + TR('禁止出现在量词') + ast.name + TR('的约束变量中');
                 }
-                this.checkGrammer(ast.nodes[1], "p", consts);
+                this.checkGrammer(ast.nodes[1], "p");
                 return;
             }
-            if (fnSyms.includes(ast.name)) {
+            if (this.fns.has(ast.name)) {
                 if (type !== "i") throw TR("意外出现集合表达式");
-                this.checkGrammer(ast.nodes[0], "i", consts);
-                this.checkGrammer(ast.nodes[1], "i", consts);
+                this.checkGrammer(ast.nodes[0], "i");
+                this.checkGrammer(ast.nodes[1], "i");
                 return;
             }
             if (verbSyms.includes(ast.name)) {
                 if (type !== "p") throw TR("意外出现谓词符号") + ast.name;
-                this.checkGrammer(ast.nodes[0], "i", consts);
-                this.checkGrammer(ast.nodes[1], "i", consts);
+                this.checkGrammer(ast.nodes[0], "i");
+                this.checkGrammer(ast.nodes[1], "i");
                 return;
             }
             if (logicSyms.includes(ast.name)) {
                 if (type !== "p") throw TR("意外出现逻辑连词") + ast.name;
-                this.checkGrammer(ast.nodes[0], "p", consts);
-                if (ast.nodes[1]) this.checkGrammer(ast.nodes[1], "p", consts);
+                this.checkGrammer(ast.nodes[0], "p");
+                if (ast.nodes[1]) this.checkGrammer(ast.nodes[1], "p");
                 return;
             }
         }
         if (ast.type === "fn") {
             if (ast.name === "#rp" || ast.name === "#crp") {
                 if (ast.nodes?.length !== 3 && ast.nodes?.length !== 4) throw TR('系统函数') + ast.name + TR(`的参数个数必须为三个或四个`);
-                this.checkGrammer(ast.nodes[0], type, consts);
-                this.checkGrammer(ast.nodes[1], "i", consts);
-                this.checkGrammer(ast.nodes[2], "i", consts);
-                if (ast.nodes[3]) this.checkGrammer(ast.nodes[3], "v", consts);
+                this.checkGrammer(ast.nodes[0], type);
+                this.checkGrammer(ast.nodes[1], "i");
+                this.checkGrammer(ast.nodes[2], "i");
+                if (ast.nodes[3]) this.checkGrammer(ast.nodes[3], "v");
                 return;
             }
             if (ast.name.match(/^#v*nf$/)) {
                 if (!(ast.nodes?.length > ast.name.length - 2)) throw TR('系统函数') + ast.name + TR(`的参数个数必须至少有`) + (ast.name.length - 1) + TR(`个`);
-                this.checkGrammer(ast.nodes[0], type, consts);
+                this.checkGrammer(ast.nodes[0], type);
                 for (let i = 1; i < ast.nodes.length; i++) {
                     try {
-                        this.checkGrammer(ast.nodes[i], "v", consts);
+                        this.checkGrammer(ast.nodes[i], "v");
                     } catch (e) {
                         throw TR('系统函数') + ast.name + TR(`第${i + 1}个参数中：`) + e;
                     }
@@ -962,44 +972,48 @@ export class AssertionSystem {
             if (ast.name === "Prime") {
                 if (type !== "p") throw TR("意外出现算数谓词表达式");
                 if (ast.nodes?.length !== 1) throw TR(`算数谓词 Prime 仅接受一个类型为项的参数`);
-                for (const n of ast.nodes) this.checkGrammer(n, "i", consts);
+                for (const n of ast.nodes) this.checkGrammer(n, "i");
                 return;
             }
             if (ast.name === "Equiv") {
                 if (type !== "p") throw TR("意外出现双射谓词表达式");
                 if (ast.nodes?.length !== 2) throw TR(`双射谓词 Equiv 仅接受两个类型为项的参数`);
-                for (const n of ast.nodes) this.checkGrammer(n, "i", consts);
+                for (const n of ast.nodes) this.checkGrammer(n, "i");
                 return;
             }
             if (ast.name === "Order" || ast.name === "WellOrder") {
                 if (type !== "p") throw TR("意外出现序关系谓词表达式");
                 if (ast.nodes?.length !== 2) throw TR(`序关系谓词${ast.name}仅接受两个类型为项的参数`);
-                for (const n of ast.nodes) this.checkGrammer(n, "i", consts);
+                for (const n of ast.nodes) this.checkGrammer(n, "i");
                 return;
             }
             if (ast.name === "Rel") {
                 if (type !== "p") throw TR("意外出现二元关系谓词表达式");
                 if (ast.nodes?.length !== 3) throw TR(`二元关系谓词 Rel 仅接受3个类型为项的参数`);
-                for (const n of ast.nodes) this.checkGrammer(n, "i", consts);
+                for (const n of ast.nodes) this.checkGrammer(n, "i");
                 return;
             }
-            if (fnSyms.includes(ast.name)) {
+            if (this.verbs.has(ast.name)) {
+                if (type !== "p") throw TR("意外出现谓词表达式");
+                return;
+            }
+            if (this.fns.has(ast.name)) {
                 if (type !== "i") throw TR("意外出现集合表达式");
-                for (const n of ast.nodes) this.checkGrammer(n, "i", consts);
+                for (const n of ast.nodes) this.checkGrammer(n, "i");
                 return;
             }
         }
-        if (ast.type === "replvar" && this.isConst(ast.name, consts)) {
+        if (ast.type === "replvar" && this.isConst(ast.name)) {
             if (type === "p") throw TR("无法将集合常量符号“") + ast.name + TR("”作为原子公式符号");
             return;
         }
-        // remained are unknown fns, keep type in subnodes
+        // remained are unknown fns,  types in subnodes are items
         if (ast.nodes?.length) {
-            for (const n of ast.nodes) this.checkGrammer(n, type, consts);
+            for (const n of ast.nodes) this.checkGrammer(n, "i");
         }
     }
-    isConst(name: string, consts: Set<string>) {
-        return consts.has(name) || name.match(/^[1-9][0-9]+$/);
+    isConst(name: string) {
+        return this.consts.has(name) || name.match(/^\-?[1-9][0-9]+$/);
     }
     isNameQuantVarIn(name: string, ast: AST) {
         if (this.getQuantParams(ast)) {

@@ -13,8 +13,11 @@ const dict = {
     '3,3,3,3,': '3`',
     '2,2,2,2,2,2,': '6`',
     '1,1,1,1,1,1,': '1`',
+    '2,2,2,1,2,': '5`',
     '素食主义者（累计获40µg推理素）': '4#`',
     '你推出你，他推出他（⊢$0>$0）': '2#`',
+    '我推出你，你推出我（<>）': '=#`',
+    '我给且只给所有不自己理发的人理发': 'Q#`',
     '会跑的“⊢”（演绎元定理）': '3#`',
     '第一次消费': '1#`',
     '[["progL","[ach]解锁了成就",': 'h`',
@@ -25,6 +28,14 @@ const dict = {
     '",[],["': '{`',
     '","a': 'a`',
     '","d': 'd`',
+    '],[]],["': ']`',
+    '",[-1],[': '-`',
+    '","元规则生成*",[["': 'M`',
+    '5`3,1,2,3,2,': ',`',
+    '"]],["': '.`',
+    ')<>(': '=`',
+    '.<>': 'q`',
+    '",[-1]`': 'z`',
 };
 const replaceArr1 = Object.entries(dict);
 const replaceArr2 = replaceArr1.slice(0).reverse();
@@ -88,6 +99,22 @@ export class GameSaveLoad {
             game.hyperGui.needUpdate = true;
             const fs_enableMIFFT_RP = game.fsGui.enableMIFFT_RP;
             new FsSavesParser(game.creative).deserialize(game.fsGui, fsdata);
+            // 2025.10.13 patch player's progress: fix bug for [[dU/dI/dRel]]
+            if (globaldata.includes("dU")) {
+                if (!game.fsGui.deductions.includes("dU")) {
+                    game.fsGui.deductions.push("dUnion", "dU");
+                }
+            }
+            if (globaldata.includes("dI")) {
+                if (!game.fsGui.deductions.includes("dI")) {
+                    game.fsGui.deductions.push("dI");
+                }
+            }
+            if (globaldata.includes("dRel")) {
+                if (!game.fsGui.deductions.includes("dRel")) {
+                    game.fsGui.deductions.push("dRel");
+                }
+            }
             game.fsGui.enableMIFFT_RP = fs_enableMIFFT_RP;
             new TtSavesParser().deserialize(game.ttGui, ttdata);
             localStorage.setItem(this.storageKey, str);

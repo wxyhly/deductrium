@@ -1,7 +1,9 @@
-type RuleTree = (string | RuleTree)[];
+import { TR } from "../lang.js";
+
+export type RuleTree = [string, ...RuleTree[]] | [string];
 export class RuleParser {
     symChar = ":,";
-    firstChar = "vuc<>met";
+    firstChar = "vuc<>#et";
     startNotAllowed = "ad#$";
     private tokenise(s: string) {
         let word = "";
@@ -23,7 +25,7 @@ export class RuleParser {
         let changed = true;
         while (changed) {
             changed = false;
-            for (let i = 0; i < arr.length - 1; i++) {
+            for (let i = 0; i < arr.length; i++) {
                 if (arr[i].length > 1 && this.firstChar.includes(arr[i][0])) {
                     // split arr[i] into arr[i][0] and arr[i].slice(1)
                     const firstChar = arr[i][0];
@@ -40,8 +42,8 @@ export class RuleParser {
         const result: string[] = [];
         let i = 0;
         while (i < tokens.length) {
-            if (tokens[i] === "m") {
-                let merged = "m";
+            if (tokens[i] === "#") {
+                let merged = "#";
                 i++;
                 while (i < tokens.length && tokens[i] !== ",") {
                     merged += tokens[i];
@@ -62,7 +64,16 @@ export class RuleParser {
         const arr = this.tokenise(s);
         this.tokens = this.mergeMTokens(arr);
         if (arr.length === 0) return;
-        return this.nextRule();
+        this.pos = 0;
+        const tree = this.nextRule();
+        return tree;
+    }
+    stringify(tree: RuleTree): string {
+        if (tree.length === 1) return tree[0] as string;
+        if (tree[0] === ":" || tree[0][0] === "#") {
+            return (tree[0] as string) + (tree[0][0] === "#" ? "," : "") + tree.slice(1).map(e => this.stringify(e as RuleTree)).join(",");
+        }
+        return tree.map(e => this.stringify(e as RuleTree)).join("");
     }
     private tokens: string[] = [];
     private pos = 0;
@@ -73,13 +84,13 @@ export class RuleParser {
     }
     private nextRule(): RuleTree {
         const token = this.nextToken();
-        if (!token) throw "Unexpected end of input";
+        if (!token) throw TR("意外的规则名称表达式");
         if (token === ":") {
             return [":", this.nextRule(), this.nextRule()];
         }
-        if (token === "m") {
-
-            return ["m", this.nextRule(), this.nextRule()];
+        if (token === "#") {
+            // todo
+            return ["#", this.nextRule(), this.nextRule()];
         }
         if (token.length === 1 && this.firstChar.includes(token)) {
             return [token, this.nextRule()];

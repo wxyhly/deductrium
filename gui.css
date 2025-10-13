@@ -29,8 +29,37 @@
     color: blueviolet;
 }
 
+.verb {
+    color: #a60;
+}
+
 .sysfn {
     color: darkblue;
+}
+
+.rule-node {
+    color: indianred;
+}
+
+.rule-token {
+    color: grey;
+}
+
+.rule-token:hover {
+    color: darkblue;
+}
+
+.rule-cond {
+    color: darkorange;
+}
+
+.rule-highlighted {
+    background-color: rgba(255, 255, 0, 0.5);
+    border-radius: 4px;
+}
+
+.p-highlighted {
+    color: red;
 }
 
 .freeVar {
@@ -164,27 +193,6 @@ h1 {
     border-top: 2px solid orange;
 }
 
-/* 占位符：用单个元素跨整行 */
-.row-placeholder {
-    border: 2px dashed #bbb;
-    background: #fafafa;
-    box-sizing: border-box;
-}
-
-/* 拖拽时的浮层（ghost） */
-.drag-ghost {
-    position: absolute;
-    pointer-events: none;
-    z-index: 2000;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
-    opacity: 0.95;
-}
-
-/* 在拖拽中禁止选中文本 */
-.dragging-active {
-    user-select: none !important;
-}
-
 .macro-substep {
     color: #999;
 }
@@ -234,12 +242,16 @@ h1 {
     overflow-y: scroll;
 }
 
-.highlighted {
+.highlighted,
+.highlighted span {
     color: white;
 }
 
-.highlighted span {
-    color: white;
+text .highlighted,
+text .highlighted span {
+    color: black;
+    background-color: rgba(255, 255, 0, 0.5);
+    border-radius: 4px;
 }
 
 #hyper {

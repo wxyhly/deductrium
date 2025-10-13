@@ -7,11 +7,11 @@ import { RuleParser } from "./metarule.js";
 const astmgr = new ASTMgr;
 const assert = new AssertionSystem;
 const parser = new ASTParser;
-const r = new RuleParser();
-r.parse("m:d1,d1");
+const ruleparser = new RuleParser();
 export class FormalSystem {
     deductions = {};
     metaRules = {};
+    metaMacro = {};
     fastmetarules = "";
     disabledMetaRules = [];
     deductionReplNameRule = /^\$/g;
@@ -20,12 +20,18 @@ export class FormalSystem {
     // replacedLocalNameRule: RegExp = /^&/g;
     // ignoreNfNameRule: RegExp = /^(&|#)/g;
     // fnParamNames = (n: number) => "#" + n;
-    consts = new Set(); // [constName -> defineDeductionIdx]
-    fns = new Set(); // [fnName -> defineDeductionIdx]
+    consts = new Set();
+    fns = new Set();
+    verbs = new Set();
     propositions = [];
     assert = assert;
+    constructor() {
+        this.assert.fns = this.fns;
+        this.assert.verbs = this.verbs;
+        this.assert.consts = this.consts;
+    }
     ast2deduction(ast) {
-        assert.checkGrammer(ast, "d", this.consts);
+        assert.checkGrammer(ast, "d");
         const [conditions, conclusions] = ast.nodes;
         const varLists = {};
         const allReplvars = new Set;
@@ -68,7 +74,9 @@ export class FormalSystem {
     getdependency(name, deductionIdx) {
         if (!deductionIdx)
             return false;
-        return name === deductionIdx || deductionIdx.match(new RegExp("^[vc<>ue:]*" + name + "(,.+$)?$"));
+        const res = [];
+        this.getAtomDeductionTokens(deductionIdx, res);
+        return name === deductionIdx || res.includes(name);
     }
     removeDeduction(name) {
         if (!this.deductions[name])
@@ -90,15 +98,14 @@ export class FormalSystem {
                 throw TR("无法删除规则 ") + name + TR("，请先删除对其有依赖的定理 p") + n;
             }
         }
-        let res = (this.deductions[name].from.match(/^dc\((.+)\)$/g));
-        if (res && res[1]) {
-            if (!this.consts.delete(res[1]))
-                throw TR("删除了不存在的常量的定义公理 ") + name;
+        if (name.startsWith("dc")) {
+            this.consts.delete(name.slice(2));
         }
-        res = (this.deductions[name].from.match(/^df\((.+)\)$/g));
-        if (res && res[1]) {
-            if (!this.fns.delete(res[1]))
-                throw TR("删除了不存在的函数的定义公理 ") + name;
+        if (name.startsWith("df")) {
+            this.fns.delete(name.slice(2));
+        }
+        if (name.startsWith("dv")) {
+            this.verbs.delete(name.slice(2));
         }
         delete this.deductions[name];
         return true;
@@ -120,6 +127,36 @@ export class FormalSystem {
         metaRule.replaceNames = replaceNames;
         this.metaRules[name] = metaRule;
     }
+    addMetaMacro(name, inputs, output, from) {
+        if (this.metaRules[name])
+            throw TR("元规则 ") + name + TR(" 已存在");
+        for (const i of inputs) {
+            if (i.startsWith("$$"))
+                throw TR("元规则输入中不能包含以$$开头的变量");
+        }
+        const replaceInTree = (tree) => {
+            if (tree.length === 1) {
+                if (inputs.includes(tree[0])) {
+                    tree[0] = "$$" + tree[0];
+                }
+            }
+            else {
+                for (let i = 1; i < tree.length; i++) {
+                    replaceInTree(tree[i]);
+                }
+            }
+        };
+        replaceInTree(output);
+        inputs = inputs.map(i => "$$" + i);
+        this.metaMacro[name] = { inputs, output, from };
+        const ast = parser.parse(inputs.join(",") + " ⊢M $$");
+        for (const a of ast.nodes[0].nodes) {
+            a.type = "rule";
+        }
+        ast.nodes[1].nodes[0].type = "rule";
+        ast.nodes[1].nodes[0].name = ruleparser.stringify(output);
+        this.addMetaRule(name, ast, inputs.map((e, i) => i), [], from);
+    }
     _hasRpFn(m) {
         if (m.type === "fn" && m.name === "#rp") {
             return true;
@@ -134,7 +171,7 @@ export class FormalSystem {
     }
     addHypothese(m, expandMode) {
         m = astmgr.clone(m);
-        assert.checkGrammer(m, "p", this.consts);
+        assert.checkGrammer(m, "p");
         if (!expandMode && this._hasLocalNames(m))
             throw TR("假设中不能出现以#号开头的局部变量");
         try {
@@ -299,6 +336,7 @@ export class FormalSystem {
                     this.propositions.pop();
                 }
                 catch (e) {
+                    delete sv.from;
                     throw TR("无法移动假设条件：假设须位于其它定理之前");
                 }
                 throw TR("被移动的假设条件被删除：假设须位于其它定理之前") + " - " + parser.stringify(sv.value);
@@ -334,110 +372,113 @@ export class FormalSystem {
             this.propositions.splice(dst, 0, moved);
     }
     isNameCanBeNewConst(name) {
-        if (assert.isConst(name, this.consts))
+        if (assert.isConst(name))
             return `"${name}" ` + TR(`已有定义，无法重复定义`);
+        this.consts.add(name);
         for (const [idx, d] of Object.entries(this.deductions)) {
-            if (assert.isNameQuantVarIn(name, d.value))
-                return `"${name}" 已作为量词中的约束变量出现在了规则${idx}中，无法定义为常量符号`;
+            try {
+                assert.checkGrammer(d.value, "d");
+                assert.getReplVarsType(d.conclusion, {}, false);
+            }
+            catch (e) {
+                this.consts.delete(name);
+                return TR(`定义符号失败：`) + ` ${idx} : ` + e;
+            }
         }
         for (const [idx, p] of this.propositions.entries()) {
-            if (assert.isNameQuantVarIn(name, p.value))
-                return `"${name}" 已作为量词中的约束变量出现在了p${idx}中，无法定义为常量符号`;
+            try {
+                assert.checkGrammer(p.value, "p");
+                assert.getReplVarsType(p.value, {}, false);
+            }
+            catch (e) {
+                this.consts.delete(name);
+                return TR(`定义符号失败：`) + ` p${idx} : ` + e;
+            }
+        }
+        this.consts.delete(name);
+        return true;
+    }
+    isNameCanBeNewFnOrVerb() {
+        for (const [idx, d] of Object.entries(this.deductions)) {
+            try {
+                assert.checkGrammer(d.value, "d");
+                assert.getReplVarsType(d.conclusion, {}, false);
+            }
+            catch (e) {
+                throw TR(`定义符号失败：`) + ` ${idx} : ` + e;
+            }
+        }
+        for (const [idx, p] of this.propositions.entries()) {
+            try {
+                assert.checkGrammer(p.value, "p");
+                assert.getReplVarsType(p.value, {}, false);
+            }
+            catch (e) {
+                throw TR(`定义符号失败：`) + ` p${idx} : ` + e;
+            }
         }
         return true;
     }
-    generateDeductionNameTokens(name, cursor = 0, res) {
-        switch (name[cursor]) {
-            case "<":
-            case ">":
-            case "c":
-            case "u":
-            case "v":
-            case "e":
-                res.push(name[cursor]);
-                return this.generateDeductionNameTokens(name, cursor + 1, res);
-            case ":":
-                res.push(name[cursor]);
-                cursor = this.generateDeductionNameTokens(name, cursor + 1, res);
-                return this.generateDeductionNameTokens(name, cursor + 1, res);
-            case ",": throw TR("发现意外的“,”字符");
-            default:
-                let dname = "";
-                for (; cursor < name.length && name[cursor] !== ","; cursor++) {
-                    dname += name[cursor];
-                }
-                res.push(dname);
-                return cursor;
-        }
-    }
-    generateDeductionAndName(name, tokens, cursor = 0) {
+    generateDeductionByToken(tree, name = ruleparser.stringify(tree)) {
         if (this.deductions[name])
-            return [name, this.deductions[name], cursor + 1];
-        let n;
-        let n2;
-        let d;
-        let c;
+            return this.deductions[name];
         const unlocked = this.fastmetarules;
-        switch (tokens[cursor]) {
-            case "<":
-                if (!unlocked.includes("<"))
-                    throw "null";
-                [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
-                return [tokens[cursor] + n, this.deductions[this.metaInvDeductTheorem(n, "元规则生成*")], c];
-            case ">":
-                if (!unlocked.includes(">"))
-                    throw "null";
-                [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
-                return [tokens[cursor] + n, this.deductions[this.metaDeductTheorem(n, "元规则生成*")], c];
-            case "c":
-                if (!unlocked.includes("c"))
-                    throw "null";
-                [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
-                return [tokens[cursor] + n, this.deductions[this.metaConditionTheorem(n, "元规则生成*")], c];
-            case "e":
-                if (!unlocked.includes("e"))
-                    throw "null";
-                [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
-                return [tokens[cursor] + n, this.deductions[this.metaExistTheorem(n, "元规则生成*")], c];
-            case "v":
-                if (!unlocked.includes("v")) {
-                    if (!unlocked.includes("q"))
-                        throw "null";
-                    [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
-                    return ["v" + n, this.deductions[this.metaQuantifyAxiomSchema(n, "元规则生成*")], c];
-                }
-                [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
-                return [tokens[cursor] + n, this.deductions[this.metaConditionUniversalTheorem(n, "元规则生成*")], c];
-            case "u":
-                if (!unlocked.includes("u"))
-                    throw "null";
-                [n, d, c] = this.generateDeductionAndName(name, tokens, cursor + 1);
-                return [tokens[cursor] + n, this.deductions[this.metaUniversalTheorem(n, "元规则生成*")], c];
-            case ":":
-                if (!unlocked.includes(":"))
-                    throw "null";
-                [n, d, cursor] = this.generateDeductionAndName(name, tokens, cursor + 1);
-                [n2, d, cursor] = this.generateDeductionAndName(name, tokens, cursor);
-                return [":" + n + "," + n2, this.deductions[this.metaCombineTheorem(n, n2, "元规则生成*")], c];
-            case ",": throw ",";
-            default:
-                if (tokens[cursor].match(/^d[1-9][0-9]+$/) && unlocked.includes("#")) {
-                    this.generateNatLiteralDef(tokens[cursor]);
-                }
-                this.generateNatLiteralOp(tokens[cursor]);
-                if (this.deductions[tokens[cursor]])
-                    return [tokens[cursor], this.deductions[tokens[cursor]], cursor + 1];
+        const from = "元规则生成*";
+        const cmd = tree[0];
+        const fn = {
+            "<": this.metaInvDeductTheorem,
+            ">": this.metaDeductTheorem,
+            "c": this.metaConditionTheorem,
+            "e": this.metaExistTheorem,
+            "v": unlocked.includes("v") ? this.metaConditionUniversalTheorem : unlocked.includes("q") ? this.metaQuantifyAxiomSchema : null,
+            "u": this.metaUniversalTheorem,
+        }[tree[0]];
+        if (fn) {
+            if (!unlocked.includes(cmd) && cmd !== "v")
                 throw "null";
+            const subRuleName = ruleparser.stringify(tree[1]);
+            this.generateDeductionByToken(tree[1], subRuleName);
+            return this.deductions[fn.bind(this)(subRuleName, from)];
+        }
+        if (tree[0] === ":") {
+            if (!unlocked.includes(":"))
+                throw "null";
+            const d1name = ruleparser.stringify(tree[1]);
+            const d2name = ruleparser.stringify(tree[2]);
+            this.generateDeductionByToken(tree[1], d1name);
+            this.generateDeductionByToken(tree[2], d2name);
+            return this.deductions[this.metaCombineTheorem(d1name, d2name, from)];
+        }
+        if (tree.length === 1) {
+            const dname = tree[0];
+            let generated = null;
+            if (unlocked.includes("#")) {
+                generated ??= this.generateNatLiteralDef(dname);
+                generated ??= this.generateNatLiteralOp(dname);
+            }
+            if (generated)
+                return this.deductions[generated];
+        }
+        throw "null";
+    }
+    getDeductionTokens(name) {
+        return ruleparser.parse(name);
+    }
+    getAtomDeductionTokens(name, res = [], token = ruleparser.parse(name)) {
+        if (token.length === 1) {
+            res.push(token[0]);
+        }
+        else {
+            for (let i = 1; i < token.length; i++)
+                this.getAtomDeductionTokens("", res, token[i]);
         }
     }
     generateDeduction(name) {
         if (!name)
             return null;
         try {
-            const tokens = [];
-            this.generateDeductionNameTokens(name, 0, tokens);
-            const ret = this.generateDeductionAndName(name, tokens)[1];
-            return ret;
+            const tokens = ruleparser.parse(name);
+            return this.generateDeductionByToken(tokens);
         }
         catch (e) {
             if (e === "null")
@@ -534,7 +575,7 @@ export class FormalSystem {
         let replacedConclusion = astmgr.clone(conclusion);
         astmgr.replaceByMatchTable(replacedConclusion, matchTable);
         try {
-            assert.checkGrammer(replacedConclusion, "p", this.consts);
+            assert.checkGrammer(replacedConclusion, "p");
             // grammar in conclusion failed
         }
         catch (e) {
@@ -661,13 +702,22 @@ export class FormalSystem {
             replaceValues: d.replaceNames.map(str => ({ type: "replvar", name: str }))
         }, inlineMode);
     }
-    _findNewReplName(deductionIdx) {
+    _findReplNameInRule(deductionIdx) {
         const d = this.deductions[deductionIdx];
-        let name = "$0", i = 0;
-        let p = new Set;
+        const p = new Set;
         for (const c of d.conditions)
             astmgr.getVarNames(c, p, /^\$/);
         astmgr.getVarNames(d.conclusion, p, /^\$/);
+        return p;
+    }
+    _findNewReplName(deductionIdx, p = new Set) {
+        let name = "$0", i = 0;
+        if (deductionIdx) {
+            const d = this.deductions[deductionIdx];
+            for (const c of d.conditions)
+                astmgr.getVarNames(c, p, /^\$/);
+            astmgr.getVarNames(d.conclusion, p, /^\$/);
+        }
         while (p.has(name)) {
             name = "$" + (i++);
         }
@@ -699,31 +749,6 @@ export class FormalSystem {
                 },
             ]
         }, from);
-    }
-    metaNewConstant(replaceValues, from) {
-        const [constAst, varAst, exprAst] = replaceValues;
-        if (constAst.type !== "replvar")
-            throw "$$0只能为纯变量名";
-        if (constAst.name.startsWith("$"))
-            throw "以$开头的变量名称被系统保留";
-        if (constAst.name.startsWith("#"))
-            throw "以#开头的变量名称被系统保留";
-        const constCheckRes = this.isNameCanBeNewConst(constAst.name);
-        if (constCheckRes !== true)
-            throw "匹配条件##newconst($$0)时：" + constCheckRes;
-        if (this.fns.has(constAst.name))
-            throw "匹配条件##newconst($$0)时：$$0已有定义";
-        const deduction = astmgr.clone(this.metaRules["c"].value.nodes[1].nodes[0].nodes[0]);
-        const replTable = {
-            "$$0": constAst,
-            "$$1": varAst,
-            "$$2": exprAst
-        };
-        astmgr.replaceByMatchTable(deduction, replTable);
-        throw "todo: not implemented yet";
-        // this.expandReplFn(deduction, this.deductionReplNameRule, this.localNameRule, this.replacedLocalNameRule, "##repl");
-        this.consts.add(constAst.name);
-        return this.addDeduction("d" + constAst.name, deduction, from);
     }
     metaExistTheorem(idx, from) {
         const d = this.generateDeduction(idx);
@@ -939,30 +964,165 @@ export class FormalSystem {
             throw e;
         }
     }
+    metaNewConstant(replaceValues, from) {
+        const [constAst, varAst, exprAst] = replaceValues;
+        if (constAst.type !== "replvar")
+            throw TR("$$0只能为纯变量名");
+        if (constAst.name.match(/[A-Z]/))
+            throw TR(`自定义符号中不能有大写字母`);
+        if (constAst.name.startsWith("$"))
+            throw TR("以$开头的变量名称被系统保留");
+        if (constAst.name.startsWith("#"))
+            throw TR("以#开头的变量名称被系统保留");
+        const constCheckRes = this.isNameCanBeNewConst(constAst.name);
+        if (constCheckRes !== true)
+            throw TR("匹配条件##newconst($$0)时：") + constCheckRes;
+        if (this.fns.has(constAst.name))
+            throw TR("匹配条件##newconst($$0)时：$$0已有定义");
+        const deduction = astmgr.clone(this.metaRules["c"].value.nodes[1].nodes[0].nodes[0]);
+        const replTable = {
+            "$$0": constAst,
+            "$$1": varAst,
+            "$$2": exprAst
+        };
+        astmgr.replaceByMatchTable(deduction, replTable);
+        const R = astmgr.clone(exprAst);
+        astmgr.replace(R, varAst, constAst);
+        if (assert.nf(constAst.name, R) !== -1)
+            throw TR("定义的常量没在结论中出现");
+        astmgr.assign(deduction.nodes[1].nodes[0].nodes[1], R);
+        let d;
+        try {
+            this.consts.add(constAst.name);
+            d = this.addDeduction("dc" + constAst.name, deduction, from);
+            if (this.deductions[d].replaceNames.length)
+                throw TR("不能包含$开头的替代项");
+        }
+        catch (e) {
+            if (d)
+                delete this.deductions[d];
+            this.consts.delete(constAst.name);
+            throw e;
+        }
+        return d;
+    }
     metaNewFunction(replaceValues, from) {
-        const [fnAst, varAst1, varAst2, exprAst] = replaceValues;
+        const [fnAst, varAst, exprAst, paramAsts] = replaceValues;
+        if (!paramAsts.length)
+            throw null;
         if (fnAst.type !== "replvar")
-            throw "$$0只能为纯变量名";
+            throw TR("$$0只能为纯变量名");
+        if (fnAst.name.match(/[A-Z]/))
+            throw TR(`自定义符号中不能有大写字母`);
         if (fnAst.name.startsWith("#"))
-            throw "以#开头的函数被系统保留";
+            throw TR("以#开头的函数被系统保留");
         if (fnAst.name.startsWith("$"))
-            throw "以$开头的函数被系统保留";
-        const fnCheckRes = this.fns.has(fnAst.name) || assert.isConst(fnAst.name, this.consts);
+            throw TR("以$开头的函数被系统保留");
+        const fnCheckRes = this.fns.has(fnAst.name) || this.verbs.has(fnAst.name);
         if (fnCheckRes)
-            throw `匹配条件##newfn($$0)时：$$0已有定义`;
+            throw TR(`匹配条件##newfn($$0)时：$$0已有定义`);
         const deduction = astmgr.clone(this.metaRules["f"].value.nodes[1].nodes[0].nodes[0]);
         const replTable = {
             "$$0": fnAst,
-            "$$1": varAst1,
-            "$$2": varAst2,
+            "$$2": varAst,
             "$$3": exprAst
         };
-        throw "todo: not implemented yet";
-        // astmgr.replaceByMatchResult(deduction, replTable);
-        // this._replaceFnName(deduction, "$$0", fnAst.name);
-        // this.expandReplFn(deduction, this.deductionReplNameRule, this.localNameRule, this.replacedLocalNameRule, "##repl");
-        this.fns.add(fnAst.name);
-        return this.addDeduction("d" + fnAst.name, deduction, from);
+        const wrapVs = (ast) => {
+            console.assert(ast.name === "V");
+            let first = true;
+            for (const p of paramAsts) {
+                const n = p.name;
+                if (p.type !== "replvar")
+                    throw TR("函数的参数必须是变量");
+                if (assert.isConst(n))
+                    throw TR("函数的参数不能是常量");
+                if (first) {
+                    astmgr.assign(ast.nodes[0], p);
+                    first = false;
+                    continue;
+                }
+                astmgr.assign(ast, { type: "sym", name: "V", nodes: [p, ast] });
+            }
+        };
+        astmgr.replaceByMatchTable(deduction, replTable);
+        const R = astmgr.clone(exprAst);
+        if (assert.nf(varAst.name, R) !== -1)
+            throw TR("定义的函数表达式没在结论中出现");
+        astmgr.replace(R, varAst, { type: "fn", name: fnAst.name, nodes: paramAsts });
+        astmgr.assign(deduction.nodes[1].nodes[0].nodes[1].nodes[1], R);
+        wrapVs(deduction.nodes[1].nodes[0].nodes[0]);
+        wrapVs(deduction.nodes[1].nodes[0].nodes[1]);
+        let d;
+        try {
+            this.fns.add(fnAst.name);
+            this.isNameCanBeNewFnOrVerb();
+            d = this.addDeduction("df" + fnAst.name, deduction, from);
+            if (this.deductions[d].replaceNames.length)
+                throw TR("不能包含$开头的替代项");
+        }
+        catch (e) {
+            if (d)
+                delete this.deductions[d];
+            this.fns.delete(fnAst.name);
+            throw e;
+        }
+        return d;
+    }
+    metaNewVerb(replaceValues, from) {
+        const [fnAst, exprAst, paramAsts] = replaceValues;
+        if (!paramAsts.length)
+            throw null;
+        if (fnAst.type !== "replvar")
+            throw TR("$$0只能为纯变量名");
+        if (fnAst.name.match(/[A-Z]/))
+            throw TR(`自定义符号中不能有大写字母`);
+        if (fnAst.name.startsWith("#"))
+            throw TR("以#开头的函数被系统保留");
+        if (fnAst.name.startsWith("$"))
+            throw TR("以$开头的函数被系统保留");
+        const fnCheckRes = this.fns.has(fnAst.name) || this.verbs.has(fnAst.name);
+        if (fnCheckRes)
+            throw TR(`匹配条件##newfn($$0)时：$$0已有定义`);
+        const deduction = astmgr.clone(this.metaRules["vb"].value.nodes[1].nodes[0].nodes[0]);
+        const replTable = {
+            "$$0": fnAst,
+            "$$2": exprAst
+        };
+        const wrapVs = (ast) => {
+            console.assert(ast.name === "V");
+            let first = true;
+            for (const p of paramAsts) {
+                const n = p.name;
+                if (p.type !== "replvar")
+                    throw TR("函数的参数必须是变量");
+                if (assert.isConst(n))
+                    throw TR("函数的参数不能是常量");
+                if (first) {
+                    astmgr.assign(ast.nodes[0], p);
+                    first = false;
+                    continue;
+                }
+                astmgr.assign(ast, { type: "sym", name: "V", nodes: [p, ast] });
+            }
+        };
+        astmgr.replaceByMatchTable(deduction, replTable);
+        astmgr.assign(deduction.nodes[1].nodes[0].nodes[1].nodes[0], { type: "fn", name: fnAst.name, nodes: paramAsts });
+        wrapVs(deduction.nodes[1].nodes[0]);
+        let d;
+        try {
+            this.verbs.add(fnAst.name);
+            this.isNameCanBeNewFnOrVerb();
+            d = this.addDeduction("dv" + fnAst.name, deduction, from);
+            if (this.deductions[d].replaceNames.length)
+                throw TR("不能包含$开头的替代项");
+        }
+        catch (e) {
+            if (d)
+                delete this.deductions[d];
+            this.verbs.delete(fnAst.name);
+            throw e;
+        }
+        return d;
     }
     _replaceFnName(ast, src, dst) {
         if (ast.type === "fn" && ast.name === src) {
@@ -1062,8 +1222,10 @@ export class FormalSystem {
         }
     }
     metaDeductTheorem(idx, from) {
-        if (idx[0] === "<" && this.deductions[idx.slice(1)])
+        if (idx[0] === "<") {
+            this.generateDeduction(idx.slice(1));
             return idx.slice(1);
+        }
         if (this.deductions[">" + idx])
             return ">" + idx;
         const d = this.generateDeduction(idx);
@@ -1157,8 +1319,10 @@ export class FormalSystem {
     }
     metaInvDeductTheorem(idx, from) {
         // >a => a
-        if (idx[0] === ">" && this.deductions[idx.slice(1)])
+        if (idx[0] === ">") {
+            this.generateDeduction(idx.slice(1));
             return idx.slice(1);
+        }
         // a => <a
         if (this.deductions["<" + idx])
             return "<" + idx;
@@ -1207,340 +1371,34 @@ export class FormalSystem {
             return name;
         const d1 = this.generateDeduction(idx1);
         const d2 = this.generateDeduction(idx2);
-        if (d2.conditions.length !== 1)
-            throw TR("匹配条件推理规则($$1b ⊢ $$2)失败");
+        if (!d2.conditions.length)
+            throw TR("匹配条件推理规则($$1b, ...$$2 ⊢ $$3)失败");
         const oldP = this.propositions;
         try {
             this.removePropositions();
             d1.conditions.forEach((c, id) => this.addHypothese(c));
+            const matchTable = {};
+            const replacedVarTypeTable = assert.getReplVarsType(d1.conclusion, {}, false);
+            assert.match(d1.conclusion, d2.conditions[0], /^\$/, false, matchTable, replacedVarTypeTable, []);
+            const d2_conds = [];
+            for (let i = 1; i < d2.conditions.length; i++) {
+                const R = astmgr.clone(d2.conditions[i]);
+                astmgr.replaceByMatchTable(R, matchTable);
+                d2_conds.push(this.addHypothese(R));
+            }
             const p1 = this.deduct({
                 deductionIdx: idx1, conditionIdxs: d1.conditions.map((v, id) => id),
                 replaceValues: d1.replaceNames.map(str => ({ type: "replvar", name: str }))
             });
+            const replNames = this._findReplNameInRule(idx1);
             const p2 = this.deduct({
-                deductionIdx: idx2, conditionIdxs: [p1],
-                replaceValues: d2.replaceNames.map(str => ({ type: "replvar", name: str }))
+                deductionIdx: idx2, conditionIdxs: [p1, ...d2_conds],
+                replaceValues: d2.replaceNames.map(str => {
+                    const n = this._findNewReplName("", replNames);
+                    replNames.add(n.name);
+                    return n;
+                })
             });
-            const ret = this.addMacro(name, from);
-            this.propositions = oldP;
-            return ret;
-        }
-        catch (e) {
-            this.propositions = oldP;
-            throw e;
-        }
-    }
-    metaChangeNameTheorem(ast, newNames, name, from) {
-        let oldNames = [];
-        const VEs = []; // V for true, E for false
-        let sub = ast;
-        let count = 0;
-        while (sub.type === "sym" && (sub.name === "V" || sub.name === "E")) {
-            oldNames.push(sub.nodes[0].name);
-            VEs.push(sub.name === "V");
-            if (count++ >= newNames.length)
-                break;
-            sub = sub.nodes[1];
-        }
-        const oldP = this.propositions;
-        let lastP;
-        const uniq = "#";
-        const replace = (ast, start, newNames, invOrder) => {
-            const newNamesInv = newNames.slice(0).reverse();
-            const oldNames = [];
-            let sub = ast;
-            let startCount = 0;
-            let subBody;
-            let subprefix = [];
-            while (sub.type === "sym" && sub.name === "V") {
-                if (startCount < start) {
-                    subprefix.push(sub.nodes[0]);
-                }
-                else if (startCount === start) {
-                    subBody = sub;
-                }
-                if (startCount++ >= start) {
-                    oldNames.push(sub.nodes[0].name);
-                }
-                sub = sub.nodes[1];
-            }
-            lastP = this.deduct({
-                deductionIdx: "v".repeat(start) + ".i",
-                replaceValues: [...subprefix, subBody],
-                conditionIdxs: [],
-            });
-            // VxVy: > V#xV#yVxVy:
-            // for (const n of newNamesInv) {
-            //     lastP = this.deduct({
-            //         deductionIdx: "v".repeat(start) + "c<a6",
-            //         replaceValues: [{ type: "replvar", name: oldNames.has(n) ? uniq + n : n }],
-            //         conditionIdxs: [lastP],
-            //     });
-            // }
-            // // lastP = this.deduct({
-            // //     deductionIdx: ".i",
-            // //     replaceValues: [{type:"replvar",name:"a"}],
-            // //     conditionIdxs: [],
-            // // });
-            // //V#xV#yVxVy:f(x,y) > V#xV#y:f(#x,#y)
-            // for (const n of newNames) {
-            //     lastP = this.deduct({
-            //         deductionIdx: "v".repeat(start) + "c" + ("v".repeat(newNames.length)) + "<a4",
-            //         replaceValues: [
-            //             { type: "replvar", name: oldNames.has(n) ? uniq + n : n }
-            //         ],
-            //         conditionIdxs: [lastP],
-            //     });
-            // }
-            // V#xV#y: > V$xV$yV#xV#y:
-            if (invOrder) { // replace from right to left
-                for (let i = newNames.length - 1; i >= 0; i--) {
-                    const n = newNames[i];
-                    // V#xV$y: > V$xV#xV$y
-                    if (oldNames[i] === n) {
-                        continue;
-                    }
-                    lastP = this.deduct({
-                        deductionIdx: "v".repeat(start) + "c" + ("v".repeat(i)) + "<a6",
-                        replaceValues: [{ type: "replvar", name: n }],
-                        conditionIdxs: [lastP],
-                    });
-                    // V$xV#xV$y: > V$xV$y
-                    lastP = this.deduct({
-                        deductionIdx: "v".repeat(start) + "c" + ("v".repeat(i + 1)) + "<a4",
-                        replaceValues: [{ type: "replvar", name: n }],
-                        conditionIdxs: [lastP],
-                    });
-                }
-            }
-            else { // replace from left to right
-                let offset = 0;
-                for (const n of newNames) {
-                    // V#xV$y: > V$xV#xV$y
-                    if (oldNames[offset] === n) {
-                        offset++;
-                        continue;
-                    }
-                    lastP = this.deduct({
-                        deductionIdx: "v".repeat(start) + "c" + ("v".repeat(offset++)) + "<a6",
-                        replaceValues: [{ type: "replvar", name: n }],
-                        conditionIdxs: [lastP],
-                    });
-                    // V$xV#xV$y: > V$xV$y
-                    lastP = this.deduct({
-                        deductionIdx: "v".repeat(start) + "c" + ("v".repeat(offset)) + "<a4",
-                        replaceValues: [{ type: "replvar", name: n }],
-                        conditionIdxs: [lastP],
-                    });
-                }
-            }
-            // .....
-            // #$$#$ .....
-            // #$$#$
-            // $$ #$$#$
-            // $$$$$
-            // Va1Va2Va3Va4Va5:f(a1,a2,a3,a4,a5)=0
-            // V$xV$yV#xV#y:f(#x,#y) > V$xV$yf($x,$y)
-            // offset = start + newNames.length;
-            // for (const n of newNamesInv) {
-            //     if (!oldNames.has(n)) {
-            //         offset--;
-            //         continue;
-            //     }
-            //     lastP = this.deduct({
-            //         deductionIdx: "c" + ("v".repeat(offset--)) + "<a4",
-            //         replaceValues: [
-            //             { type: "replvar", name: n }
-            //         ],
-            //         conditionIdxs: [lastP],
-            //     });
-            // }
-            return lastP;
-        };
-        const replace2 = (ast, start, newNames) => {
-            ast = astmgr.clone(ast);
-            let sub = ast;
-            for (let i = 0; i < start; i++) {
-                if (sub.type === "sym" && (sub.name === "E")) {
-                    sub.name = "V";
-                }
-                sub = sub.nodes[1];
-            }
-            const piff1 = replace(ast, start, newNames, false);
-            const oldNames = [];
-            sub = ast;
-            let startCount = 0;
-            while (sub.type === "sym" && (sub.name === "V")) {
-                if (startCount++ >= start) {
-                    oldNames.push(sub.nodes[0].name);
-                }
-                sub = sub.nodes[1];
-            }
-            let sub2 = astmgr.clone(this.propositions[piff1].value);
-            sub = sub2;
-            startCount = 0;
-            while (sub.type === "sym" && (sub.name === "V")) {
-                if (startCount++ >= start) {
-                    oldNames.push(sub.nodes[0].name);
-                }
-                sub = sub.nodes[1];
-            }
-            astmgr.assign(sub, sub.nodes[1]); // vvvv(a>b) -> vvvv(b)
-            const piff2 = replace(sub2, start, oldNames, true);
-            lastP = this.deduct({
-                deductionIdx: "v".repeat(start) + ".<>", conditionIdxs: [piff1, piff2], replaceValues: []
-            });
-            return lastP;
-        };
-        const replaceE = (ast, starts, newName) => {
-            const wrapName = { type: "replvar", name: newName };
-            const replaced = {
-                type: "fn", name: "#rp", nodes: [
-                    ast.nodes[1], ast.nodes[0], wrapName
-                ]
-            };
-            let temp;
-            lastP = this.deduct({
-                deductionIdx: "v".repeat(starts.length) + "dE", conditionIdxs: [],
-                replaceValues: [...starts, ...ast.nodes]
-            });
-            temp = lastP = this.deduct({
-                deductionIdx: "v".repeat(starts.length) + "<.<>1", conditionIdxs: [lastP], replaceValues: []
-            });
-            lastP = this.deduct({
-                deductionIdx: "v".repeat(starts.length) + "cva4", conditionIdxs: [], replaceValues: [
-                    ...starts, ast, ast.nodes[0], wrapName,
-                    { type: "sym", name: "~", nodes: [replaced] },
-                    ast.nodes[0]
-                ]
-            });
-            lastP = this.deduct({
-                deductionIdx: "v".repeat(starts.length) + "c<a5", conditionIdxs: [lastP], replaceValues: []
-            });
-            lastP = this.deduct({
-                deductionIdx: "v".repeat(starts.length) + "c<.a30", conditionIdxs: [lastP], replaceValues: []
-            });
-            temp = lastP = this.deduct({
-                deductionIdx: "v".repeat(starts.length) + "cmp", conditionIdxs: [lastP, temp], replaceValues: []
-            });
-            lastP = this.deduct({
-                deductionIdx: "v".repeat(starts.length) + "ca6", conditionIdxs: [], replaceValues: [
-                    ...starts, ast,
-                    { type: "sym", name: "V", nodes: [wrapName, { type: "sym", name: "~", nodes: [replaced] }] },
-                    ast.nodes[0]
-                ]
-            });
-            lastP = this.deduct({
-                deductionIdx: "v".repeat(starts.length) + "c<.a30", conditionIdxs: [lastP], replaceValues: []
-            });
-            temp = lastP = this.deduct({
-                deductionIdx: "v".repeat(starts.length) + "cmp", conditionIdxs: [lastP, temp], replaceValues: []
-            });
-            lastP = this.deduct({
-                deductionIdx: "v".repeat(starts.length) + "cdE", conditionIdxs: [], replaceValues: [
-                    ...starts, ast, wrapName, replaced
-                ]
-            });
-            lastP = this.deduct({
-                deductionIdx: "v".repeat(starts.length) + "c<<.<>2", conditionIdxs: [lastP, temp], replaceValues: []
-            });
-            return lastP;
-        };
-        const replaceE2 = (ast, starts, newName) => {
-            const piff1 = replaceE(ast, starts, newName);
-            let sub = this.propositions[piff1].value;
-            for (let i = 0; i < starts.length; i++) {
-                sub = sub.nodes[1];
-            }
-            const piff2 = replaceE(sub.nodes[1], starts, ast.nodes[0].name);
-            lastP = this.deduct({
-                deductionIdx: "v".repeat(starts.length) + ".<>", conditionIdxs: [piff1, piff2], replaceValues: []
-            });
-            return lastP;
-        };
-        let lastAst = ast;
-        let steps = [];
-        const replaceVE = (newNames) => {
-            let cursor = 0;
-            while (cursor < newNames.length) {
-                if (VEs[cursor]) {
-                    let lastV;
-                    for (let i = cursor; i < newNames.length; i++) {
-                        if (!VEs[i]) {
-                            lastV = i;
-                            break;
-                        }
-                    }
-                    lastV ??= newNames.length;
-                    let changed = false;
-                    for (let i = cursor; i < lastV; i++) {
-                        if (oldNames[i] !== newNames[i]) {
-                            changed = true;
-                            break;
-                        }
-                    }
-                    if (!changed) {
-                        cursor = lastV;
-                        continue;
-                    }
-                    lastP = replace2(lastAst, cursor, newNames.slice(cursor, lastV));
-                    for (let i = cursor - 1; i >= 0; i--) {
-                        lastP = this.deduct({
-                            deductionIdx: "v".repeat(i) + ".<>r" + (VEs[i] ? "V" : "E"),
-                            conditionIdxs: [lastP], replaceValues: []
-                        });
-                    }
-                    cursor = lastV;
-                    steps.push(lastP);
-                    console.log(parser.stringify(this.propositions[lastP].value));
-                    lastAst = this.propositions[lastP].value.nodes[1];
-                }
-                else {
-                    if (oldNames[cursor] === newNames[cursor]) {
-                        cursor++;
-                        continue;
-                    }
-                    sub = lastAst;
-                    let i = 0;
-                    const subprefix = [];
-                    while (i++ !== cursor) {
-                        subprefix.push({ type: "replvar", name: newNames[i - 1] });
-                        sub = sub.nodes[1];
-                    }
-                    lastP = replaceE2(sub, subprefix, newNames[cursor]);
-                    for (let i = cursor - 1; i >= 0; i--) {
-                        lastP = this.deduct({
-                            deductionIdx: "v".repeat(i) + ".<>r" + (VEs[i] ? "V" : "E"),
-                            conditionIdxs: [lastP], replaceValues: []
-                        });
-                    }
-                    steps.push(lastP);
-                    console.log(parser.stringify(this.propositions[lastP].value));
-                    lastAst = this.propositions[lastP].value.nodes[1];
-                    cursor++;
-                }
-            }
-        };
-        try {
-            this.removePropositions();
-            // replace2(ast, 0, replaced);
-            // replaceE2(ast, replaced[0]);
-            const tempNames = [];
-            for (let i = 0; i < newNames.length; i++) {
-                const pos = oldNames.indexOf(newNames[i]);
-                tempNames.push((pos === -1 || pos < i) ? newNames[i] : uniq + newNames[i]);
-            }
-            replaceVE(tempNames);
-            oldNames = tempNames;
-            replaceVE(newNames);
-            let frontier = steps[0];
-            if (!frontier)
-                throw TR("无任何变量被改名");
-            for (let i = 1; i < steps.length; i++) {
-                frontier = this.deduct({
-                    deductionIdx: ".<>t", conditionIdxs: [frontier, steps[i]], replaceValues: []
-                });
-            }
             const ret = this.addMacro(name, from);
             this.propositions = oldP;
             return ret;
@@ -1654,74 +1512,6 @@ export class FormalSystem {
             this.propositions = oldP;
             throw e;
         }
-    }
-    expandDefs(ast) {
-        //expand
-        if (ast.type === "sym") {
-            if (ast.name === "E") {
-                astmgr.assign(ast, {
-                    type: "sym", name: "~", nodes: [{
-                            type: "sym", name: "V", nodes: [
-                                ast.nodes[0],
-                                { type: "sym", name: "~", nodes: [ast.nodes[1]] }
-                            ]
-                        }]
-                });
-                this.expandDefs(ast);
-            }
-            if (ast.name === "&") {
-                astmgr.assign(ast, {
-                    type: "sym", name: "~", nodes: [{
-                            type: "sym", name: ">", nodes: [
-                                ast.nodes[0],
-                                { type: "sym", name: "~", nodes: [ast.nodes[1]] }
-                            ]
-                        }]
-                });
-                this.expandDefs(ast);
-            }
-            if (ast.name === "|") {
-                astmgr.assign(ast, {
-                    type: "sym", name: ">", nodes: [
-                        { type: "sym", name: "~", nodes: [ast.nodes[0]] },
-                        ast.nodes[1],
-                    ]
-                });
-                this.expandDefs(ast);
-            }
-            if (ast.name === "<>") {
-                astmgr.assign(ast, {
-                    type: "sym", name: "&", nodes: [
-                        { type: "sym", name: ">", nodes: [ast.nodes[0], ast.nodes[1]] },
-                        { type: "sym", name: ">", nodes: [ast.nodes[1], ast.nodes[0]] },
-                    ]
-                });
-                this.expandDefs(ast);
-            }
-        }
-        //reduce ~~a : a
-        if (ast.type === "sym" && ast.name === "~") {
-            const ast2 = ast.nodes[0];
-            if (ast2.type === "sym" && ast2.name === "~") {
-                astmgr.assign(ast, ast2.nodes[0]);
-            }
-        }
-        //reduce ~a > ~b : b > a
-        if (ast.type === "sym" && ast.name === ">") {
-            const a = ast.nodes[0];
-            const b = ast.nodes[1];
-            if (a.type === "sym" && a.name === "~" && b.type === "sym" && b.name === "~") {
-                astmgr.assign(ast, {
-                    type: "sym", name: ">", nodes: [
-                        b.nodes[0], a.nodes[0]
-                    ]
-                });
-            }
-        }
-        if (!ast.nodes)
-            return;
-        for (const n of ast.nodes)
-            this.expandDefs(n);
     }
 }
 //# sourceMappingURL=formalsystem.js.map

@@ -22,6 +22,7 @@ export class FSGui {
     onStateChange = () => { };
     onchangeOmitNF = () => { };
     draggerD = new ListDragger(document.getElementById("deduct-list"));
+    draggerM = new ListDragger(document.getElementById("meta-list"));
     draggerP = new ListDragger(document.getElementById("prop-list"));
     isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
     cmd;
@@ -87,6 +88,24 @@ export class FSGui {
                 this.deductions.splice(dstPos, 0, moved);
             this.updateDeductionList();
         };
+        this.draggerM.onExecute = (src, dst) => {
+            src = src.slice(1);
+            dst = dst.slice(1);
+            const srcPos = this.metarules.indexOf(src);
+            let dstPos = this.metarules.indexOf(dst);
+            if (dstPos > srcPos)
+                dstPos--;
+            if (srcPos === -1)
+                return;
+            if (dstPos === -1 && dst !== " ")
+                return;
+            const moved = this.metarules.splice(this.metarules.indexOf(src), 1)[0];
+            if (dstPos === -1)
+                this.metarules.push(moved);
+            else
+                this.metarules.splice(dstPos, 0, moved);
+            this.updateMetaRuleList(true);
+        };
         this.draggerP.queryAllowDrag = () => this.cmd.cmdBuffer.length === 0;
         this.draggerP.onExecute = (src, dst) => {
             const pl = this.formalSystem.propositions.length;
@@ -139,7 +158,12 @@ export class FSGui {
         const varnode = document.createElement("span");
         const astStr = this.cmd.astparser.stringify(ast);
         varnode.setAttribute("ast-string", astStr);
-        if (ast.type === "meta") {
+        if (ast.type === "rule") {
+            this.addSpan(varnode, '"');
+            varnode.appendChild(this.tree2HTML(this.formalSystem.getDeductionTokens(ast.name)));
+            this.addSpan(varnode, '"');
+        }
+        else if (ast.type === "meta") {
             this.addSpan(varnode, "(");
             let firstTerm = true;
             for (const n of ast.nodes[0].nodes) {
@@ -194,6 +218,8 @@ export class FSGui {
                             fnName.classList.add("sysfn");
                         if (this.formalSystem.fns.has(ast.name))
                             fnName.classList.add("fn");
+                        if (this.formalSystem.verbs.has(ast.name))
+                            fnName.classList.add("verb");
                     }
                     this.addSpan(varnode, "(");
                 }
@@ -262,7 +288,7 @@ export class FSGui {
         else if (ast.type === "replvar") {
             const el = this.addSpan(varnode, ast.name === "omega" ? "ω" : ast.name);
             const scopeStack = scopes.slice(0);
-            if (this.formalSystem.assert.isConst(ast.name, this.formalSystem.consts)) {
+            if (this.formalSystem.assert.isConst(ast.name)) {
                 el.classList.add("constant");
             }
             else if (ast.name.replace(/^\.\.\./, "").match(this.formalSystem.deductionReplNameRule)) {
@@ -464,7 +490,21 @@ export class FSGui {
                 itInfo[0].innerText = TR("假设");
                 return;
             }
-            itInfo[0].innerHTML = this.stringifyDeductionStep(p.from).replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+            this.stringifyDeductionStep(itInfo[0], p.from);
+            it.addEventListener("mouseover", () => {
+                p.from.conditionIdxs.forEach(idx => {
+                    const el = document.querySelector(`#prop-list .idx:nth-child(${(idx + 1) * 8 - 7})`);
+                    if (el)
+                        el.classList.add("p-highlighted");
+                });
+            });
+            it.addEventListener("mouseout", () => {
+                p.from.conditionIdxs.forEach(idx => {
+                    const el = document.querySelector(`#prop-list .idx:nth-child(${(idx + 1) * 8 - 7})`);
+                    if (el)
+                        el.classList.remove("p-highlighted");
+                });
+            });
         }, refresh);
         this.draggerP.attachIdxListener();
     }
@@ -489,12 +529,89 @@ export class FSGui {
         this.draggerD.attachIdxListener();
     }
     updateMetaRuleList(refresh) {
-        this.updateGuiList("m", this.formalSystem.metaRules, this.metaRuleList, (p, idx) => this.metarules.includes(idx), (p, itInfo, it) => {
+        this.updateGuiList("m", Object.fromEntries(this.metarules.map(e => [e, this.formalSystem.metaRules[e]])), this.metaRuleList, (p, idx) => this.metarules.includes(idx), (p, itInfo, it) => {
             itInfo[0].innerHTML = TR(p.from).replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-        }, refresh, Object.keys(this.formalSystem.metaRules).map(e => "m" + e));
+        }, refresh, this.metarules.map(e => "m" + e));
+        this.draggerM.attachIdxListener();
     }
-    stringifyDeductionStep(step) {
-        return `&nbsp;${step.deductionIdx} ${step.conditionIdxs.join(",")}`;
+    tree2HTML(tree) {
+        const span = document.createElement("span");
+        span.classList.add("rule-node");
+        if (tree.length === 1) {
+            span.textContent = tree[0];
+            span.classList.add("rule-token");
+            if (tree[0].startsWith("$$")) {
+                span.classList.add("replvar");
+                span.classList.remove("rule-token");
+            }
+        }
+        else if (tree[0][0] === "#") {
+            const hash = document.createElement("span");
+            hash.textContent = tree[0];
+            span.appendChild(hash);
+            for (let i = 1; i < tree.length; i++) {
+                const comma = document.createElement("span");
+                comma.textContent = ",";
+                span.appendChild(comma);
+                span.appendChild(this.tree2HTML(tree[i]));
+            }
+        }
+        else if (tree[0] === ":") {
+            const colon = document.createElement("span");
+            colon.textContent = ":";
+            span.appendChild(colon);
+            span.appendChild(this.tree2HTML(tree[1]));
+            const comma = document.createElement("span");
+            comma.textContent = ",";
+            span.appendChild(comma);
+            span.appendChild(this.tree2HTML(tree[2]));
+        }
+        else if (tree.length === 2) {
+            const first = document.createElement("span");
+            first.textContent = tree[0];
+            span.appendChild(first);
+            span.appendChild(this.tree2HTML(tree[1]));
+        }
+        const spans = Array.from(span.childNodes);
+        for (const node of spans.filter(n => (!n.classList) || !n.classList.contains("rule-node"))) {
+            node.addEventListener('mouseover', ev => {
+                for (const node of spans) {
+                    node.classList.add("rule-highlighted");
+                }
+            });
+            node.addEventListener('mouseout', ev => {
+                for (const node of spans) {
+                    node.classList.remove("rule-highlighted");
+                }
+            });
+        }
+        return span;
+    }
+    stringifyDeductionStep(dom, step) {
+        if (!dom)
+            return `&nbsp;${step.deductionIdx} ${step.conditionIdxs.join(",")}`;
+        const span = this.addSpan(dom, "&nbsp;");
+        const didx = this.tree2HTML(this.formalSystem.getDeductionTokens(step.deductionIdx));
+        span.appendChild(didx);
+        this.addSpan(span, " ");
+        let firstTerm = true;
+        for (const p of step.conditionIdxs) {
+            if (!firstTerm)
+                this.addSpan(span, ",");
+            firstTerm = false;
+            const sp = this.addSpan(span, String(p));
+            sp.classList.add("rule-cond");
+            sp.addEventListener("mouseover", ev => {
+                const el = document.querySelector(`#prop-list .idx:nth-child(${(p + 1) * 8 - 7})`);
+                if (el)
+                    el.classList.add("p-highlighted");
+            });
+            sp.addEventListener("mouseout", ev => {
+                const el = document.querySelector(`#prop-list .idx:nth-child(${(p + 1) * 8 - 7})`);
+                if (el)
+                    el.classList.remove("p-highlighted");
+            });
+        }
     }
     addToDeductions(name, after) {
         const oldpos = this.deductions.indexOf(name);
@@ -524,8 +641,7 @@ export class FSGui {
     getDeduction(id) {
         if (id === ".")
             return this.getDeduction(this.cmd.lastDeduction);
-        if (id[0] === "." && !this.deductions.includes(id) && !(this.formalSystem.fastmetarules.includes("#") && this.formalSystem.generateNatLiteralOp(id)))
-            return null;
+        // if cuv is locked, can't use cmp and vmp
         if ("cuv".includes(id[0]) && !this.formalSystem.fastmetarules.includes(id[0])) {
             if (id[0] === "v" && this.formalSystem.fastmetarules.includes("q")) {
                 if (id.match(/^v*mp$/))
@@ -534,26 +650,19 @@ export class FSGui {
             else
                 return null;
         }
-        if (this.autoGenerateDeduction) {
-            const res = [];
-            this.formalSystem.generateDeductionNameTokens(id, 0, res);
-            for (const it of res) {
-                if (it[0] === "." && !this.deductions.includes(it) && !(this.formalSystem.fastmetarules.includes("#") && this.formalSystem.generateNatLiteralOp(it)))
-                    return null;
-                if (this.formalSystem.deductions[it] && !this.deductions.includes(it) && !((it.match(/^d([1-9][0-9]+)$/) || this.formalSystem.generateNatLiteralOp(it)) && this.formalSystem.fastmetarules.includes("#")))
-                    return null;
-            }
-            try {
-                return this.formalSystem.generateDeduction(id);
-            }
-            catch (e) {
+        const tokens = [];
+        this.formalSystem.getAtomDeductionTokens(id, tokens);
+        for (const it of tokens) {
+            // if .XX is locked, can't use it
+            if (it[0] === "." && !this.deductions.includes(it) && !(this.formalSystem.fastmetarules.includes("#") && this.formalSystem.generateNatLiteralOp(it)))
                 return null;
-            }
         }
-        else if (this.deductions.includes(id)) {
-            return this.formalSystem.deductions[id];
+        try {
+            return this.formalSystem.generateDeduction(id);
         }
-        return null;
+        catch (e) {
+            return null;
+        }
     }
 }
 //# sourceMappingURL=gui.js.map

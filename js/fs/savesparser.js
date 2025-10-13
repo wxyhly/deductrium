@@ -52,25 +52,35 @@ export class SavesParser {
         }
         const props = gui.getProps();
         return JSON.stringify([
-            Array.from(fs.fns), Array.from(fs.consts), userD, dlist, props.map(s => this.serializeProposition(s))
+            Array.from(fs.consts), Array.from(fs.fns), Array.from(fs.verbs), [[ /* todo metamacro */], ...gui.metarules], userD, dlist, props.map(s => this.serializeProposition(s))
         ]);
     }
     deserializeArr(fs, arr) {
-        const [arrC, arrFn, dictD, arrD, arrP] = arr;
-        for (const [k, v] of Object.entries(dictD)) {
-            this.deserializeDeduction(k, fs, v);
-        }
+        // 
+        if (arr.length < 7)
+            arr.splice(2, 0, [], []);
+        const [arrC, arrFn, arrVb, arrM, dictD, arrD, arrP] = arr;
         for (const v of arrC) {
             fs.consts.add(v);
         }
         for (const v of arrFn) {
             fs.fns.add(v);
         }
+        for (const v of arrVb) {
+            fs.verbs.add(v);
+        }
+        for (const [k, v] of Object.entries(dictD)) {
+            this.deserializeDeduction(k, fs, v);
+        }
         if (arrP)
             for (const v of arrP) {
                 fs.propositions.push(this.deserializeProposition(v));
             }
-        return { fs, arrD };
+        return { fs, arrD, arrM };
+    }
+    deserializeMetaMacro(gui, arr) {
+        // todo
+        gui.formalSystem.metaMacro = {};
     }
     deserialize(gui, str) {
         const fsArrD = initFormalSystem(this.creative);
@@ -79,8 +89,13 @@ export class SavesParser {
         gui.formalSystem = fsdata.fs;
         gui.formalSystem.fastmetarules = savedMetarules;
         gui.deductions = fsdata.arrD;
+        if (fsdata.arrM[0]) {
+            gui.metarules = fsdata.arrM.slice(1);
+            this.deserializeMetaMacro(gui, fsdata.arrM[0]);
+        }
         gui.updatePropositionList(true);
         gui.updateDeductionList();
+        gui.updateMetaRuleList(true);
     }
 }
 //# sourceMappingURL=savesparser.js.map
