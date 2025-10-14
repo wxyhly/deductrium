@@ -353,6 +353,10 @@ export class Game {
                     return this.fsGui.addToDeductions("dU");
                 case "dI":
                     return this.fsGui.addToDeductions("dI");
+                case "d()":
+                    return this.fsGui.addToDeductions("d()");
+                case "d()pr":
+                    return this.fsGui.addToDeductions("d()pr");
                 case ".filter":
                     return this.fsGui.addToDeductions(".filter");
                 case "dPrime":
@@ -362,6 +366,9 @@ export class Game {
                     return this.fsGui.formalSystem.fastmetarules += "#";
                 case "omit-fn":
                     document.getElementById("wrap-simpl-sysfn").classList.remove("hide");
+                    this.fsGui.onchangeOmitNF(); return;
+                case "italic-item":
+                    document.getElementById("wrap-italic-item").classList.remove("hide");
                     this.fsGui.onchangeOmitNF(); return;
                 case "type": return document.getElementById("type-btn").classList.remove("hide");
                 case "ttsimplFn": this.ttGui.disableSimpleFn = false; return this.ttGui.getInhabitatArray()[0].onblur({} as any);

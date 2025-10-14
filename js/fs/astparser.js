@@ -164,17 +164,6 @@ export class ASTParser {
         else if (this.acceptSym("{")) {
             const c = this.cursor;
             const t = this.token;
-            if (this.acceptVar()) {
-                const v = { type: "replvar", name: this.prevToken(1) };
-                if (this.acceptSym("@")) {
-                    const nodes = [v, this.boolTerm5()];
-                    if (this.acceptSym("|")) {
-                        nodes.push(this.meta());
-                        this.expectSym("}");
-                        return { type: "sym", name: "{|", nodes };
-                    }
-                }
-            }
             this.cursor = c;
             this.token = t;
             const nodes = [this.meta()];
@@ -183,13 +172,23 @@ export class ASTParser {
                 nodes.push(this.meta());
             }
             this.expectSym("}");
-            // {xx|x@x}
+            // {xx|xx}
             if (nodes.length === 1 && nodes[0].type === "sym" && nodes[0].name === "|") {
-                const sub = nodes[0].nodes[1];
-                if (sub.name === "@" && sub.type === "sym") {
+                // {xx|x@x}
+                const sub2 = nodes[0].nodes[1];
+                if (sub2.name === "@" && sub2.type === "sym") {
                     return {
                         type: "sym", name: "|}", nodes: [
-                            ...sub.nodes, nodes[0].nodes[0]
+                            ...sub2.nodes, nodes[0].nodes[0]
+                        ]
+                    };
+                }
+                // {x@x|xx}
+                const sub1 = nodes[0].nodes[0];
+                if (sub1.name === "@" && sub1.type === "sym") {
+                    return {
+                        type: "sym", name: "{|", nodes: [
+                            ...sub1.nodes, nodes[0].nodes[1]
                         ]
                     };
                 }

@@ -481,6 +481,7 @@ class LangMgr {
         "进位": " for Limit Ordinal",
         "欢迎联系游戏作者": "Feel Free to Contact Game Author ",
         "简化显示系统函数": "Display Omitted System Functions",
+        "斜体显示项":"Italicize Terms",
         // p
         '注意：创造模式与生存模式不共享进度系统。创造模式下无法体验双曲空间以及序数系统等游戏内容，前往生存模式<a href="?" target="_blank">请点击这里</a>。': "Note: Creative and Survival Mode do not share progress. Hyperbolic space and the ordinal number system cannot be accessed in Creative Mode. To switch to Survival Mode, <a href=\"?\" target=\"_blank\">Click Here</a>.",
         // h3

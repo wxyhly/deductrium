@@ -11,6 +11,7 @@ export class FSGui {
     actionInput: HTMLInputElement;
     hintText: HTMLDivElement;
     omitNfFn = false;
+    italicItem = false;
     propositionList: HTMLOListElement;
     deductionList: HTMLOListElement;
     metaRuleList: HTMLOListElement;
@@ -61,14 +62,17 @@ export class FSGui {
             });
         });
         const simplSysFn = document.getElementById("simpl-sysfn") as HTMLInputElement;
+        const italicItemBox = document.getElementById("italic-item") as HTMLInputElement;
         const onchangeOmitNF = () => {
             this.omitNfFn = document.getElementById("wrap-simpl-sysfn").classList.contains("hide") ? false : simplSysFn.checked;
+            this.italicItem = document.getElementById("wrap-italic-item").classList.contains("hide") ? false : italicItemBox.checked;
             this.updateMetaRuleList(true);
             this.updateDeductionList();
             this.updatePropositionList(true);
         };
         this.onchangeOmitNF = onchangeOmitNF;
         simplSysFn.addEventListener("change", onchangeOmitNF);
+        italicItemBox.addEventListener("change", onchangeOmitNF);
         document.querySelectorAll(".footer .right button").forEach((btn: HTMLElement) => {
             btn.addEventListener("click", () => {
                 if (btn.innerText === "OK") {
@@ -135,6 +139,7 @@ export class FSGui {
         document.getElementById("hyp-btn").classList.remove("hide");
         document.getElementById("ach").classList.add("hide");
         document.getElementById("wrap-simpl-sysfn").classList.remove("hide");
+        document.getElementById("wrap-italic-item").classList.remove("hide");
         document.getElementById("stat").classList.add("hide");
         document.getElementById("creer").classList.remove("hide");
     }
@@ -149,7 +154,7 @@ export class FSGui {
         parentSpan.appendChild(span);
         return span;
     }
-    ast2HTML(idx: string, ast: AST, scopes: AST[] = []) {
+    ast2HTML(idx: string, ast: AST, isItem: boolean, scopes: AST[] = []) {
         const varnode = document.createElement("span");
         const astStr = this.cmd.astparser.stringify(ast);
         varnode.setAttribute("ast-string", astStr);
@@ -164,7 +169,7 @@ export class FSGui {
                 if (firstTerm) { firstTerm = false; } else {
                     this.addSpan(varnode, ", ");
                 }
-                varnode.appendChild(this.ast2HTML(idx, n, scopes));
+                varnode.appendChild(this.ast2HTML(idx, n, false, scopes));
             }
             if (ast.name === "⊢M") {
                 this.addSpan(varnode, ` ⊢<sub>M</sub> `);
@@ -176,7 +181,7 @@ export class FSGui {
                 if (firstTerm) { firstTerm = false; } else {
                     this.addSpan(varnode, ", ");
                 }
-                varnode.appendChild(this.ast2HTML(idx, n, scopes));
+                varnode.appendChild(this.ast2HTML(idx, n, false, scopes));
             }
 
             this.addSpan(varnode, ")");
@@ -189,7 +194,7 @@ export class FSGui {
                     if (firstTerm) { firstTerm = false; } else {
                         this.addSpan(varnode, ", ");
                     }
-                    varnode.appendChild(this.ast2HTML(idx, n, scopes));
+                    varnode.appendChild(this.ast2HTML(idx, n, true, scopes));
                 }
                 this.addSpan(varnode, "}");
             } else {
@@ -206,13 +211,14 @@ export class FSGui {
                 }
                 const fonts = []; // 0 for mormal, 1 for sup, -1 for sub
                 for (const [nidx, n] of ast.nodes.entries()) {
+                    let subIsItem = ast.name.match(/^##match/)?nidx===3:ast.name.match(/^#((v*)nf|#?rp)/) ? nidx === 0 ? isItem : true : true;
                     let font = 0;
-                    const node = this.ast2HTML(idx, n, scopes);
+                    const node = this.ast2HTML(idx, n, subIsItem, scopes);
                     if (ast.name.match(/^#(v*)nf/)) {
                         font = (nidx > ast.name.length - 3) ? -1 : 1;
                     }
                     if (ast.name.match(/^#(#match)?rp/)) {
-                        if (nidx === 0) node.classList.add("rp");
+                        if (nidx === 0) varnode.classList.add("rp");
                         font = nidx === 2 ? -1 : nidx === 1 ? 1 : 0;
                     }
                     if (!nidx) {
@@ -223,7 +229,7 @@ export class FSGui {
                     fonts.push(font);
                     const noComma = (nidx >= 1);
                     if (nidx && !font && !fonts[nidx - 1]) this.addSpan(varnode, ", ");
-                    if (omitNfFn && !nidx) node.classList.add("omit-nf");
+                    if (omitNfFn && !nidx) varnode.classList.add("omit-nf");
                     if (font) {
                         const wrappedNode = document.createElement(font === 1 ? "sup" : "sub");
                         wrappedNode.classList.add("omit-nf");
@@ -259,6 +265,7 @@ export class FSGui {
             }
         } else if (ast.type === "replvar") {
             const el = this.addSpan(varnode, ast.name === "omega" ? "ω" : ast.name);
+            if (isItem && this.italicItem) el.classList.add("item");
             const scopeStack = scopes.slice(0);
             if (this.formalSystem.assert.isConst(ast.name)) {
                 el.classList.add("constant");
@@ -289,34 +296,34 @@ export class FSGui {
             switch (ast.name) {
                 case "~": case "!":
                     this.addSpan(varnode, this.prettyPrint(ast.name));
-                    varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], scopes));
+                    varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], ast.name === "!", scopes));
                     break;
                 case "{|":
                 case "|}":
                 case "V": case "E": case "E!":
                     const outterLayers: HTMLSpanElement[] = [];
                     outterLayers.push(this.addSpan(varnode, (ast.name === "{|" || ast.name === "|}") ? "{" : ("(" + this.prettyPrint(ast.name))));
-                    const varast = this.ast2HTML(idx, ast.nodes[0], [{ type: "quantvar", name: "quantvar" }]);
+                    const varast = this.ast2HTML(idx, ast.nodes[0], true, [{ type: "quantvar", name: "quantvar" }]);
                     varast.classList.add("boundedVar");
                     if (ast.name === "{|") {
                         outterLayers.push(varnode.appendChild(varast));
                         outterLayers.push(this.addSpan(varnode, this.prettyPrint("@")));
-                        varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], scopes));
+                        varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], true, scopes));
                         outterLayers.push(this.addSpan(varnode, "|"));
-                        varnode.appendChild(this.ast2HTML(idx, ast.nodes[2], [ast, ...scopes]));
+                        varnode.appendChild(this.ast2HTML(idx, ast.nodes[2], false, [ast, ...scopes]));
                         outterLayers.push(this.addSpan(varnode, "}"));
 
                     } else if (ast.name === "|}") {
-                        varnode.appendChild(this.ast2HTML(idx, ast.nodes[2], [ast, ...scopes]));
+                        varnode.appendChild(this.ast2HTML(idx, ast.nodes[2], true, [ast, ...scopes]));
                         outterLayers.push(this.addSpan(varnode, "|"));
                         outterLayers.push(varnode.appendChild(varast));
                         outterLayers.push(this.addSpan(varnode, this.prettyPrint("@")));
-                        varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], scopes));
+                        varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], true, scopes));
                         outterLayers.push(this.addSpan(varnode, "}"));
                     } else {
                         outterLayers.push(varnode.appendChild(varast));
                         outterLayers.push(this.addSpan(varnode, ":"));
-                        varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], [ast, ...scopes]));
+                        varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], false, [ast, ...scopes]));
                         outterLayers.push(this.addSpan(varnode, ")"));
                     }
 
@@ -351,9 +358,10 @@ export class FSGui {
                 default:
                     // case "@": case "=": case "&": case "^": case ">": case "|":
                     this.addSpan(varnode, "(");
-                    varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], scopes));
+                    const subIsItem = "@=<+*UIX".includes(ast.name);
+                    varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], subIsItem, scopes));
                     this.addSpan(varnode, ast.name.startsWith("$$") ? ` ${ast.name} ` : this.prettyPrint(ast.name));
-                    varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], scopes));
+                    varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], subIsItem, scopes));
                     this.addSpan(varnode, ")");
             }
         }
@@ -428,7 +436,7 @@ export class FSGui {
             const itVal = document.createElement("div");
             list.appendChild(itVal);
             itVal.classList.add("val");
-            itVal.appendChild(this.ast2HTML(pname, p.value));
+            itVal.appendChild(this.ast2HTML(pname, p.value, false));
 
             const infoArr = [];
             for (let i = 0; i < 6; i++) {
@@ -505,7 +513,7 @@ export class FSGui {
         this.draggerD.attachIdxListener();
     }
     updateMetaRuleList(refresh?: boolean) {
-        this.updateGuiList("m", Object.fromEntries(this.metarules.map(e => [e,this.formalSystem.metaRules[e]])), this.metaRuleList, (p, idx) => this.metarules.includes(idx), (p, itInfo, it) => {
+        this.updateGuiList("m", Object.fromEntries(this.metarules.map(e => [e, this.formalSystem.metaRules[e]])), this.metaRuleList, (p, idx) => this.metarules.includes(idx), (p, itInfo, it) => {
             itInfo[0].innerHTML = TR(p.from).replaceAll("<", "&lt;").replaceAll(">", "&gt;");
         }, refresh, this.metarules.map(e => "m" + e));
         this.draggerM.attachIdxListener();

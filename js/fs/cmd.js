@@ -551,7 +551,7 @@ export class FSCmd {
         this.gui.addSpan(this.gui.hintText, TR(`正在进行推理`) + "&nbsp; ");
         this.gui.hintText.appendChild(this.gui.tree2HTML(formalSystem.getDeductionTokens(cmdBuffer[1] === "." ? this.lastDeduction : cmdBuffer[1])));
         this.gui.addSpan(this.gui.hintText, `&nbsp; ${writtenConditions.map(e => e !== "?" ? `<span class="rule-cond">${e}</span>` : e).join(", ")} : `);
-        this.gui.hintText.appendChild(this.gui.ast2HTML("d", deduction.value));
+        this.gui.hintText.appendChild(this.gui.ast2HTML("d", deduction.value, false));
         let preInfo = "\n";
         let infoWrap = document.createElement("span");
         this.gui.hintText.appendChild(infoWrap);
