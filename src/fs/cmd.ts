@@ -510,7 +510,7 @@ export class FSCmd {
             return;
         }
         // a deduction is chosen, we verify vars and conditions
-        let deduction: any;
+        let deduction: Deduction;
         try {
             deduction = cmdBuffer[1] === "." ? this.gui.getDeduction(this.lastDeduction) : this.gui.getDeduction(cmdBuffer[1]);
         } catch (e) { }
@@ -551,20 +551,38 @@ export class FSCmd {
         ));
         this.gui.addSpan(this.gui.hintText, `&nbsp; ${writtenConditions.map(e => e !== "?" ? `<span class="rule-cond">${e}</span>` : e).join(", ")} : `);
         this.gui.hintText.appendChild(this.gui.ast2HTML("d", deduction.value, false));
-        let preInfo = "\n";
         let infoWrap = document.createElement("span");
-        this.gui.hintText.appendChild(infoWrap);
+        this.gui.hintText.appendChild(document.createElement("br"));
         for (let i = 2 + condLength; i < 2 + condLength + replVarsLength && i < curLength; i++) {
-            preInfo += vars[i - 2 - condLength] + `: ${cmdBuffer[i]}\n`;
+            let astHtml, err = "";
+            let varName = vars[i - 2 - condLength];
+            try {
+                astHtml = this.gui.ast2HTML("d", this.astparser.parse(cmdBuffer[i]), deduction.replaceTypes[varName]);
+            } catch (e) {
+                err = "<span style='color:red'>[!]</span>";
+            }
+            const varnode = this.gui.addSpan(this.gui.hintText, varName);
+            varnode.className = "replvar";
+            if (deduction.replaceTypes[varName] && this.gui.italicItem)
+                varnode.classList.add("item");
+            this.gui.addSpan(this.gui.hintText, " : " + err);
+            if (astHtml) {
+                this.gui.hintText.appendChild(astHtml);
+            } else {
+                this.gui.addSpan(this.gui.hintText, cmdBuffer[i].replace(/</g, "&lt;").replace(/>/g, "&gt;"));
+            }
+            this.gui.hintText.appendChild(document.createElement("br"));
+
         }
+        this.gui.hintText.appendChild(infoWrap);
         if (curLength < condLength + 2) {
             if (curLength > 2) this.escClear = false;
             //wait for conditionIdx input
-            infoWrap.innerText = preInfo + TR("请输入条件") + this.astparser.stringify(deduction.conditions[cmdBuffer.length - 2]) + TR("的定理编号，或点选定理");
+            infoWrap.innerHTML = TR("请输入条件") + this.astparser.stringify(deduction.conditions[cmdBuffer.length - 2]) + TR("的定理编号，或点选定理");
         } else if (curLength < replVarsLength + condLength + 2) {
             if (curLength > 2) this.escClear = false;
             // wait for replvar input
-            infoWrap.innerText = preInfo + TR("请输入替代") + vars[cmdBuffer.length - 2 - condLength] + TR("的内容");
+            infoWrap.innerHTML = TR("请输入替代") + vars[cmdBuffer.length - 2 - condLength] + TR("的内容");
             if (!this.gui.actionInput.value) {
                 this.gui.actionInput.value = vars[cmdBuffer.length - 2 - condLength];
                 // this.gui.actionInput.setSelectionRange(0, this.gui.actionInput.value.length);
@@ -706,7 +724,7 @@ export class FSCmd {
             // click item to start a cmd
             if (cmdBuffer[0] === "d" && cmdBuffer.length === 1) {
                 if (!this.gui.formalSystem.deductions[idx]) {
-                    this.gui.hintText.innerText += TR("\n请点选推理规则！");
+                    this.gui.addSpan(this.gui.hintText, "<br>" + TR("\n请点选推理规则！"));
                     return;
                 }
             }
@@ -727,7 +745,8 @@ export class FSCmd {
             if (conditions + 2 > cmdBuffer.length) {
                 //wait for conditionIdx input
                 if (!idx.match(/^p[0-9]+$/)) {
-                    this.gui.hintText.innerText += TR("\n请点选定理！");
+                    this.gui.addSpan(this.gui.hintText, "<br>" + TR("\n请点选定理！"));
+
                     return;
                 }
                 cmdBuffer.push(Number(idx.slice(1)));
@@ -745,7 +764,7 @@ export class FSCmd {
             if (conditions + 2 > cmdBuffer.length) {
                 //wait for conditionIdx input
                 if (!this.gui.formalSystem.deductions[idx]) {
-                    this.gui.hintText.innerText += TR("\n请点选推理规则！");
+                    this.gui.addSpan(this.gui.hintText, "<br>" + TR("\n请点选推理规则！"));
                     return;
                 }
                 cmdBuffer.push(idx);

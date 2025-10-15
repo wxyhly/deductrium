@@ -163,21 +163,22 @@ export class ASTParser {
             this.expectSym("}");
             // {xx|xx}
             if (nodes.length === 1 && nodes[0].type === "sym" && nodes[0].name === "|") {
-                // {xx|x@x}
-                const sub2 = nodes[0].nodes[1];
-                if (sub2.name === "@" && sub2.type === "sym") {
-                    return {
-                        type: "sym", name: "|}", nodes: [
-                            ...sub2.nodes, nodes[0].nodes[0]
-                        ]
-                    };
-                }
                 // {x@x|xx}
                 const sub1 = nodes[0].nodes[0];
                 if (sub1.name === "@" && sub1.type === "sym") {
                     return {
                         type: "sym", name: "{|", nodes: [
                             ...sub1.nodes, nodes[0].nodes[1]
+                        ]
+                    };
+                }
+
+                // {xx|x@x}
+                const sub2 = nodes[0].nodes[1];
+                if (sub2.name === "@" && sub2.type === "sym") {
+                    return {
+                        type: "sym", name: "|}", nodes: [
+                            ...sub2.nodes, nodes[0].nodes[0]
                         ]
                     };
                 }
