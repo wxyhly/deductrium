@@ -129,12 +129,10 @@ export function initFormalSystem(creative: boolean) {
         "dUnion": ["⊢(#nf($z,$0)@Union(#nf($x,$0)))<>(E$0:(($0@#nf($x,$0))&(#nf($z,$0)@$0)))", "集合符号定义", null],
         "dU": ["⊢($z@($xU$y))<>(($z@$x)|($z@$y))", "集合符号定义", null],
         "dI": ["⊢($z@($xI$y))<>(($z@$x)&($z@$y))", "集合符号定义", null],
-        // "dS": ["⊢S($0)=($0U{$0})", "集合算数连接", null],
-        // "d0": ["⊢0={}", "集合算数连接", null],
-
         "dPow": ["⊢($z@Pow($x))<>($z<$x)", "集合符号定义", null],
         "d{@|}": ["⊢$x@{$x@#nf($y,$x)|$z}<>$x@#nf($y,$x)&$z", "集合符号定义", null],
         "d{|@}": ["⊢#nf($w,$x)@{$z|$x@#nf($y,$x)}<>E$x:($x@#nf($y,$x)&$z=#nf($w,$x))", "集合符号定义", null],
+        "d\\": ["⊢#nf($a,$c)\\#nf($b,$c)={$c@#nf($a,$c)|~$c@#nf($b,$c)}", "集合符号定义", null],
         "dX": ["⊢#nf($a,$m,$n)X#nf($b,$m,$n)=Union({{(#nf($m,$n),#nf($n,$m))|#nf($n,$m)@#nf($b,$m,$n)}|#nf($m,$n)@#nf($a,$m,$n)})", "集合符号定义", null],
 
         "domega": ["⊢Vn:(n@omega<> (n={} | Ep:(p@omega & n=pU{p} & (Vx:(x@p>(x={}|Ey:(y@p&x=yU{y})))))))", "集合符号定义", null],

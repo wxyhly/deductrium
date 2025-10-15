@@ -218,7 +218,7 @@ export class FSCmd {
             }
 
             if (cmdBuffer[0].includes(" ")) {
-                const queue = (cmdBuffer[0] as string).split(" ").filter(e => e);
+                const queue = (cmdBuffer[0] as string).replaceAll(/\s([@=\+\-\*XUI><&\|\\]|<>)\s/g, "$1").replaceAll(/([,\(\:])\s+/g, "$1").split(" ").filter(e => e);
                 this.cmdBuffer = [];
                 for (const c of queue) {
                     this.cmdBuffer.push(c);
@@ -662,7 +662,7 @@ export class FSCmd {
             const pos = this.gui.deductions.indexOf(this.cmdBuffer[1]);
             if (pos === -1) throw TR("列表中无此规则");
             this.gui.formalSystem.removeDeduction(this.cmdBuffer[1]);
-            this.gui.deductions.splice(pos, 1);
+            this.gui.deductions = this.gui.deductions.filter(d => this.gui.formalSystem.deductions[d]);
             this.gui.updateDeductionList();
             this.gui.updatePropositionList(true);
             this.clearCmdBuffer();

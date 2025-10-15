@@ -4,6 +4,8 @@ const astmgr = new ASTMgr;
 const logicSyms = ["<>", ">", "~", "&", "|"];
 const quantSyms = ["E", "E!", "V"];
 const verbSyms = ["@", "=", "<"];
+// const verbFns = ["Prime", "Equiv", "Order", "WellOrder", "Rel", "Point", "Line", "Plane", "Between", "Angle"];
+const fnSyms = ["U", "I", "S", "+", "-", "*", "X", "/", "\\"];
 import { ASTParser } from "./astparser.js";
 const T = 1;
 const F = -1;
@@ -1069,7 +1071,7 @@ export class AssertionSystem {
                 this.checkGrammer(ast.nodes[1], "p");
                 return;
             }
-            if (this.fns.has(ast.name)) {
+            if (fnSyms.includes(ast.name)) {
                 if (type !== "i")
                     throw TR("意外出现集合表达式");
                 this.checkGrammer(ast.nodes[0], "i");

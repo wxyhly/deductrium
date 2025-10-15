@@ -1,7 +1,7 @@
 import { TR } from "../lang.js";
 export class ASTParser {
     keywords = ["E!", "⊢M", "<>", "Union", "{}", "Equiv"];
-    symChar = "VEMUIX()@~^<>|&=,;:[]!⊢+-*/{}";
+    symChar = "VEMUIX()@~^<>|&=,;:[]!⊢+-*/{}\\";
     ast;
     cursor = 0;
     tokens;
@@ -220,7 +220,7 @@ export class ASTParser {
     }
     boolTerm5() {
         let val = this.boolTerm6();
-        while (this.token === "+" || this.token === "U" || this.token === "-") {
+        while (this.token === "+" || this.token === "U" || this.token === "\\" || this.token === "-") {
             const name = this.token;
             this.nextSym();
             let val2 = this.boolTerm6();

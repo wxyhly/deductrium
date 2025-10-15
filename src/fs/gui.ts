@@ -358,7 +358,7 @@ export class FSGui {
                 default:
                     // case "@": case "=": case "&": case "^": case ">": case "|":
                     this.addSpan(varnode, "(");
-                    const subIsItem = "@=<+*UIX".includes(ast.name);
+                    const subIsItem = "@=<+*UIX/\\".includes(ast.name);
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], subIsItem, scopes));
                     this.addSpan(varnode, ast.name.startsWith("$$") ? ` ${ast.name} ` : this.prettyPrint(ast.name));
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], subIsItem, scopes));

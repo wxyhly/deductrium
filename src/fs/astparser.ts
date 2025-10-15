@@ -2,7 +2,7 @@ import { AST } from "astmgr.js"
 import { TR } from "../lang.js";
 export class ASTParser {
     keywords = ["E!", "⊢M", "<>", "Union", "{}", "Equiv"];
-    symChar = "VEMUIX()@~^<>|&=,;:[]!⊢+-*/{}";
+    symChar = "VEMUIX()@~^<>|&=,;:[]!⊢+-*/{}\\";
     ast: AST;
     cursor: number = 0;
     tokens: string[];
@@ -207,7 +207,7 @@ export class ASTParser {
     }
     private boolTerm5(): AST {
         let val = this.boolTerm6();
-        while (this.token === "+" || this.token === "U" || this.token === "-") {
+        while (this.token === "+" || this.token === "U" || this.token === "\\" || this.token === "-") {
             const name = this.token;
             this.nextSym();
             let val2 = this.boolTerm6();

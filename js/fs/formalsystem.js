@@ -81,12 +81,20 @@ export class FormalSystem {
     removeDeduction(name) {
         if (!this.deductions[name])
             throw TR("规则名称 ") + name + TR(" 不存在");
+        if (this.getDeductionTokens(name).length > 1)
+            return; // this is composed, ignore it
         // if (this.deductions[name].from.match(/$/)) throw "无法删除系统规则";
+        const composedDs = [];
         for (const [n, d] of Object.entries(this.deductions)) {
             if (!d.steps)
                 continue;
             if (name === n)
                 continue;
+            if (this.getDeductionTokens(n).length > 1) {
+                if (this.getdependency(name, n))
+                    composedDs.push(n);
+                continue;
+            }
             for (const s of d.steps) {
                 if (this.getdependency(name, s.deductionIdx)) {
                     throw TR("无法删除规则 ") + name + TR("，请先删除对其有依赖的规则 ") + n;
@@ -106,6 +114,9 @@ export class FormalSystem {
         }
         if (name.startsWith("dv")) {
             this.verbs.delete(name.slice(2));
+        }
+        for (const d of composedDs) {
+            delete this.deductions[d];
         }
         delete this.deductions[name];
         return true;

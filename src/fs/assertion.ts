@@ -5,7 +5,7 @@ const logicSyms = ["<>", ">", "~", "&", "|"];
 const quantSyms = ["E", "E!", "V"];
 const verbSyms = ["@", "=", "<"];
 // const verbFns = ["Prime", "Equiv", "Order", "WellOrder", "Rel", "Point", "Line", "Plane", "Between", "Angle"];
-// const fnSyms = ["Pair", "Union", "Pow", "U", "I", "S", "+", "-", "*", "X", "/", "{", "(", "Pr1", "Pr2"];
+const fnSyms = ["U", "I", "S", "+", "-", "*", "X", "/", "\\"];
 
 // type: item for true, boolean for false
 export type ReplvarTypeTable = { [varname: string]: boolean };
@@ -929,7 +929,7 @@ export class AssertionSystem {
                 this.checkGrammer(ast.nodes[1], "p");
                 return;
             }
-            if (this.fns.has(ast.name)) {
+            if (fnSyms.includes(ast.name)) {
                 if (type !== "i") throw TR("意外出现集合表达式");
                 this.checkGrammer(ast.nodes[0], "i");
                 this.checkGrammer(ast.nodes[1], "i");
