@@ -506,7 +506,7 @@ export class FormalSystem {
         return this.addDeduction(vpre + name, parser.parse(`⊢${V}(${a}${op}${b}=${op === "+" ? a + b : a * b})`), "元规则生成*", steps, new Set());
     }
 
-    deduct(step: DeductionStep, inlineMode?: DeductInlineMode | ((step: DeductionStep, conclusion: AST) => DeductInlineMode)) {
+    deduct(step: DeductionStep, inlineMode?: DeductInlineMode | ((step: DeductionStep, conclusion: AST) => DeductInlineMode), partialTest?: boolean) {
         const { conditionIdxs, deductionIdx, replaceValues } = step;
         const deduction = this.generateDeduction(deductionIdx);
         const errorMsg = TR(`规则 `) + deductionIdx + TR(` 推理失败:`);
@@ -516,24 +516,42 @@ export class FormalSystem {
         // firstly, match condition, get matchtable ( partial initially provided by users)
 
         let replacedVarTypeTable: ReplvarTypeTable = {};
-        let matchTable: ReplvarMatchTable = Object.fromEntries(replaceNames.map(
+        let matchTable: ReplvarMatchTable = partialTest ? {} : Object.fromEntries(replaceNames.map(
             (replname: string, idx: number) => (
                 assert.getReplVarsType(replaceValues[idx], replacedVarTypeTable, replaceTypes[replname]),
                 [replname, replaceValues[idx]]
             )
         ));
+        // assertions in pattern
         let assertions: AST[] = [];
         let assertionsFrom: number[] = [];
+        // assertions in matched conditions
+        let astAssertions: ReplvarMatchTable = {};
         for (const [conditionIdx, condition] of conditions.entries()) {
             const condPropIdx = conditionIdxs[conditionIdx];
+            if (partialTest && !isFinite(condPropIdx)) return;
             const condProp = this.propositions[condPropIdx];
             if (!condProp) throw errorMsg + TR(`第${conditionIdx + 1}个`) + TR(`条件对应的定理p`) + condPropIdx + TR(`不存在`);
             try {
-                assert.match(condProp.value, condition, /^\$/, false, matchTable, replacedVarTypeTable, assertions);
+                //
+                assert.match(condProp.value, condition, /^\$/, false, matchTable, replacedVarTypeTable, astAssertions, assertions);
                 while (assertionsFrom.length < assertions.length) assertionsFrom.push(conditionIdx);
             } catch (e) {
                 // match failed
                 throw errorMsg + TR(`第${conditionIdx + 1}个`) + TR(`条件`) + e;
+            }
+        }
+
+        if (partialTest) return; // just test, no props to add
+
+        // assertions in condition can spread, i.e. fn(a,nf(a))  => fn(nf(a),nf(a))
+        // we spread it over matchTable and pattern assertions
+        for (const astAss of Object.values(astAssertions)) {
+            for (const ass of assertions) {
+                astmgr.replace(ass, astAss.nodes[0], astAss);
+            }
+            for (const [n, v] of Object.entries(matchTable)) {
+                astmgr.replace(v, astAss.nodes[0], astAss);
             }
         }
 
@@ -557,6 +575,7 @@ export class FormalSystem {
             assert.checkGrammer(replacedConclusion, "p");
             // grammar in conclusion failed
         } catch (e) { throw TR("结论中出现语法错误：") + e }
+
         try { assert.expand(replacedConclusion, false); } catch (e) {
             // assertion in conclusion failed (can be T or U, only F to fail)
             throw errorMsg + TR(`结论中：`) + e;
@@ -883,7 +902,7 @@ export class FormalSystem {
             d.conditions.forEach((c, id) => {
                 const newHyp = { type: "fn", name: "#nf", nodes: [c, s] };
                 this.addHypothese(newHyp);
-                try { assert.match(this.propositions[id].value, c, /^\$/, false, replvarTable, {}, []); } catch (e) {
+                try { assert.match(this.propositions[id].value, c, /^\$/, false, replvarTable, {}, null, []); } catch (e) {
                     throw TR(`向`) + TR(`第${id + 1}个`) + TR(`条件添加不自由断言时出现不一致：`) + e;
                 }
             });
@@ -1261,7 +1280,7 @@ export class FormalSystem {
             d1.conditions.forEach((c, id) => this.addHypothese(c));
             const matchTable: ReplvarMatchTable = {};
             const replacedVarTypeTable: ReplvarTypeTable = assert.getReplVarsType(d1.conclusion, {}, false);
-            assert.match(d1.conclusion, d2.conditions[0], /^\$/, false, matchTable, replacedVarTypeTable, []);
+            assert.match(d1.conclusion, d2.conditions[0], /^\$/, false, matchTable, replacedVarTypeTable, null, []);
             const d2_conds = [];
             for (let i = 1; i < d2.conditions.length; i++) {
                 const R = astmgr.clone(d2.conditions[i]);
@@ -1313,7 +1332,7 @@ export class FormalSystem {
                 // example: (~~a>~~b) <> (~~a > b), also count ~~a one time
                 try {
                     const matched: ReplvarMatchTable = {};
-                    assert.match(a, A, /^\$/, false, matched, {}, []);
+                    assert.match(a, A, /^\$/, false, matched, {}, null, []);
                     replacedNth++;
                 } catch (e) { }
                 // a == b : a <> a
@@ -1321,7 +1340,7 @@ export class FormalSystem {
             }
             try {
                 const matched: ReplvarMatchTable = {};
-                assert.match(a, A, /^\$/, false, matched, {}, []);
+                assert.match(a, A, /^\$/, false, matched, {}, null, []);
                 replacedNth++;
                 if (nth === -1 || nth + 1 === replacedNth) {
                     return this.deduct({

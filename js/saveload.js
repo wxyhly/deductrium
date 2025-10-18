@@ -79,10 +79,20 @@ export class GameSaveLoad {
                 }
             }
             // 2025.10.3 added new 1st-logic toolkits
-            if (!fsdata.includes(`",".Eirp","`)) {
+            if (!fsdata.includes(`",".Erp","`)) {
                 if (fsdata.includes(`,".Enf&",".E&nf"`)) {
-                    fsdata = fsdata.replace(`,".Enf&",".E&nf"`, `,".Enf&",".E&nf",".Emp",".Vcn",".Ecn",".Vcn<>",".Ecn<>"`);
-                    fsdata = fsdata.replace(`,".Ee",".Ei"`, `,".Ee",".Ei",".Eirp"`);
+                    if (fsdata.includes(`",".Eirp","`)) {
+                        fsdata = fsdata.replace(`",".Eirp","`, `",".Eirp",".Erp","`);
+                    }
+                    else {
+                        fsdata = fsdata.replace(`,".Enf&",".E&nf"`, `,".Enf&",".E&nf",".Emp",".Vcn",".Ecn",".Vcn<>",".Ecn<>"`);
+                        fsdata = fsdata.replace(`,".Ee",".Ei"`, `,".Ee",".Ei",".Eirp"`);
+                    }
+                }
+            }
+            if (!fsdata.includes(`",".|m1","`)) {
+                if (fsdata.includes(`,".|m"`)) {
+                    fsdata = fsdata.replace(`,".|m"`, `,".|m",".|m1",".|m2"`);
                 }
             }
             // 2025.9.27 patch player's progress: remove dS and d0, they are inconsistent with apn3

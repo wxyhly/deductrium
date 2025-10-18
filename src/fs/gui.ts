@@ -211,7 +211,7 @@ export class FSGui {
                 }
                 const fonts = []; // 0 for mormal, 1 for sup, -1 for sub
                 for (const [nidx, n] of ast.nodes.entries()) {
-                    let subIsItem = ast.name.match(/^##match/)?nidx===3:ast.name.match(/^#((v*)nf|#?rp)/) ? nidx === 0 ? isItem : true : true;
+                    let subIsItem = ast.name.match(/^##match/) ? nidx === 3 : ast.name.match(/^#((v*)nf|#?rp)/) ? nidx === 0 ? isItem : true : true;
                     let font = 0;
                     const node = this.ast2HTML(idx, n, subIsItem, scopes);
                     if (ast.name.match(/^#(v*)nf/)) {
@@ -403,7 +403,7 @@ export class FSGui {
     private updateGuiList<T extends { value: AST }>(
         prefix: string, logicArray: T[] | { [name: string]: T }, list: HTMLElement,
         filter: (term: T, idx: string) => boolean,
-        setInfo: (term: T, itInfo: HTMLElement[], it: HTMLElement) => void,
+        setInfo: (term: T, itInfo: HTMLElement[], it: HTMLElement, label: string) => void,
         refresh?: boolean, customIdx?: string[]
     ) {
         this.onStateChange();
@@ -445,7 +445,7 @@ export class FSGui {
                 itInfo.className = "info";
                 infoArr.push(itInfo);
             }
-            setInfo(p, infoArr, itVal);
+            setInfo(p, infoArr, itVal, pname);
 
             itVal.addEventListener("click", () => {
                 const inserted = this.cmd.astparser.stringify(p.value);
@@ -454,11 +454,14 @@ export class FSGui {
         }
         list.scroll({ top: list.scrollHeight });
     }
+    clearPListMasked() {
+        this.propositionList.querySelectorAll("div.p-match-failed").forEach(e => e.classList.remove("p-match-failed"));
+    }
     getProps() {
         return this.cmd.cmdBuffer[0] === "entr" ? this.cmd.cmdBuffer[2] ?? this.formalSystem.propositions : this.formalSystem.propositions
     }
     updatePropositionList(refresh?: boolean) {
-        this.updateGuiList("p", this.formalSystem.propositions, this.propositionList, (p) => true, (p, itInfo, it) => {
+        this.updateGuiList("p", this.formalSystem.propositions, this.propositionList, (p) => true, (p, itInfo, it, pname) => {
             itInfo[0].addEventListener("click", () => {
                 if (this.cmd.cmdBuffer.length === 0) {
                     this.cmd.clearCmdBuffer();
@@ -481,14 +484,24 @@ export class FSGui {
             it.addEventListener("mouseover", () => {
                 p.from.conditionIdxs.forEach(idx => {
                     const el = document.querySelector(`#prop-list .idx:nth-child(${(idx + 1) * 8 - 7})`);
-                    if (el) el.classList.add("p-highlighted");
+                    if (el) el.classList.add("p-highlighted-before");
                 });
+                const pidx = Number(pname.slice(1));
+                for (let i = pidx + 1; i < this.formalSystem.propositions.length; i++) {
+                    const from = this.formalSystem.propositions[i]?.from;
+                    if (!from) continue;
+                    if (!from.conditionIdxs.includes(pidx)) continue;
+                    const el = document.querySelector(`#prop-list .idx:nth-child(${(i + 1) * 8 - 7})`);
+                    if (el) el.classList.add("p-highlighted-after");
+                }
             });
             it.addEventListener("mouseout", () => {
-                p.from.conditionIdxs.forEach(idx => {
-                    const el = document.querySelector(`#prop-list .idx:nth-child(${(idx + 1) * 8 - 7})`);
-                    if (el) el.classList.remove("p-highlighted");
-                });
+                for (let i = 0; i < this.formalSystem.propositions.length; i++) {
+                    const el = document.querySelector(`#prop-list .idx:nth-child(${(i + 1) * 8 - 7})`);
+                    if (!el) continue;
+                    el.classList.remove("p-highlighted-before");
+                    el.classList.remove("p-highlighted-after");
+                }
             });
         }, refresh);
         this.draggerP.attachIdxListener();
@@ -584,11 +597,11 @@ export class FSGui {
             sp.classList.add("rule-cond");
             sp.addEventListener("mouseover", ev => {
                 const el = document.querySelector(`#prop-list .idx:nth-child(${(p + 1) * 8 - 7})`);
-                if (el) el.classList.add("p-highlighted");
+                if (el) el.classList.add("p-highlighted-before");
             });
             sp.addEventListener("mouseout", ev => {
                 const el = document.querySelector(`#prop-list .idx:nth-child(${(p + 1) * 8 - 7})`);
-                if (el) el.classList.remove("p-highlighted");
+                if (el) el.classList.remove("p-highlighted-before");
             });
         }
     }

@@ -7,6 +7,7 @@ const verbSyms = ["@", "=", "<"];
 // const verbFns = ["Prime", "Equiv", "Order", "WellOrder", "Rel", "Point", "Line", "Plane", "Between", "Angle"];
 const fnSyms = ["U", "I", "S", "+", "-", "*", "X", "/", "\\"];
 import { ASTParser } from "./astparser.js";
+const parser = new ASTParser;
 const T = 1;
 const F = -1;
 const U = 0;
@@ -919,28 +920,61 @@ export class AssertionSystem {
             // else keep #rp
         }
     }
+    equalWithAssertion(ast1, ast2, assertions) {
+        if (ast1 === ast2)
+            return true;
+        if (ast1.type === "fn" && ast1.name.match(/^#(v*nf|crp)/) && assertions) {
+            const a = this.equalWithAssertion(ast1.nodes[0], ast2, assertions);
+            assertions[parser.stringifyTight(ast1.nodes[0])] = astmgr.clone(ast1);
+            return a;
+        }
+        if (ast2.type === "fn" && ast2.name.match(/^#(v*nf|crp)/) && assertions) {
+            const a = this.equalWithAssertion(ast1, ast2.nodes[0], assertions);
+            assertions[parser.stringifyTight(ast2.nodes[0])] = astmgr.clone(ast2);
+            return a;
+        }
+        if (ast1.name !== ast2.name)
+            return false;
+        if (ast1.type !== ast2.type)
+            return false;
+        if (ast1.nodes?.length !== ast2.nodes?.length)
+            return false;
+        if (ast1.nodes?.length) {
+            for (let i = 0; i < ast1.nodes.length; i++) {
+                if (!this.equalWithAssertion(ast1.nodes[i], ast2.nodes[i], assertions))
+                    return false;
+            }
+        }
+        return true;
+    }
     // replNameReg: rule for replace var
-    match(ast, pattern, replNameReg, isItem, result, varTable, assertions) {
+    match(ast, pattern, replNameReg, isItem, result, varTable, astAssertions, patternAssertions) {
+        if (ast.type === "fn" && ast.name.match(/^#(v*nf|crp)/) && astAssertions) {
+            // ignore assertions in ast, but collect them for later check
+            this.match(ast.nodes[0], pattern, replNameReg, isItem, result, varTable, astAssertions, patternAssertions);
+            // this way (Dict rather that Array) can avoid repeated assertions in ast
+            astAssertions[parser.stringifyTight(ast.nodes[0])] = astmgr.clone(ast);
+        }
         if (pattern.type === "replvar" && pattern.name.match(replNameReg)) {
             result[pattern.name] ??= ast;
             this.getReplVarsType(ast, varTable, isItem);
-            if (!astmgr.equal(result[pattern.name], ast)) {
+            if (!this.equalWithAssertion(result[pattern.name], ast, astAssertions)) {
                 if ((!!this.getRpParams(ast)) !== (!!this.getRpParams(ast))) {
-                    throw TR(`替换函数#rp导致模式匹配`) + pattern.name + TR(`时无法顺利进行`) + `: \n` + (new ASTParser().stringify(result[pattern.name])) + " <=?=> " + (new ASTParser().stringify(ast));
+                    throw TR(`替换函数#rp导致模式匹配`) + pattern.name + TR(`时无法顺利进行`) + `: \n` + (parser.stringify(result[pattern.name])) + " <=?=> " + (parser.stringify(ast));
                 }
-                throw TR(`模式匹配失败：匹配多个替代变量`) + pattern.name + TR(`时值不相同`) + `: \n` + (new ASTParser().stringify(result[pattern.name])) + " <=X=> " + (new ASTParser().stringify(ast));
+                throw TR(`模式匹配失败：匹配多个替代变量`) + pattern.name + TR(`时值不相同`) + `: \n` + (parser.stringify(result[pattern.name])) + " <=X=> " + (parser.stringify(ast));
             }
             return;
         }
         if (pattern.type === "fn" && pattern.name.match(/^#(v*nf|crp)/)) {
-            this.match(ast, pattern.nodes[0], replNameReg, isItem, result, varTable, assertions);
-            // ignore assertions, but collect them for later check
-            assertions.push(astmgr.clone(pattern));
+            this.match(ast, pattern.nodes[0], replNameReg, isItem, result, varTable, astAssertions, patternAssertions);
+            // ignore assertions in pattern, but collect them for later check
+            patternAssertions.push(astmgr.clone(pattern));
             return;
         }
         if (ast.type !== pattern.type || ast.name !== pattern.name) {
             if ((!!this.getRpParams(pattern)) !== (!!this.getRpParams(ast))) {
-                throw TR(`替换函数#rp导致模式匹配`) + TR(`时无法顺利进行`) + `: \n` + (new ASTParser().stringify(pattern)) + " <=?=> " + (new ASTParser().stringify(ast));
+                throw TR(`替换函数#rp导致模式匹配`) + TR(`时无法顺利进行`) + `: \n` + (parser.stringify(pattern)) + " <=?=> " + (parser.stringify(ast));
             }
             throw TR("模式匹配失败");
         }
@@ -948,7 +982,7 @@ export class AssertionSystem {
             throw TR("模式匹配失败");
         if (ast.nodes?.length) {
             for (let i = 0; i < ast.nodes.length; i++) {
-                this.match(ast.nodes[i], pattern.nodes[i], replNameReg, this.getSubAstType(ast, i, isItem), result, varTable, assertions);
+                this.match(ast.nodes[i], pattern.nodes[i], replNameReg, this.getSubAstType(ast, i, isItem), result, varTable, astAssertions, patternAssertions);
             }
         }
     }
@@ -959,9 +993,9 @@ export class AssertionSystem {
         try {
             // match root ast
             const matched = {};
-            const assertions = [];
-            this.match(ast, pattern, replNameReg, isItem, matched, varTable, assertions);
-            for (const ass of assertions) {
+            const patternAssertions = [];
+            this.match(ast, pattern, replNameReg, isItem, matched, varTable, null, patternAssertions);
+            for (const ass of patternAssertions) {
                 const cas = astmgr.clone(ass);
                 astmgr.replaceByMatchTable(cas, matched);
                 this.assertUnwrap(cas, varTable);
@@ -1047,6 +1081,10 @@ export class AssertionSystem {
                 if (type !== "i")
                     throw TR("意外出现集合表达式");
                 this.checkGrammer(ast.nodes[0], "v");
+                const varName = this.getVarName(ast.nodes[0]);
+                if (this.isConst(varName)) {
+                    throw TR(`常数符号`) + varName + TR('禁止出现在量词') + "{?@..| ... }" + TR('的约束变量中');
+                }
                 this.checkGrammer(ast.nodes[1], "i");
                 this.checkGrammer(ast.nodes[2], "p");
                 return;
@@ -1055,6 +1093,10 @@ export class AssertionSystem {
                 if (type !== "i")
                     throw TR("意外出现集合表达式");
                 this.checkGrammer(ast.nodes[0], "v");
+                const varName = this.getVarName(ast.nodes[0]);
+                if (this.isConst(varName)) {
+                    throw TR(`常数符号`) + varName + TR('禁止出现在量词') + "{ ... |?@..}" + TR('的约束变量中');
+                }
                 this.checkGrammer(ast.nodes[1], "i");
                 this.checkGrammer(ast.nodes[2], "i");
                 return;

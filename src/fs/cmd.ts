@@ -9,6 +9,7 @@ export class FSCmd {
     cmdBuffer: any[] = [];
     astparser = new ASTParser;
     escClear = true;
+    pListMasked = false;
     autoCompleteIdx = -1;
     gui: FSGui;
     lastDeduction: string = null;
@@ -82,11 +83,13 @@ export class FSCmd {
 
         if (this.cmdBuffer[this.cmdBuffer.length - 1] === "## error") {
             this.escClear = true;
-            this.clearCmdBuffer(); return false;
+            const lastCmd = actionInput.value;
+            this.clearCmdBuffer();
+            actionInput.value = lastCmd;
         }
         this.showhints([]);
         let cmd = actionInput.value;
-        if (cmd.includes("`")) cmd = cmd.replaceAll("`", "");
+        if (cmd.includes("`")) cmd = cmd.replaceAll("`", "'");
         if (!cmd.trim()) return;
         this.cmdBuffer.push(cmd);
         actionInput.value = "";
@@ -172,6 +175,7 @@ export class FSCmd {
 
     }
     clearCmdBuffer() {
+        if (this.pListMasked) { this.gui.clearPListMasked(); this.pListMasked = false; }
         if (this.escClear) {
             this.cmdBuffer = [];
             this.gui.actionInput.value = "";
@@ -504,6 +508,7 @@ export class FSCmd {
         const cmdBuffer = this.cmdBuffer;
         const hintText = this.gui.hintText;
         const formalSystem = this.gui.formalSystem;
+        if (this.pListMasked) { this.gui.clearPListMasked(); this.pListMasked = false; }
         if (cmdBuffer.length === 1) {
             hintText.innerText = TR("请输入或点选推理规则，按Esc取消");
             this.escClear = true;
@@ -554,7 +559,7 @@ export class FSCmd {
         let infoWrap = document.createElement("span");
         this.gui.hintText.appendChild(document.createElement("br"));
         for (let i = 2 + condLength; i < 2 + condLength + replVarsLength && i < curLength; i++) {
-            let astHtml, err = "";
+            let astHtml: HTMLSpanElement, err = "";
             let varName = vars[i - 2 - condLength];
             try {
                 astHtml = this.gui.ast2HTML("d", this.astparser.parse(cmdBuffer[i]), deduction.replaceTypes[varName]);
@@ -578,9 +583,26 @@ export class FSCmd {
         if (curLength < condLength + 2) {
             if (curLength > 2) this.escClear = false;
             //wait for conditionIdx input
-            infoWrap.innerHTML = TR("请输入条件") + this.astparser.stringify(deduction.conditions[cmdBuffer.length - 2]) + TR("的定理编号，或点选定理");
+            const waitCond = deduction.conditions[cmdBuffer.length - 2];
+            infoWrap.innerHTML = TR("请输入条件") + this.astparser.stringify(waitCond) + TR("的定理编号，或点选定理");
+            for (let i = 0; i < this.gui.formalSystem.propositions.length; i++) {
+                try {
+                    this.gui.formalSystem.deduct({
+                        deductionIdx: cmdBuffer[1] === "." ? this.lastDeduction : cmdBuffer[1],
+                        replaceValues: vars.map(e => ({ type: "replvar", name: e })),
+                        conditionIdxs: [...cmdBuffer.slice(2).map(n => Number(n)), i]
+                    }, undefined, true);
+                } catch (e) {
+                    for (let si = 0; si < 8; si++) {
+                        const el = document.querySelector(`#prop-list div:nth-child(${(i + 1) * 8 - 7 + si})`);
+                        if (el) el.classList.add("p-match-failed");
+                        this.pListMasked = true;
+                    }
+                }
+            }
+
         } else if (curLength < replVarsLength + condLength + 2) {
-            if (curLength > 2) this.escClear = false;
+            if (curLength > 1) this.escClear = false;
             // wait for replvar input
             infoWrap.innerHTML = TR("请输入替代") + vars[cmdBuffer.length - 2 - condLength] + TR("的内容");
             if (!this.gui.actionInput.value) {
@@ -859,6 +881,7 @@ export class FSCmd {
                 this.gui.updatePropositionList(true);
             }
         } else if (this.cmdBuffer[0] === "d") {
+            if (this.pListMasked) { this.gui.clearPListMasked(); this.pListMasked = false; }
             if (this.cmdBuffer[this.cmdBuffer.length - 1] === "## error") this.cmdBuffer.pop();
             this.gui.actionInput.value = this.cmdBuffer.pop();
             if (this.cmdBuffer.length === 2) this.escClear = false;

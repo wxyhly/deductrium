@@ -58,8 +58,14 @@
     border-radius: 4px;
 }
 
-.p-highlighted {
+.p-highlighted-before {
     color: red;
+}
+.p-highlighted-after {
+    color: blue;
+}
+.p-match-failed{
+    background-color: #CCC !important;
 }
 
 .freeVar {

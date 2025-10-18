@@ -14,7 +14,7 @@ const dict = {
     '3,3,3,3,': '3`',
     '2,2,2,2,2,2,': '6`',
     '1,1,1,1,1,1,': '1`',
-    '2,2,2,1,2,':'5`',
+    '2,2,2,1,2,': '5`',
     '素食主义者（累计获40µg推理素）': '4#`',
     '你推出你，他推出他（⊢$0>$0）': '2#`',
     '我推出你，你推出我（<>）': '=#`',
@@ -29,14 +29,14 @@ const dict = {
     '",[],["': '{`',
     '","a': 'a`',
     '","d': 'd`',
-    '],[]],["':']`',
-    '",[-1],[':'-`',
-    '","元规则生成*",[["':'M`',
-    '5`3,1,2,3,2,':',`',
-    '"]],["':'.`',
-    ')<>(':'=`',
-    '.<>':'q`',
-    '",[-1]`':'z`',
+    '],[]],["': ']`',
+    '",[-1],[': '-`',
+    '","元规则生成*",[["': 'M`',
+    '5`3,1,2,3,2,': ',`',
+    '"]],["': '.`',
+    ')<>(': '=`',
+    '.<>': 'q`',
+    '",[-1]`': 'z`',
 
 };
 const replaceArr1 = Object.entries(dict);
@@ -85,10 +85,19 @@ export class GameSaveLoad {
 
 
             // 2025.10.3 added new 1st-logic toolkits
-            if (!fsdata.includes(`",".Eirp","`)) {
+            if (!fsdata.includes(`",".Erp","`)) {
                 if (fsdata.includes(`,".Enf&",".E&nf"`)) {
-                    fsdata = fsdata.replace(`,".Enf&",".E&nf"`, `,".Enf&",".E&nf",".Emp",".Vcn",".Ecn",".Vcn<>",".Ecn<>"`);
-                    fsdata = fsdata.replace(`,".Ee",".Ei"`, `,".Ee",".Ei",".Eirp"`);
+                    if (fsdata.includes(`",".Eirp","`)) {
+                        fsdata = fsdata.replace(`",".Eirp","`, `",".Eirp",".Erp","`);
+                    } else {
+                        fsdata = fsdata.replace(`,".Enf&",".E&nf"`, `,".Enf&",".E&nf",".Emp",".Vcn",".Ecn",".Vcn<>",".Ecn<>"`);
+                        fsdata = fsdata.replace(`,".Ee",".Ei"`, `,".Ee",".Ei",".Eirp"`);
+                    }
+                }
+            }
+            if (!fsdata.includes(`",".|m1","`)) {
+                if (fsdata.includes(`,".|m"`)) {
+                    fsdata = fsdata.replace(`,".|m"`, `,".|m",".|m1",".|m2"`);
                 }
             }
 
@@ -112,7 +121,7 @@ export class GameSaveLoad {
             // 2025.10.13 patch player's progress: fix bug for [[dU/dI/dRel]]
             if (globaldata.includes("dU")) {
                 if (!game.fsGui.deductions.includes("dU")) {
-                    game.fsGui.deductions.push("dUnion","dU");
+                    game.fsGui.deductions.push("dUnion", "dU");
                 }
             }
             if (globaldata.includes("dI")) {

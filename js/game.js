@@ -317,7 +317,7 @@ export class Game {
                     return;
                 case ".1st":
                     [
-                        ".nEVn", ".nVEn", ".nVVn", ".nEn", ".Ve", ".Vs", ".V&1", ".V&2", ".V&", ".Ee", ".Ei", ".Eirp", ".Es", ".EV", ".E|1", ".E|2", ".E|",
+                        ".nEVn", ".nVEn", ".nVVn", ".nEn", ".Ve", ".Vs", ".V&1", ".V&2", ".V&", ".Ee", ".Ei", ".Eirp", ".Erp", ".Es", ".EV", ".E|1", ".E|2", ".E|",
                         ".Vnf", ".Vnf>", ".V>nf", ".Vnf|", ".V|nf", ".Vnf&", ".V&nf", ".Enf", ".Enf>", ".E>nf", ".Enf|", ".E|nf", ".Enf&", ".E&nf",
                         ".Emp", ".Vcn", ".Ecn", ".Vcn<>", ".Ecn<>",
                         ".=s", ".=t", ".=r=", ".=r@"
