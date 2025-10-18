@@ -70,7 +70,7 @@ export class Game {
         if (gamemode === "creative") {
             this.creative = true;
         }
-        this.fsGui = new FSGui(document.getElementById("prop-list"), document.getElementById("deduct-list"), document.getElementById("meta-list"), document.getElementById("action-input"), document.getElementById("hint"), document.getElementById("display-p-layer"), document.querySelectorAll(".cmd-btns button"), this.creative);
+        this.fsGui = new FSGui(document.getElementById("prop-list"), document.getElementById("deduct-list"), document.getElementById("meta-list"), document.getElementById("sysfn-list"), document.getElementById("action-input"), document.getElementById("hint"), document.getElementById("display-p-layer"), document.querySelectorAll(".cmd-btns button"), this.creative);
         this.ttGui = new TTGui(this.creative);
         document.getElementById("panel").classList.remove("hide");
         this.hyperGui = new HyperGui();

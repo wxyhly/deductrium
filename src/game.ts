@@ -66,6 +66,7 @@ export class Game {
             document.getElementById("prop-list") as any,
             document.getElementById("deduct-list") as any,
             document.getElementById("meta-list") as any,
+            document.getElementById("sysfn-list") as any,
             document.getElementById("action-input") as any,
             document.getElementById("hint") as any,
             document.getElementById("display-p-layer") as any,

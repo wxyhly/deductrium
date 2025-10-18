@@ -156,7 +156,7 @@ export class FSCmd {
                         } catch (e) {
                             return [];
                         }
-                        return ["<span class='cmd'>[D] " + `<span style="color: red">${pre.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>` + e.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</span> <span class='hint'> " + (d ?
+                        return ["<span class='cmd'>[D] " + `<span class="error-color">${pre.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>` + e.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</span> <span class='hint'> " + (d ?
                             this.astparser.stringifyTight(d.value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : "") + "</span>", "d " + pre + e]
                     }
                 ).filter(e => e.length);
@@ -564,7 +564,7 @@ export class FSCmd {
             try {
                 astHtml = this.gui.ast2HTML("d", this.astparser.parse(cmdBuffer[i]), deduction.replaceTypes[varName]);
             } catch (e) {
-                err = "<span style='color:red'>[!]</span>";
+                err = "<span class='error-color'>[!]</span>";
             }
             const varnode = this.gui.addSpan(this.gui.hintText, varName);
             varnode.className = "replvar";

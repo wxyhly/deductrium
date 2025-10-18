@@ -533,8 +533,8 @@ export class FormalSystem {
             const condProp = this.propositions[condPropIdx];
             if (!condProp) throw errorMsg + TR(`第${conditionIdx + 1}个`) + TR(`条件对应的定理p`) + condPropIdx + TR(`不存在`);
             try {
-                //
-                assert.match(condProp.value, condition, /^\$/, false, matchTable, replacedVarTypeTable, astAssertions, assertions);
+                // 
+                assert.match(condProp.value, condition, /^\$/, false, matchTable, replacedVarTypeTable, null, assertions);
                 while (assertionsFrom.length < assertions.length) assertionsFrom.push(conditionIdx);
             } catch (e) {
                 // match failed

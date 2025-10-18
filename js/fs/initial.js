@@ -296,4 +296,39 @@ export function initFormalSystem(creative) {
         return sp.deserializeArr(fs, [[], [], [], [], intMacros, Object.keys(sysAxioms), null]);
     return sp.deserializeArr(fs, [[], [], [], [], intMacros, ["mp", "a1", "a2"], null]);
 }
+export function iniSysFnList() {
+    return ([
+        ["#nf($1,$1)", "free", "#nf"],
+        ["#nf(x,y)", "distct", "#nf"],
+        ["#nf($x,#x)", "local", "#nf"],
+        ["#nf(#nf($1,$x),$y)", "nf1", "#nf"],
+        ["#nf($1,#nf($x,$y))", "nf2", "#nf"],
+        ["#nf($1,$x,$x)", "nfid", "#nf"],
+        ["#nf($1,$y,$x)", "swap", "#nf"],
+        ["#nf($1>$2,$x)", "rec>", "#nf"],
+        ["#nf(~$1,$x)", "rec~", "#nf"],
+        ["#nf($1=$2,$x)", "rec=", "#nf"],
+        ["#nf($1@$2,$x)", "rec@", "#nf"],
+        ["#nf($f($1,$2),$x)", "recFn", "#nf"],
+        ["#nf(V$x:$1,$2)", "recQ", "#nf"],
+        ["#vnf($1,$x,$x)", "bound", "#vnf"],
+        ["#vnf($1,#nf($x,$y),$y)", "free", "#vnf"],
+        ["#vnf(V$x:$1,$y,$z)", "recQ", "#vnf"],
+        ["#vvnf($1,$x,$x,$z)", "vnfid", "#vvnf"],
+        ["#vvnf($1,$y,$x,$z)", "swap", "#vvnf"],
+        ["#vvnf($1,$x,$y,$y)", "vnfi", "#vvnf"],
+        ["#rp($1,$2,$3,0)", "omit", "#rp"],
+        ["#rp($1,$1,$2)", "exact", "#rp"],
+        ["#rp($1,$2,$2)", "id", "#rp"],
+        ["#rp(#nf($1,$2),$2,$3)", "nf-in", "#rp"],
+        ["#nf(#rp($1,$2,#nf($3,$2)),$2)", "nf-out", "#rp"],
+        ["#rp(#rp(#nf($1,$a),$b,$a),$a,$c)", "trans", "#rp"],
+        ["#rp(Vx:$f(y),y,x)", "capture", "#rp"],
+        ["#rp($1>$2,$a,$b)", "rec>", "#rp"],
+        ["#rp(~$1,$a,$b)", "rec~", "#rp"],
+        ["#rp($1=$2,$a,$b)", "rec=", "#rp"],
+        ["#rp($1@$2,$a,$b)", "rec@", "#rp"],
+        ["#rp(V$x:$1,#nf($a,$x),#nf($b,$x))", "recQ", "#rp"],
+    ]).map(e => [astparser.parse(e[0]), e[1], e[2]]);
+}
 //# sourceMappingURL=initial.js.map

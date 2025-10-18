@@ -1,8 +1,10 @@
+import { ASTMgr } from "./astmgr.js";
 import { FSCmd } from "./cmd.js";
-import { initFormalSystem } from "./initial.js";
+import { iniSysFnList, initFormalSystem } from "./initial.js";
 import { FormalSystem } from "./formalsystem.js";
 import { TR } from "../lang.js";
 import { ListDragger } from "./itemdragger.js";
+const astmgr = new ASTMgr();
 export class FSGui {
     formalSystem = new FormalSystem();
     actionInput;
@@ -12,6 +14,8 @@ export class FSGui {
     propositionList;
     deductionList;
     metaRuleList;
+    sysFnList;
+    sysfns;
     cmdBtns;
     displayDs = new Set();
     deductions = [];
@@ -27,10 +31,11 @@ export class FSGui {
     draggerP = new ListDragger(document.getElementById("prop-list"));
     isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
     cmd;
-    constructor(propositionList, deductionList, metaRuleList, actionInput, hintText, displayPLayerSelect, cmdBtns, creative) {
+    constructor(propositionList, deductionList, metaRuleList, sysFnList, actionInput, hintText, displayPLayerSelect, cmdBtns, creative) {
         this.propositionList = propositionList;
         this.metaRuleList = metaRuleList;
         this.deductionList = deductionList;
+        this.sysFnList = sysFnList;
         this.actionInput = actionInput;
         this.hintText = hintText;
         this.cmdBtns = cmdBtns;
@@ -38,6 +43,7 @@ export class FSGui {
         const { fs, arrD } = initFormalSystem(creative);
         this.formalSystem = fs;
         this.deductions = arrD;
+        this.sysfns = iniSysFnList();
         cmdBtns.forEach(btn => {
             btn.addEventListener("click", () => {
                 if (this.cmd.cmdBuffer.length)
@@ -59,6 +65,7 @@ export class FSGui {
         const onchangeOmitNF = () => {
             this.omitNfFn = document.getElementById("wrap-simpl-sysfn").classList.contains("hide") ? false : simplSysFn.checked;
             this.italicItem = document.getElementById("wrap-italic-item").classList.contains("hide") ? false : italicItemBox.checked;
+            this.updateSysFnList();
             this.updateMetaRuleList(true);
             this.updateDeductionList();
             this.updatePropositionList(true);
@@ -131,6 +138,7 @@ export class FSGui {
         }
         this.updateMetaRuleList();
         this.updateDeductionList();
+        this.updateSysFnList();
         onchangeOmitNF();
     }
     initCreative() {
@@ -314,7 +322,7 @@ export class FSGui {
                 scopeStack.pop();
             }
             do {
-                if (scopeStack[0] && scopeStack[0]?.nodes[0]?.name === ast.name) {
+                if (scopeStack[0] && (scopeStack[0]?.nodes[0]?.name === ast.name) || (scopeStack[0]?.nodes[0]?.nodes?.[0]?.name === ast.name)) {
                     varnode.setAttribute("ast-scope", this.cmd.astparser.stringify(scopeStack[0]));
                     if (!el.classList.contains("replvar")) {
                         el.classList.remove("freeVar");
@@ -480,6 +488,36 @@ export class FSGui {
     }
     getProps() {
         return this.cmd.cmdBuffer[0] === "entr" ? this.cmd.cmdBuffer[2] ?? this.formalSystem.propositions : this.formalSystem.propositions;
+    }
+    updateSysFnList() {
+        let i = 0;
+        this.updateGuiList("m", this.sysfns.map(e => ({ value: e[0] })), this.sysFnList, (p) => true, (p, itInfo, it, pname) => {
+            let node;
+            let isItem = false;
+            let errmsg = "";
+            const [ast, info] = this.sysfns[i++];
+            let sf = astmgr.clone(ast);
+            try {
+                this.formalSystem.assert.expand(sf, true);
+                node = sf;
+            }
+            catch (e) {
+                sf = astmgr.clone(ast);
+                try {
+                    this.formalSystem.assert.expand(sf, true);
+                    isItem = true;
+                    node = sf;
+                }
+                catch (e) {
+                    errmsg = e;
+                }
+            }
+            this.addSpan(it, " ⟹ ");
+            const html = node ? this.ast2HTML("d", node, isItem) : this.addSpan(it, errmsg).classList.add("error-color");
+            if (html)
+                it.appendChild(html);
+            itInfo[0].innerText = info;
+        }, true, this.sysfns.map(e => e[2]));
     }
     updatePropositionList(refresh) {
         this.updateGuiList("p", this.formalSystem.propositions, this.propositionList, (p) => true, (p, itInfo, it, pname) => {
