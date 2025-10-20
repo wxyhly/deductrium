@@ -711,18 +711,30 @@ export class AssertionSystem {
             if (subrpParams) {
                 // #rp(#rp(#nf(subsub,b), a, b, ~), b, c, 0) === #rp(#nf(subsub,b),a,c,~)
                 // #rp(#rp(#nf(subsub,b), a, b, 0), b, c, ~) === #rp(#nf(subsub,b),a,c,~)
+                // #rp(#rp(#nf(subsub,s), a, b, 0), s, c, 0) === #rp(#nf(subsub,s),a,#rp(b,s,c),0)
                 const [subsub, a, b, snth] = subrpParams;
-                if ((nth === -1 || snth === -1) && this.astEq(b, src) === T) {
-                    const bName = this.getVarName(b);
-                    if (bName && this.nf(bName, subsub, [], this.getVarIsNotList(b))) {
+                if ((nth === -1 || snth === -1)) {
+                    if (srcName && this.nf(srcName, subsub, [], this.getVarIsNotList(src))) {
                         // if not replace all, move inner nth to outter
                         if (snth !== -1) {
                             ast.nodes[3] = sub.nodes[3];
                         }
-                        this.removeFn(sub);
-                        astmgr.assign(src, a);
-                        this.expand(ast, isItem, varLists);
-                        return;
+                        if (this.astEq(src, b)===T) {
+                            this.removeFn(sub);
+                            astmgr.assign(src, a);
+                            this.expand(ast, isItem, varLists);
+                            return;
+                        } else if (nth === -1 && snth === -1) {
+                            this.removeFn(sub);
+                            astmgr.assign(ast.nodes[2], {
+                                type: "fn", name: "#rp", nodes: [
+                                    b, src, dst
+                                ]
+                            });
+                            astmgr.assign(ast.nodes[1], a);
+                            this.expand(ast, isItem, varLists);
+                            return;
+                        }
                     }
                 }
             }

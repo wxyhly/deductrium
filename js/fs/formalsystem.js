@@ -465,6 +465,7 @@ export class FormalSystem {
             let generated = null;
             if (unlocked.includes("#")) {
                 generated ??= this.generateNatLiteralDef(dname);
+                generated ??= this.generateNatLiteralIsNat(dname);
                 generated ??= this.generateNatLiteralOp(dname);
             }
             if (generated)
@@ -505,33 +506,63 @@ export class FormalSystem {
             return;
         if (this.deductions[name])
             return name;
-        const num = Number(n[1]);
-        return this.addDeduction(name, parser.parse(`⊢${num} =S(${num - 1})`), "算数符号定义");
+        const num = BigInt(n[1]);
+        return this.addDeduction(name, parser.parse(`⊢${num} =S(${num - 1n})`), "算数符号定义");
     }
-    generateNatLiteralOp(name, vnum = 0) {
+    generateNatLiteralIsNat(name, vnum = 0) {
         const vpre = "v".repeat(vnum);
+        const n = name.match(/^\.([1-9][0-9]*)@N$/);
+        if (!n || !isFinite(Number(n[1])))
+            return;
+        if (this.deductions[vpre + name])
+            return vpre + name;
         const vars = [];
         let V = "";
         for (let i = 0; i < vnum; i++) {
             vars.push({ type: "replvar", name: "$" + i });
             V += "V$" + i + ":";
         }
-        const n = name.match(/^\.([1-9][0-9]*)([\+\*])([1-9][0-9]*)$/);
+        const num = BigInt(n[1]);
+        const steps = [
+            num === 1n ?
+                { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + "apn1" } :
+                { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + "." + (num - 1n) + "@N" },
+            { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + "apn2" },
+            { conditionIdxs: [-1], replaceValues: [{ type: "replvar", name: String(num - 1n) }], deductionIdx: vpre + "<a4" },
+            { conditionIdxs: [-1, -3], replaceValues: [], deductionIdx: vpre + "mp" },
+            { conditionIdxs: [], replaceValues: [], deductionIdx: vpre + "d" + String(num) },
+            { conditionIdxs: [-1], replaceValues: [], deductionIdx: vpre + ".=s" },
+            { conditionIdxs: [-1, -3], replaceValues: [{ type: "replvar", name: "0" }], deductionIdx: vpre + "<<a8" }
+        ];
+        return this.addDeduction(vpre + name, parser.parse(`⊢${V}(${num}@N)`), "元规则生成*", steps, new Set());
+    }
+    generateNatLiteralOp(name, vnum = 0) {
+        const vpre = "v".repeat(vnum);
+        const n = name.match(/^\.(0|[1-9][0-9]*)([\+\*])(0|[1-9][0-9]*)$/);
         if (!n || !isFinite(Number(n[1])) || !isFinite(Number(n[3])))
             return;
         if (this.deductions[vpre + name])
             return vpre + name;
-        const a = Number(n[1]);
-        const b = Number(n[3]);
+        const vars = [];
+        let V = "";
+        for (let i = 0; i < vnum; i++) {
+            vars.push({ type: "replvar", name: "$" + i });
+            V += "V$" + i + ":";
+        }
+        const a = BigInt(n[1]);
+        const b = BigInt(n[3]);
         const op = n[2];
-        const steps = [
-            b > 1 ?
-                { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + "." + a + op + (b - 1) } :
-                { conditionIdxs: [], replaceValues: [...vars, { type: "replvar", name: String(a) }], deductionIdx: vpre + "d" + op + "1" },
-            { conditionIdxs: [], replaceValues: [...vars, { type: "replvar", name: String(a) }, { type: "replvar", name: String(b - 1) }], deductionIdx: vpre + "d" + op + "2" },
+        const isNat = (x) => {
+            return x === 0n ? "apn1" : "." + x + "@N";
+        };
+        const steps = b === 0n ? [{ conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + ":" + isNat(a) + ",<d" + op + "1" }] : [
+            b > 1n ?
+                { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + "." + a + op + (b - 1n) } :
+                { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + ":" + isNat(a) + ",<d" + op + "1" },
+            { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + ":" + isNat(b - 1n) + ",:" + isNat(a) + ",<<d" + op + "2" },
             { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + "d" + b },
-            op === "+" ? { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + "d" + (a + b) } : b === 1 ? { conditionIdxs: [], replaceValues: [{ type: "replvar", name: String(a) }], deductionIdx: ".0+" } :
-                { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + `.${a * (b - 1)}+${a}` },
+            op === "+" ? { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + "d" + (a + b) } : b === 1n ? { conditionIdxs: [], replaceValues: [], deductionIdx: ":" + isNat(a) + ",<.0+" } :
+                { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + `.${a * (b - 1n)}+${a}` },
             { conditionIdxs: [-4, -3], replaceValues: [{ type: "replvar", name: "0" }], deductionIdx: vpre + "<<a8" },
             op === "+" ? { conditionIdxs: [-2], replaceValues: [], deductionIdx: vpre + ".=s" } : { conditionIdxs: [-1, -2], replaceValues: [], deductionIdx: vpre + ".=t" },
             { conditionIdxs: [-4], replaceValues: [], deductionIdx: vpre + ".=s" },
@@ -1394,6 +1425,12 @@ export class FormalSystem {
         }
         return name;
     }
+    // metaCombineTheorem(idx1s: string[], idx2: string, from: string) {
+    // const name = ":" + idx1s.join(":") + "," + idx2;
+    // if (this.deductions[name]) return name;
+    // const d1s = idx1s.map(e => e === "#" ? null : this.generateDeduction(e));
+    // const d2 = this.generateDeduction(idx2);
+    // if (d2.conditions.length !== idx1s.length) throw TR("匹配条件推理规则($$1b, ...$$2 ⊢ $$3)失败");
     metaCombineTheorem(idx1, idx2, from) {
         const name = ":" + idx1 + "," + idx2;
         if (this.deductions[name])
@@ -1409,6 +1446,17 @@ export class FormalSystem {
             const matchTable = {};
             const replacedVarTypeTable = assert.getReplVarsType(d1.conclusion, {}, false);
             assert.match(d1.conclusion, d2.conditions[0], /^\$/, false, matchTable, replacedVarTypeTable, null, []);
+            const replNames = this._findReplNameInRule(idx1);
+            const replNamesD2 = new Set();
+            for (let i = 1; i === 1; i++) {
+                astmgr.getVarNames(d2.conditions[i], replNamesD2, /^\$/);
+            }
+            for (const r of replNamesD2) {
+                if (replNames.has(r) && !matchTable[r]) {
+                    matchTable[r] = this._findNewReplName("", replNames);
+                    replNames.add(matchTable[r].name);
+                }
+            }
             const d2_conds = [];
             for (let i = 1; i < d2.conditions.length; i++) {
                 const R = astmgr.clone(d2.conditions[i]);
@@ -1419,13 +1467,16 @@ export class FormalSystem {
                 deductionIdx: idx1, conditionIdxs: d1.conditions.map((v, id) => id),
                 replaceValues: d1.replaceNames.map(str => ({ type: "replvar", name: str }))
             });
-            const replNames = this._findReplNameInRule(idx1);
+            this._findNewReplName(idx2, replNames);
             const p2 = this.deduct({
                 deductionIdx: idx2, conditionIdxs: [p1, ...d2_conds],
                 replaceValues: d2.replaceNames.map(str => {
-                    const n = this._findNewReplName("", replNames);
-                    replNames.add(n.name);
-                    return n;
+                    if (replNames.has(str)) {
+                        const n = this._findNewReplName("", replNames);
+                        replNames.add(n.name);
+                        return n;
+                    }
+                    return { type: "replvar", name: str };
                 })
             });
             const ret = this.addMacro(name, from);

@@ -300,7 +300,13 @@ export class FSGui {
             }
         }
         else if (ast.type === "replvar") {
-            const el = this.addSpan(varnode, ast.name === "omega" ? "ω" : ast.name);
+            const printForm = {
+                "omega": "ω",
+                "N": "ℕ",
+                "Q": "ℚ",
+                "R": "ℝ",
+            };
+            const el = this.addSpan(varnode, printForm[ast.name] ?? ast.name);
             if (isItem && this.italicItem)
                 el.classList.add("item");
             const scopeStack = scopes.slice(0);
@@ -569,6 +575,31 @@ export class FSGui {
                 }
             });
         }, refresh);
+        const usedPs = new Set();
+        for (let pidx = this.deductions.length - 1; pidx >= 0; pidx--) {
+            const from = this.formalSystem.propositions[pidx]?.from;
+            if (!from)
+                continue;
+            for (const cidx of from.conditionIdxs) {
+                usedPs.add(cidx);
+            }
+        }
+        for (let i = 0; i < this.formalSystem.propositions.length; i++) {
+            if (!usedPs.has(i)) {
+                for (let j = 1; j < 8; j++) {
+                    const el = document.querySelector(`#prop-list div:nth-child(${(i + 1) * 8 - 7 + j})`);
+                    if (el)
+                        el.classList.add("p-unused");
+                }
+            }
+            else {
+                for (let j = 1; j < 8; j++) {
+                    const el = document.querySelector(`#prop-list div:nth-child(${(i + 1) * 8 - 7 + j})`);
+                    if (el)
+                        el.classList.remove("p-unused");
+                }
+            }
+        }
         this.draggerP.attachIdxListener();
     }
     updateDeductionList() {
@@ -717,7 +748,7 @@ export class FSGui {
         this.formalSystem.getAtomDeductionTokens(id, tokens);
         for (const it of tokens) {
             // if .XX is locked, can't use it
-            if (it[0] === "." && !this.deductions.includes(it) && !(this.formalSystem.fastmetarules.includes("#") && this.formalSystem.generateNatLiteralOp(it)))
+            if (it[0] === "." && !this.deductions.includes(it) && !(this.formalSystem.fastmetarules.includes("#") && (this.formalSystem.generateNatLiteralOp(it) || this.formalSystem.generateNatLiteralIsNat(it))))
                 return null;
         }
         try {

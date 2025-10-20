@@ -45,7 +45,7 @@
     color: grey;
 }
 
-.rule-token:hover {
+.rule-token:hover,.cmd .rule-token {
     color: darkblue;
 }
 
@@ -224,9 +224,24 @@ h1 {
     background-color: aliceblue;
 }
 
+
 .list .val {
     width: 100%;
     padding-left: 3px;
+}
+
+
+.p-unused.val, .p-unused.info{
+    background-color: #FFC;
+}
+
+.p-unused.val:nth-of-type(16n+2),
+.p-unused.info:nth-of-type(16n+3),
+.p-unused.info:nth-of-type(16n+4),
+.p-unused.info:nth-of-type(16n+5),
+.p-unused.info:nth-of-type(16n+6),
+.p-unused.info:nth-of-type(16n+7) {
+    background-color: #FFA;
 }
 
 .list .val:hover {

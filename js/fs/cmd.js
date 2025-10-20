@@ -103,13 +103,14 @@ export class FSCmd {
         list.style.display = "block";
         hints.forEach(([html, cmd]) => {
             const li = document.createElement("li");
-            li.innerHTML = html;
+            for (const h of html)
+                li.appendChild(h);
             li.setAttribute("data-value", cmd);
             li.onclick = () => {
                 input.value = cmd;
                 list.style.display = "none";
                 input.focus();
-                if (html.includes("<span class='cmd'>[D]")) {
+                if (cmd.startsWith("d ")) {
                     this.actionInputKeydown({ key: "Enter" });
                 }
             };
@@ -141,16 +142,27 @@ export class FSCmd {
                             return false;
                     }
                     return e.toLowerCase().startsWith(subValue.toLowerCase());
-                }).map(e => {
+                }).map(e => pre + e);
+                if (!list.includes(value))
+                    list.unshift(value);
+                list = list.map(e => {
                     let d;
                     try {
-                        d = this.gui.formalSystem.generateDeduction(pre + e);
+                        d = this.gui.formalSystem.generateDeduction(e);
+                        if (!d)
+                            throw null;
                     }
                     catch (e) {
                         return [];
                     }
-                    return ["<span class='cmd'>[D] " + `<span class="error-color">${pre.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>` + e.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") + "</span> <span class='hint'> " + (d ?
-                            this.astparser.stringifyTight(d.value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : "") + "</span>", "d " + pre + e];
+                    const cmd = document.createElement("span");
+                    cmd.className = "cmd";
+                    cmd.appendChild(document.createTextNode("[D]"));
+                    cmd.appendChild(this.gui.tree2HTML(this.gui.formalSystem.getDeductionTokens(e)));
+                    const hint = document.createElement("span");
+                    hint.className = 'hint';
+                    hint.innerText = d ? this.astparser.stringifyTight(d.value) : "";
+                    return [[cmd, hint], "d " + e];
                 }).filter(e => e.length);
             }
             // cmd, only for empty cmdbuffer
@@ -160,7 +172,15 @@ export class FSCmd {
                     unlockedCmd.push("hyp");
                 if (!document.getElementById("macro-btns").classList.contains("hide"))
                     unlockedCmd.push("entr", "del", "inln");
-                list.push(...unlockedCmd.filter(e => e.startsWith(value)).map(e => ["<span class='cmd'>[C] " + e + "</span> <span class='hint'> " + TR("命令：") + e + "</span>", e]));
+                list.push(...unlockedCmd.filter(e => e.startsWith(value)).map(e => {
+                    const cmd = document.createElement("span");
+                    cmd.className = "cmd";
+                    cmd.appendChild(document.createTextNode("[C] " + e));
+                    const hint = document.createElement("span");
+                    hint.className = 'hint';
+                    hint.innerText = TR("命令：") + e;
+                    return [[cmd, hint], e];
+                }));
             }
         }
         this.showhints(list);

@@ -40,6 +40,14 @@ export class SavesParser {
         return deduction.tempvars?.size ? [value, deduction.from, steps, Array.from(deduction.tempvars)] : [value, deduction.from, steps];
     }
     deserializeDeduction(name: string, fs: FormalSystem, sd: SerilizedDeduction) {
+        // patch player's progress: changed apn3 to avoid inconsist
+        if (sd[2]) for (const s of sd[2]) {
+            if (s && s[0].match(/[vc]*apn3/) && s[2][s[2].length - 1] === "x") {
+                const s0 = s[2][s[2].length - 2];
+                s[2][s[2].length - 1] = "_";
+                s[2][s[2].length - 2] = s[2][s[2].length - 2].replaceAll("x", "_");
+            }
+        }
         // deserialized data is reliable, no need to regen tempvars
         fs.addDeduction(name, astparser.parse(sd[0]), sd[1], sd[2]?.map(e => ({
             deductionIdx: e[0], conditionIdxs: e[1], replaceValues: e[2].map(v => astparser.parse(v))
@@ -58,7 +66,7 @@ export class SavesParser {
         }
         const props = gui.getProps();
         return JSON.stringify([
-            Array.from(fs.consts), Array.from(fs.fns), Array.from(fs.verbs), [[/* todo metamacro */],...gui.metarules], userD, dlist, props.map(s => this.serializeProposition(s))
+            Array.from(fs.consts), Array.from(fs.fns), Array.from(fs.verbs), [[/* todo metamacro */], ...gui.metarules], userD, dlist, props.map(s => this.serializeProposition(s))
         ]);
     }
     deserializeArr(fs: FormalSystem, arr: any[]) {
