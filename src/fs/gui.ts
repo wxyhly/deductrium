@@ -614,15 +614,12 @@ export class FSGui {
                 span.appendChild(this.tree2HTML(tree[i] as RuleTree));
             }
         } else if (tree[0] === ":") {
-            const colon = document.createElement("span");
-            colon.textContent = ":";
-            span.appendChild(colon);
-            span.appendChild(this.tree2HTML(tree[1] as RuleTree));
-            const comma = document.createElement("span");
-            comma.textContent = ",";
-            span.appendChild(comma);
-            span.appendChild(this.tree2HTML(tree[2] as RuleTree));
-
+            for (let i = 1; i < tree.length; i++) {
+                const sep = document.createElement("span");
+                sep.textContent = i === tree.length - 1 ? "," : ":";
+                span.appendChild(sep);
+                span.appendChild(this.tree2HTML(tree[i] as RuleTree));
+            }
         } else if (tree.length === 2) {
             const first = document.createElement("span");
             first.textContent = tree[0];

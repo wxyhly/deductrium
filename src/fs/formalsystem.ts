@@ -3,7 +3,7 @@ import { AssertionSystem, ReplvarTypeTable } from "./assertion.js";
 import { Proof } from "./proof.js";
 import { ASTParser } from "./astparser.js";
 import { TR } from "../lang.js";
-import { RuleParser, RuleTree } from "./metarule.js";
+import { ConstrainSolver, RuleParser, RuleTree } from "./metarule.js";
 export type DeductionStep = { conditionIdxs: number[], deductionIdx: string, replaceValues: AST[] }
 export type Deduction = { value: AST, conditions: AST[], conclusion: AST, replaceNames: string[], replaceTypes: { [replvar: string]: boolean }, from: string, steps?: DeductionStep[], tempvars: Set<string> };
 export type MetaRule = { value: AST, conditions: AST[], conclusions: AST[], replaceNames: string[], conditionDeductionIdxs: number[], from: string };
@@ -428,11 +428,14 @@ export class FormalSystem {
         }
         if (tree[0] === ":") {
             if (!unlocked.includes(":")) throw "null";
-            const d1name = ruleparser.stringify(tree[1]);
-            const d2name = ruleparser.stringify(tree[2]);
-            this.generateDeductionByToken(tree[1], d1name);
-            this.generateDeductionByToken(tree[2], d2name);
-            return this.deductions[this.metaCombineTheorem(d1name, d2name, from)];
+            let tempvar: string;
+            const d1names = (tree.slice(1) as RuleTree[]).map(t => (
+                tempvar = ruleparser.stringify(t),
+                tempvar !== "#" ? this.generateDeductionByToken(t, tempvar) : null,
+                tempvar
+            ));
+            const d2name = d1names.pop();
+            return this.deductions[this.metaCombineTheorem(d1names, d2name, from)];
         }
         if (tree.length === 1) {
             const dname = tree[0];
@@ -521,17 +524,17 @@ export class FormalSystem {
                 { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + "." + a + op + (b - 1n) } :
                 { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + ":" + isNat(a) + ",<d" + op + "1" }
             ,
-            { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + ":" + isNat(b - 1n) + ",:" + isNat(a) + ",<<d" + op + "2" },
+            { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + ":" + isNat(a) + ",:" + isNat(b - 1n) + ",<<d" + op + "2" },
             { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + "d" + b },
             op === "+" ? { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + "d" + (a + b) } : b === 1n ? { conditionIdxs: [], replaceValues: [], deductionIdx: ":" + isNat(a) + ",<.0+" } :
                 { conditionIdxs: [], replaceValues: vars, deductionIdx: vpre + `.${a * (b - 1n)}+${a}` },
             { conditionIdxs: [-4, -3], replaceValues: [{ type: "replvar", name: "0" }], deductionIdx: vpre + "<<a8" },
-            op === "+" ? { conditionIdxs: [-2], replaceValues: [], deductionIdx: vpre + ".=s" } : { conditionIdxs: [-1, -2], replaceValues: [], deductionIdx: vpre + ".=t" },
-            { conditionIdxs: [-4], replaceValues: [], deductionIdx: vpre + ".=s" },
-            { conditionIdxs: [-1, -3], replaceValues: [{ type: "replvar", name: "0" }], deductionIdx: vpre + "<<a8" },
+            op === "+" ? { conditionIdxs: [-2], replaceValues: [], deductionIdx: vpre + ".=s" } : null,
+            { conditionIdxs: [op === "+" ? -4 : -3], replaceValues: [], deductionIdx: vpre + ".=s" },
+            { conditionIdxs: [-1, op === "+" ? -3 : -2], replaceValues: [{ type: "replvar", name: "0" }], deductionIdx: vpre + "<<a8" },
             op === "+" ? { conditionIdxs: [-3, -1], replaceValues: [{ type: "replvar", name: "0" }], deductionIdx: vpre + "<<a8" } :
-                { conditionIdxs: [-1, -5], replaceValues: [], deductionIdx: vpre + ".=t" }
-        ];
+                { conditionIdxs: [-1, op === "+" ? -5 : -4], replaceValues: [], deductionIdx: vpre + ".=t" }
+        ].filter(e => e);
         return this.addDeduction(vpre + name, parser.parse(`⊢${V}(${a}${op}${b}=${op === "+" ? a + b : a * b})`), "元规则生成*", steps, new Set());
     }
 
@@ -1297,57 +1300,112 @@ export class FormalSystem {
         }
         return name;
     }
-    // metaCombineTheorem(idx1s: string[], idx2: string, from: string) {
-    // const name = ":" + idx1s.join(":") + "," + idx2;
-    // if (this.deductions[name]) return name;
-    // const d1s = idx1s.map(e => e === "#" ? null : this.generateDeduction(e));
-    // const d2 = this.generateDeduction(idx2);
-    // if (d2.conditions.length !== idx1s.length) throw TR("匹配条件推理规则($$1b, ...$$2 ⊢ $$3)失败");
-    metaCombineTheorem(idx1: string, idx2: string, from: string) {
-        const name = ":" + idx1 + "," + idx2;
+    metaCombineTheorem(idx1s: string[], idx2: string, from: string) {
+        const name = ":" + idx1s.join(":") + "," + idx2;
         if (this.deductions[name]) return name;
-        const d1 = this.generateDeduction(idx1);
         const d2 = this.generateDeduction(idx2);
-        if (!d2.conditions.length) throw TR("匹配条件推理规则($$1b, ...$$2 ⊢ $$3)失败");
+        if (d2.conditions.length < idx1s.length) throw TR("匹配条件推理规则($$1b, ...$$2 ⊢ $$3)失败");
+        while (d2.conditions.length > idx1s.length) idx1s.push("#");
+        const d1s = idx1s.map(e => e === "#" ? null : this.generateDeduction(e));
+
         const oldP = this.propositions;
-        try {
-            this.removePropositions();
-            d1.conditions.forEach((c, id) => this.addHypothese(c));
-            const matchTable: ReplvarMatchTable = {};
-            const replacedVarTypeTable: ReplvarTypeTable = assert.getReplVarsType(d1.conclusion, {}, false);
-            assert.match(d1.conclusion, d2.conditions[0], /^\$/, false, matchTable, replacedVarTypeTable, null, []);
-            const replNames = this._findReplNameInRule(idx1);
-            const replNamesD2 = new Set<string>();
-            for(let i=1;i===1;i++){
-                astmgr.getVarNames(d2.conditions[i], replNamesD2, /^\$/);
-            }
-            for (const r of replNamesD2) {
-                if (replNames.has(r)&&!matchTable[r]) {
-                    matchTable[r] = this._findNewReplName("", replNames);
-                    replNames.add(matchTable[r].name);
+        const cloneAndRename = (ast: AST, postfix: string) => {
+            const R = astmgr.clone(ast);
+            const rename = (a: AST) => {
+                if (a.type === "replvar" && a.name.startsWith("$")) {
+                    a.name = a.name + postfix;
+                }
+                if (a.nodes?.length) {
+                    for (const n of a.nodes) {
+                        rename(n);
+                    }
                 }
             }
-            const d2_conds = [];
-            for (let i = 1; i < d2.conditions.length; i++) {
-                const R = astmgr.clone(d2.conditions[i]);
-                astmgr.replaceByMatchTable(R, matchTable);
-                d2_conds.push(this.addHypothese(R));
+            return rename(R), R;
+        }
+        // rename replvars in d1s and d2
+        const d1conds = d1s.map((d, i) => {
+            if (!d) return null;
+            return d.conditions.map(c => cloneAndRename(c, String(i + 1)));
+        });
+        const d1concs = d1s.map((d, i) => {
+            if (!d) return null;
+            return cloneAndRename(d.conclusion, "" + String(i + 1));
+        });
+        const d2cond = d2.conditions.map(e => cloneAndRename(e, "0"));
+
+        const d1replaceNames = d1s.map((d, i) => d ? d.replaceNames.map(dr => ({ type: "replvar", name: dr + String(i + 1) })) : []);
+        const d2replaceNames = d2.replaceNames.map(dr => ({ type: "replvar", name: dr + "0" }));
+
+        // generate and solve constrains
+        const constrains: [AST, AST, boolean][] = [];
+        for (let i = 0; i < d1s.length; i++) {
+            if (!d1concs[i]) continue;
+            constrains.push([d1concs[i], d2cond[i], false]);
+        }
+        const solver = new ConstrainSolver();
+        const assertions = [];
+        const mt = solver.solveConstrain(constrains, assertions);
+        solver.dbg(mt, constrains, assertions);
+        const nfTable = solver.addAssertions(mt, assertions);
+        // use match table to replace all iteratively (include itself, nftable and dconds/dconcs)
+        const finished = new Set<string>;
+        for (const key in mt) {
+            const v = mt[key];
+            const k = { type: "replvar", name: key };
+            finished.add(key);
+            const RP = (ast: AST) => {
+                astmgr.replace(ast, k, v);
             }
-            const p1 = this.deduct({
-                deductionIdx: idx1, conditionIdxs: d1.conditions.map((v, id) => id),
-                replaceValues: d1.replaceNames.map(str => ({ type: "replvar", name: str }))
+            for (const key2 in mt) {
+                if (finished.has(key2)) continue;
+                RP(mt[key2]);
+            }
+            for (const key2 in nfTable) {
+                RP(nfTable[key2][0]);
+            }
+
+            d1conds.forEach(conds => {
+                if (!conds) return;
+                conds.forEach(c => RP(c));
             });
-            this._findNewReplName(idx2, replNames);
-            const p2 = this.deduct({
-                deductionIdx: idx2, conditionIdxs: [p1, ...d2_conds],
-                replaceValues: d2.replaceNames.map(str => {
-                    if (replNames.has(str)) {
-                        const n = this._findNewReplName("", replNames);
-                        replNames.add(n.name);
-                        return n;
-                    }
-                    return { type: "replvar", name: str };
-                })
+            d2cond.forEach(c => RP(c));
+
+            d1replaceNames.forEach(c => c.forEach(sc => RP(sc)));
+
+            d2replaceNames.forEach(c => RP(c));
+        }
+        // add nf fn from match table
+        for (const key2 in nfTable) {
+            const k = { type: "replvar", name: key2 };
+            const RP = (ast: AST) => {
+                astmgr.replace(ast, k, nfTable[key2][0]);
+            }
+            d1conds.forEach(conds => {
+                if (!conds) return;
+                conds.forEach(c => RP(c));
+            });
+            d2cond.forEach(c => RP(c));
+
+            d1replaceNames.forEach(c => c.forEach(sc => RP(sc)));
+
+            d2replaceNames.forEach(c => RP(c));
+        }
+
+        try {
+            this.removePropositions();
+            const hyps = d1conds.map((c, idx) => c ? c.map(c => this.addHypothese(c)) : [this.addHypothese(d2cond[idx])]);
+            const pcs = [];
+            for (let i = 0; i < d1conds.length; i++) {
+                if (idx1s[i] === "#") pcs.push(hyps[i][0]);
+                else pcs.push(this.deduct({
+                    deductionIdx: idx1s[i], conditionIdxs: hyps[i],
+                    replaceValues: d1replaceNames[i]
+                }));
+            }
+            this.deduct({
+                deductionIdx: idx2, conditionIdxs: pcs,
+                replaceValues: d2replaceNames
             });
             const ret = this.addMacro(name, from);
             this.propositions = oldP;

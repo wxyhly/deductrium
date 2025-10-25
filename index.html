@@ -164,7 +164,7 @@
     <div id="panel-1">
         <label id="wrap-simpl-sysfn" class="hide"><input id="simpl-sysfn" type="checkbox" checked/>简化显示系统函数</label>
         <label id="wrap-italic-item" class="hide"><input id="italic-item" type="checkbox" checked/>斜体显示项</label>
-        <div id="sysfn-subpanel" class="hide"><label>[#]系统函数规则：</label>
+        <div id="sysfn-subpanel" class=""><label>[#]系统函数规则：</label>
             <div class="list-wrapper">
                 <div class="list" id="sysfn-list">
                 </div>
@@ -212,7 +212,7 @@
                 <button class="danger">删除宏(del)</button>
                 <button>查看宏(entr)</button>
                 <button>展开宏(inln)</button>
-                <span id="meta-macro-btns" class="hide">
+                <span id="meta-macro-btns" class="">
                     <button>添加元宏(mm)</button>
                 </span>
             </span>
@@ -224,7 +224,7 @@
         <p>&nbsp;</p>
         <div class="footer">
             <text id="hint"></text><span class="right"><button>OK</button> &nbsp; <button>Esc</button> &nbsp;</span>
-            <input type="text" id="action-input" />
+            <input type="text" id="action-input" autocomplete="off"/>
             <ul id="autocomplete-list" class="autocomplete-list"></ul>
         </div>
         <a id="github" href="https://github.com/wxyhly/deductrium#deductrium" target="_blank" style="display: none;">

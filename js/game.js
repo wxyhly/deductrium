@@ -315,12 +315,17 @@ export class Game {
                         '.n', '.a3<>', '.a31<>', '.a32<>', '.>TF', '.>FU', '.>|', '.<>TT', '.<>FF', '.<>TF', '.<>FT',
                     ].forEach(s => this.fsGui.addToDeductions(s));
                     return;
+                case "kit+*":
+                    [
+                        ".=Se", ".=Si", ".=S", ".=r+", ".=r*", ".0+", ".S+", ".+@N", ".pred", ".+s", ".+a", ".+e", ".+=0", ".0*", ".*@N", ".S*", ".*s", ".*+d", ".+*d", ".*a", ".*=0", ".*n=0", ".*e",
+                    ].forEach(s => this.fsGui.addToDeductions(s));
+                    return;
                 case ".1st":
                     [
                         ".nEVn", ".nVEn", ".nVVn", ".nEn", ".Ve", ".Vs", ".V&1", ".V&2", ".V&", ".Ee", ".Ei", ".Eirp", ".Erp", ".Es", ".EV", ".E|1", ".E|2", ".E|",
                         ".Vnf", ".Vnf>", ".V>nf", ".Vnf|", ".V|nf", ".Vnf&", ".V&nf", ".Enf", ".Enf>", ".E>nf", ".Enf|", ".E|nf", ".Enf&", ".E&nf",
                         ".Emp", ".Vcn", ".Ecn", ".Vcn<>", ".Ecn<>",
-                        ".=s", ".=t", ".=r=", ".=r@"
+                        ".=s", ".=t", ".=r=", ".=r@",
                     ].forEach(s => this.fsGui.addToDeductions(s));
                     this.fsGui.addToDeductions(".<>rV", ".<>r|");
                     this.fsGui.addToDeductions(".<>rE", ".<>rV");

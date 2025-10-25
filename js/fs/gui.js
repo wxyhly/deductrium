@@ -651,14 +651,12 @@ export class FSGui {
             }
         }
         else if (tree[0] === ":") {
-            const colon = document.createElement("span");
-            colon.textContent = ":";
-            span.appendChild(colon);
-            span.appendChild(this.tree2HTML(tree[1]));
-            const comma = document.createElement("span");
-            comma.textContent = ",";
-            span.appendChild(comma);
-            span.appendChild(this.tree2HTML(tree[2]));
+            for (let i = 1; i < tree.length; i++) {
+                const sep = document.createElement("span");
+                sep.textContent = i === tree.length - 1 ? "," : ":";
+                span.appendChild(sep);
+                span.appendChild(this.tree2HTML(tree[i]));
+            }
         }
         else if (tree.length === 2) {
             const first = document.createElement("span");
