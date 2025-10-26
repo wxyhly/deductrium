@@ -108,7 +108,7 @@ export class FSCmd {
         list.style.display = "block";
         hints.forEach(([html, cmd]) => {
             const li = document.createElement("li");
-            for(const h of html) li.appendChild(h);
+            for (const h of html) li.appendChild(h);
             li.setAttribute("data-value", cmd);
             li.onclick = () => {
                 input.value = cmd;
@@ -154,7 +154,7 @@ export class FSCmd {
                     e => {
                         let d: Deduction;
                         try {
-                            d = this.gui.formalSystem.generateDeduction(e);
+                            d = this.gui.getDeduction(e);
                             if (!d) throw null;
                         } catch (e) {
                             return [];
@@ -166,7 +166,7 @@ export class FSCmd {
                         const hint = document.createElement("span");
                         hint.className = 'hint';
                         hint.innerText = d ? this.astparser.stringifyTight(d.value) : "";
-                        return [[cmd,hint], "d " + e]
+                        return [[cmd, hint], "d " + e]
                     }
                 ).filter(e => e.length);
             }
@@ -183,7 +183,7 @@ export class FSCmd {
                         const hint = document.createElement("span");
                         hint.className = 'hint';
                         hint.innerText = TR("命令：") + e;
-                        return [[cmd,hint], e];
+                        return [[cmd, hint], e];
                     }
                 ));
             }

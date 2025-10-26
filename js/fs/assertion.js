@@ -3,7 +3,7 @@ import { ASTMgr } from "./astmgr.js";
 const astmgr = new ASTMgr;
 const logicSyms = ["<>", ">", "~", "&", "|"];
 const quantSyms = ["E", "E!", "V"];
-const verbSyms = ["@", "=", "<"];
+const verbSyms = ["@", "=", "<", "<=", ">=", "/|"];
 // const verbFns = ["Prime", "Equiv", "Order", "WellOrder", "Rel", "Point", "Line", "Plane", "Between", "Angle"];
 const fnSyms = ["U", "I", "S", "+", "-", "*", "X", "/", "\\"];
 import { ASTParser } from "./astparser.js";

@@ -1,6 +1,6 @@
 import { TR } from "../lang.js";
 export class ASTParser {
-    keywords = ["E!", "⊢M", "<>", "Union", "{}", "Equiv"];
+    keywords = ["E!", "⊢M", "<>", "Union", "{}", "Equiv", "<=", ">=", "/|"];
     symChar = "VEMUIX()@~^<>|&=,;:[]!⊢+-*/{}\\";
     ast;
     cursor = 0;
@@ -63,13 +63,13 @@ export class ASTParser {
         this.cursor = 0;
         this.tokenise(s.replaceAll("∀", "V").replaceAll("∃", "E").replaceAll("∈", "@").replaceAll("¬", "~")
             .replaceAll("→", ">").replaceAll("↔", "<>").replaceAll("⊂", "<").replaceAll("∪", "U").replaceAll("∩", "I")
-            .replaceAll("∧", "&").replaceAll("∨", "|").replaceAll("ω", "omega"));
+            .replaceAll("∧", "&").replaceAll("∨", "|").replaceAll("ω", "omega").replaceAll("≤", "<=").replaceAll("≥", ">=").replaceAll("│", "/|"));
         this.nextSym();
         return this.meta();
     }
     tokenise(s) {
         for (let i = 0; i < this.keywords.length; i++) {
-            s = s.replace(new RegExp(this.keywords[i], "g"), " #keyword" + i + " ");
+            s = s.replaceAll(this.keywords[i], " #keyword" + i + " ");
         }
         let word = "";
         const arr = [];
@@ -230,7 +230,7 @@ export class ASTParser {
     }
     boolTerm4() {
         let val = this.boolTerm5();
-        while (this.token === "@" || this.token === "=" || this.token === "<" || this.token?.match(/^\$\$.+/)) {
+        while (this.token === "@" || this.token === "=" || this.token === "<" || this.token === "<=" || this.token === ">=" || this.token === "/|" || this.token?.match(/^\$\$.+/)) {
             const name = this.token;
             this.nextSym();
             let val2 = this.boolTerm5();

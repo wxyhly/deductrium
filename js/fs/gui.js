@@ -157,9 +157,9 @@ export class FSGui {
         document.getElementById("creer").classList.remove("hide");
     }
     prettyPrint(s) {
-        return s.replace(/<>/g, "↔").replace(/>/g, "→").replace(/</g, "⊂").replace(/@/g, "∈")
+        return s.replace(/>=/g, "≥").replace(/<=/g, "≤").replace(/<>/g, "↔").replace(/>/g, "→").replace(/</g, "⊂").replace(/@/g, "∈")
             .replace(/U/g, "∪").replace(/I/g, "∩").replace(/\*/g, "×").replace(/X/g, "×").replace(/\//g, "÷").replace(/-/g, "−")
-            .replace(/\|/g, "∨").replace(/&/g, "∧").replace(/~/g, "¬").replace(/V/g, "∀").replace(/E/g, "∃").replace(/omega/g, "ω");
+            .replace(/\|/g, "∨").replace(/÷∨/g, "|").replace(/&/g, "∧").replace(/~/g, "¬").replace(/V/g, "∀").replace(/E/g, "∃").replace(/omega/g, "ω");
     }
     addSpan(parentSpan, text) {
         const span = document.createElement("span");
@@ -303,6 +303,7 @@ export class FSGui {
             const printForm = {
                 "omega": "ω",
                 "N": "ℕ",
+                "Z": "ℤ",
                 "Q": "ℚ",
                 "R": "ℝ",
             };
@@ -402,9 +403,8 @@ export class FSGui {
                     });
                     break;
                 default:
-                    // case "@": case "=": case "&": case "^": case ">": case "|":
                     this.addSpan(varnode, "(");
-                    const subIsItem = "@=<+*UIX/\\".includes(ast.name);
+                    const subIsItem = "@>=<=+*UIX/\\".includes(ast.name) || ast.name === "/|";
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], subIsItem, scopes));
                     this.addSpan(varnode, ast.name.startsWith("$$") ? ` ${ast.name} ` : this.prettyPrint(ast.name));
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], subIsItem, scopes));
@@ -745,8 +745,12 @@ export class FSGui {
         const tokens = [];
         this.formalSystem.getAtomDeductionTokens(id, tokens);
         for (const it of tokens) {
+            if (this.deductions.includes(it))
+                continue;
             // if .XX is locked, can't use it
-            if (it[0] === "." && !this.deductions.includes(it) && !(this.formalSystem.fastmetarules.includes("#") && (this.formalSystem.generateNatLiteralOp(it) || this.formalSystem.generateNatLiteralIsNat(it))))
+            if (it[0] === "." && !(this.formalSystem.fastmetarules.includes("#") && (this.formalSystem.generateNatLiteralOp(it) || this.formalSystem.generateNatLiteralIsNat(it))))
+                return null;
+            if (it[0] === "a" || it[0] === "d")
                 return null;
         }
         try {

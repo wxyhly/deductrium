@@ -131,7 +131,7 @@ export class Game {
                 if (tile.text.endsWith("#p")) {
                     // if with hyps, fail
                     if (!this.fsGui.formalSystem.propositions[0]?.from) return false;
-                    const ast = this.fsGui.cmd.astparser.parse(tile.text.replaceAll("\n#p", "").replaceAll("\n", ""));
+                    const ast = this.fsGui.cmd.astparser.parse(tile.text.replaceAll("||", "|").replaceAll("\n#p", "").replaceAll("\n", ""));
                     return this.fsGui.getProps().findIndex(v => astmgr.equal(v.value, ast)) !== -1;
                 }
                 if (tile.text.endsWith("#d")) {
@@ -194,6 +194,10 @@ export class Game {
                 case "hyp": this.fsGui.unlockedHyp = true; return document.getElementById("hyp-btn").classList.remove("hide");
                 case "neg": this.fsGui.addToDeductions("a3", "a2"); return;
                 case "cmpss": this.hyperGui.world.navigateDraw = true; return;
+                case "del-pn":
+                    const tilePn = this.hyperGui.world.getBlock(".pn");
+                    tilePn.text += "\n （此门已拆除）"; tilePn.type = 0;
+                    this.destructedGates++; this.updateProgressParam(); return;
                 case "omega":
                     const tileOmega = this.hyperGui.world.getBlock("w");
                     tileOmega.text += "\n （此门已拆除）"; tileOmega.type = 0;
@@ -288,10 +292,22 @@ export class Game {
                 case "d{}": this.fsGui.addToDeductions("d{}"); return;
                 case "d{.}": this.fsGui.addToDeductions("d{.}"); return;
                 case "d{..}": this.fsGui.addToDeductions("d{..}"); return;
+                case "d{@|}": this.fsGui.addToDeductions("d{@|}"); return;
+                case "d{|@}": this.fsGui.addToDeductions("d{|@}"); return;
+                case "dX": this.fsGui.addToDeductions("dX"); return;
+                case "d()pr": this.fsGui.addToDeductions("d()pr"); return;
+                case "d<=": this.fsGui.addToDeductions("d<=");this.fsGui.addToDeductions("d>="); return;
+                case "dsub": this.fsGui.addToDeductions("d\\"); return;
+                case "ddiv": this.fsGui.addToDeductions("d/|"); return;
+                case "dfZ": this.fsGui.addToDeductions("dfZ"); return;
+                case "dZ": this.fsGui.addToDeductions("dZ"); return;
+                case "dZ+": this.fsGui.addToDeductions("dZ+"); return;
+                case "dZ*": this.fsGui.addToDeductions("dZ*"); return;
+                case "dZ<=": this.fsGui.addToDeductions("dZ<="); return;
                 case "d<>": this.fsGui.addToDeductions("d<>"); return;
                 case "d<": this.fsGui.addToDeductions("d<"); return;
                 case "dw": this.fsGui.addToDeductions("domega"); return;
-                case "dSd0": this.fsGui.addToDeductions("dS"); this.fsGui.addToDeductions("d0"); return;
+                case "dSd0": this.fsGui.addToDeductions("d0"); this.fsGui.addToDeductions("dS"); this.fsGui.addToDeductions("dN"); return;
                 case "dOrder": this.fsGui.addToDeductions("dOrder"); this.fsGui.addToDeductions("dWOrder"); return;
                 case "dRel": this.fsGui.addToDeductions("dRel"); return;
                 case "dEquiv": this.fsGui.addToDeductions("dEquiv"); return;

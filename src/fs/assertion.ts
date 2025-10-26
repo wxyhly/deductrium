@@ -3,7 +3,7 @@ import { AST, ASTMgr } from "./astmgr.js";
 const astmgr = new ASTMgr;
 const logicSyms = ["<>", ">", "~", "&", "|"];
 const quantSyms = ["E", "E!", "V"];
-const verbSyms = ["@", "=", "<"];
+const verbSyms = ["@", "=", "<", "<=", ">=","/|"];
 // const verbFns = ["Prime", "Equiv", "Order", "WellOrder", "Rel", "Point", "Line", "Plane", "Between", "Angle"];
 const fnSyms = ["U", "I", "S", "+", "-", "*", "X", "/", "\\"];
 
@@ -719,7 +719,7 @@ export class AssertionSystem {
                         if (snth !== -1) {
                             ast.nodes[3] = sub.nodes[3];
                         }
-                        if (this.astEq(src, b)===T) {
+                        if (this.astEq(src, b) === T) {
                             this.removeFn(sub);
                             astmgr.assign(src, a);
                             this.expand(ast, isItem, varLists);

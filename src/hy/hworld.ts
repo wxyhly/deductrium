@@ -68,12 +68,17 @@ export class HWorld {
             let text = block.text;
             if (this.prettyPrint) {
                 if (text.endsWith("#p") || text.endsWith("#d")) {
-                    text = text.replaceAll("V", "∀").replaceAll("<>", "↔").replaceAll(/E([^q])/g, "∃$1").replaceAll("@", "∈").replaceAll("~", "¬")
+                    text = text.replaceAll("V", "∀").replaceAll("/|", "│").replaceAll(">=", "≥").replaceAll("<=", "≤").replaceAll("<>", "↔").replaceAll(/E([^q])/g, "∃$1").replaceAll("@", "∈").replaceAll("~", "¬")
                         .replaceAll(">", " → ").replaceAll("<", "⊂").replaceAll("U", "∪").replaceAll("I", "∩")
-                        .replaceAll("&", "∧").replaceAll("|", "∨").replaceAll("omega", "ω")
+                        .replaceAll("&", "∧").replaceAll("|", "∨").replaceAll("∨∨", "|").replaceAll("omega", "ω").replaceAll("X", "×").replaceAll("*", "×")
+                        .replaceAll("N", "ℕ").replaceAll("Z", "ℤ").replaceAll("Q", "ℚ").replaceAll("R", "ℝ").replaceAll("ℝel", "Rel")
                 } else if (text.endsWith("#t")) {
                     text = text.replaceAll("->", " → ").replaceAll("L", "λ").replaceAll("S", "Σ").replaceAll("P", "Π")
                         .replaceAll("X", "×")
+                }
+            } else {
+                if (text.endsWith("#p") || text.endsWith("#d")) {
+                    text = text.replaceAll("||", "|");
                 }
             }
             this.localDraw.textTo(this.localCamMat.mul(r).apply(new Hvec), text);

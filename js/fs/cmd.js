@@ -148,7 +148,7 @@ export class FSCmd {
                 list = list.map(e => {
                     let d;
                     try {
-                        d = this.gui.formalSystem.generateDeduction(e);
+                        d = this.gui.getDeduction(e);
                         if (!d)
                             throw null;
                     }
