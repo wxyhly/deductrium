@@ -285,10 +285,10 @@ export class ASTParser {
     }
     private bool(): AST {
         let val = this.boolTerm1();
-        while (this.token === ">" || this.token === "<>") {
+        if (this.token === ">" || this.token === "<>") {
             const name = this.token;
             this.nextSym();
-            let val2 = this.boolTerm1();
+            let val2 = this.bool();
             val = { type: "sym", name, nodes: [val, val2] };
         }
         return val;

@@ -14,7 +14,7 @@ let consts = new Set<string>;
 type definedConst = [string, AST];
 const allrules = initTypeSystem();
 export class TTGui {
-    skipRendering = false;
+    skipRendering = true;
     onStateChange = () => { };
     core = new Core;
     disableSimpleFn = false;
@@ -32,9 +32,10 @@ export class TTGui {
     userDefinedConsts: definedConst[] = [];
     sysDefinedConsts: definedConst[] = [];
 
-    constructor(creative: boolean) {
+    constructor(creative: boolean, skipRendering: boolean) {
+        this.skipRendering = skipRendering;
         this.unlockedTypes = new Set(creative ? allrules.map(r => r.id) : ["True0", "True1", "False0"]);
-        this.updateTypeList(this.unlockedTypes);
+        if (!skipRendering) this.updateTypeList(this.unlockedTypes);
         if (!creative) {
             this.unlockedTactics = new Set(["qed"]);
             this.disableSimpleFn = true;

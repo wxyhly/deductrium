@@ -71,9 +71,9 @@ export class Game {
             document.getElementById("hint") as any,
             document.getElementById("display-p-layer") as any,
             document.querySelectorAll(".cmd-btns button") as any,
-            this.creative
+            this.creative, true
         );
-        this.ttGui = new TTGui(this.creative);
+        this.ttGui = new TTGui(this.creative, true);
 
         document.getElementById("panel").classList.remove("hide");
         this.hyperGui = new HyperGui();
@@ -296,7 +296,7 @@ export class Game {
                 case "d{|@}": this.fsGui.addToDeductions("d{|@}"); return;
                 case "dX": this.fsGui.addToDeductions("dX"); return;
                 case "d()pr": this.fsGui.addToDeductions("d()pr"); return;
-                case "d<=": this.fsGui.addToDeductions("d<=");this.fsGui.addToDeductions("d>="); return;
+                case "d<=": this.fsGui.addToDeductions("d<="); this.fsGui.addToDeductions("d>="); return;
                 case "dsub": this.fsGui.addToDeductions("d\\"); return;
                 case "ddiv": this.fsGui.addToDeductions("d/|"); return;
                 case "dfZ": this.fsGui.addToDeductions("dfZ"); return;
@@ -483,6 +483,10 @@ export class Game {
 
         if (saves) gameSaveLoad.load(this, saves);
         document.getElementById("loading").classList.add("hide");
+        this.fsGui.skipRendering = false;
+        this.ttGui.skipRendering = false;
+        this.fsGui.onchangeOmitNF();
+        this.ttGui.updateAfterUnlock();
         langMgr.setLang(langMgr.lang);
         this.hyperGui.needUpdate = true;
     }

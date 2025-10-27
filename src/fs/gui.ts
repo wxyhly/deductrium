@@ -8,7 +8,7 @@ import { RuleTree } from "./metarule.js";
 const astmgr = new ASTMgr();
 
 export class FSGui {
-    skipRendering = false;
+    skipRendering = true;
     formalSystem = new FormalSystem();
     actionInput: HTMLInputElement;
     hintText: HTMLDivElement;
@@ -38,8 +38,9 @@ export class FSGui {
     constructor(
         propositionList: HTMLOListElement, deductionList: HTMLOListElement, metaRuleList: HTMLOListElement, sysFnList: HTMLOListElement,
         actionInput: HTMLInputElement, hintText: HTMLDivElement, displayPLayerSelect: HTMLSelectElement,
-        cmdBtns: NodeListOf<HTMLButtonElement>, creative: boolean
+        cmdBtns: NodeListOf<HTMLButtonElement>, creative: boolean, skipRendering: boolean
     ) {
+        this.skipRendering = skipRendering;
         this.propositionList = propositionList;
         this.metaRuleList = metaRuleList;
         this.deductionList = deductionList;
@@ -506,7 +507,7 @@ export class FSGui {
         }, true, this.sysfns.map(e => e[2]));
     }
     updatePropositionList(refresh?: boolean) {
-        if(this.skipRendering) return;
+        if (this.skipRendering) return;
         this.updateGuiList("p", this.formalSystem.propositions, this.propositionList, (p) => true, (p, itInfo, it, pname) => {
             itInfo[0].addEventListener("click", () => {
                 if (this.cmd.cmdBuffer.length === 0) {
@@ -574,7 +575,7 @@ export class FSGui {
         this.draggerP.attachIdxListener();
     }
     updateDeductionList() {
-        if(this.skipRendering) return;
+        if (this.skipRendering) return;
         const types = new Set<string>;
         const ds = this.deductions.map(d => this.formalSystem.deductions[d] || this.formalSystem.generateDeduction(d));
         for (const d of ds) {
@@ -594,7 +595,7 @@ export class FSGui {
         this.draggerD.attachIdxListener();
     }
     updateMetaRuleList(refresh?: boolean) {
-        if(this.skipRendering) return;
+        if (this.skipRendering) return;
         this.updateGuiList("m", Object.fromEntries(this.metarules.map(e => [e, this.formalSystem.metaRules[e]])), this.metaRuleList, (p, idx) => this.metarules.includes(idx), (p, itInfo, it) => {
             itInfo[0].innerHTML = TR(p.from).replaceAll("<", "&lt;").replaceAll(">", "&gt;");
         }, refresh, this.metarules.map(e => "m" + e));

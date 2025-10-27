@@ -6,7 +6,7 @@ import { TR } from "../lang.js";
 import { ListDragger } from "./itemdragger.js";
 const astmgr = new ASTMgr();
 export class FSGui {
-    skipRendering = false;
+    skipRendering = true;
     formalSystem = new FormalSystem();
     actionInput;
     hintText;
@@ -32,7 +32,8 @@ export class FSGui {
     draggerP = new ListDragger(document.getElementById("prop-list"));
     isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
     cmd;
-    constructor(propositionList, deductionList, metaRuleList, sysFnList, actionInput, hintText, displayPLayerSelect, cmdBtns, creative) {
+    constructor(propositionList, deductionList, metaRuleList, sysFnList, actionInput, hintText, displayPLayerSelect, cmdBtns, creative, skipRendering) {
+        this.skipRendering = skipRendering;
         this.propositionList = propositionList;
         this.metaRuleList = metaRuleList;
         this.deductionList = deductionList;

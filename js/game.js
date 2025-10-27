@@ -70,8 +70,8 @@ export class Game {
         if (gamemode === "creative") {
             this.creative = true;
         }
-        this.fsGui = new FSGui(document.getElementById("prop-list"), document.getElementById("deduct-list"), document.getElementById("meta-list"), document.getElementById("sysfn-list"), document.getElementById("action-input"), document.getElementById("hint"), document.getElementById("display-p-layer"), document.querySelectorAll(".cmd-btns button"), this.creative);
-        this.ttGui = new TTGui(this.creative);
+        this.fsGui = new FSGui(document.getElementById("prop-list"), document.getElementById("deduct-list"), document.getElementById("meta-list"), document.getElementById("sysfn-list"), document.getElementById("action-input"), document.getElementById("hint"), document.getElementById("display-p-layer"), document.querySelectorAll(".cmd-btns button"), this.creative, true);
+        this.ttGui = new TTGui(this.creative, true);
         document.getElementById("panel").classList.remove("hide");
         this.hyperGui = new HyperGui();
         document.querySelectorAll("#panel>button").forEach((btn, idx) => {
@@ -781,6 +781,10 @@ export class Game {
         if (saves)
             gameSaveLoad.load(this, saves);
         document.getElementById("loading").classList.add("hide");
+        this.fsGui.skipRendering = false;
+        this.ttGui.skipRendering = false;
+        this.fsGui.onchangeOmitNF();
+        this.ttGui.updateAfterUnlock();
         langMgr.setLang(langMgr.lang);
         this.hyperGui.needUpdate = true;
     }

@@ -145,9 +145,13 @@ export class FSCmd {
                 }).map(e => pre + e);
                 if (!list.includes(value))
                     list.unshift(value);
+                const time = new Date().getTime();
                 list = list.map(e => {
                     let d;
                     try {
+                        // wait for 150ms, then stop generate more autocomplete items 
+                        if (new Date().getTime() - time > 150)
+                            return [];
                         d = this.gui.getDeduction(e);
                         if (!d)
                             throw null;
@@ -290,7 +294,7 @@ export class FSCmd {
         }
         if (this.cmdBuffer.length % 2 == 0) {
             const item = this.cmdBuffer[this.cmdBuffer.length - 1];
-            if (this.gui.formalSystem.deductions[item]) {
+            if (this.gui.getDeduction(item)) {
                 if (!this.escClear) {
                     this.cmdBuffer.pop();
                     this.execCmdBuffer();
@@ -347,7 +351,7 @@ export class FSCmd {
                 // else if clicked metarule, pop to roll back
                 this.cmdBuffer.pop();
                 this.execCmdBuffer();
-                hintText.innerText += TR("\n无法展开元规则");
+                hintText.innerText += TR("\n无法展开不存在的规则");
                 return;
             }
         }
@@ -376,12 +380,29 @@ export class FSCmd {
         if (cmdBuffer[1].startsWith("p"))
             cmdBuffer[1] = cmdBuffer[1].slice(1);
         try {
-            if (!formalSystem.propositions[cmdBuffer[1]])
-                throw TR("该定理不存在");
+            let inlineRule = false;
+            if (!formalSystem.propositions[cmdBuffer[1]]) {
+                const d = this.gui.getDeduction(cmdBuffer[1]);
+                if (!d) {
+                    throw TR("该定理或规则不存在。");
+                }
+                if (!d.from) {
+                    throw TR("无法展开原子推理规则");
+                }
+                if (formalSystem.propositions.length) {
+                    throw TR("要展开规则，请确保定理列表为空。");
+                }
+                inlineRule = true;
+            }
             const fmr = formalSystem.fastmetarules;
             const fsd = Object.assign({}, formalSystem.deductions);
             formalSystem.fastmetarules = "cvuqe><:#";
-            formalSystem.inlineMacroInProp(Number(cmdBuffer[1]));
+            if (inlineRule) {
+                formalSystem.expandMacroWithDefaultValue(cmdBuffer[1]);
+            }
+            else {
+                formalSystem.inlineMacroInProp(Number(cmdBuffer[1]));
+            }
             formalSystem.fastmetarules = fmr;
             formalSystem.deductions = fsd;
             this.gui.updatePropositionList(true);
@@ -608,7 +629,7 @@ export class FSCmd {
         }
         this.gui.hintText.appendChild(infoWrap);
         if (curLength < condLength + 2) {
-            if (curLength > 2)
+            if (curLength > 1)
                 this.escClear = false;
             //wait for conditionIdx input
             const waitCond = deduction.conditions[cmdBuffer.length - 2];
@@ -756,7 +777,26 @@ export class FSCmd {
                 if (ast.startsWith("hyp ")) {
                     ast = ast.slice(4);
                 }
-                formalSystem.addHypothese(this.astparser.parse(ast));
+                if (ast === "pop") {
+                    const lastHyp = hypCount === -1 ? formalSystem.propositions.length : hypCount;
+                    if (lastHyp - 1 >= 0) {
+                        let removed = false;
+                        try {
+                            this.gui.formalSystem.moveProposition(lastHyp - 1, -1);
+                        }
+                        catch (e) {
+                            removed = true;
+                        }
+                        if (!removed)
+                            this.gui.formalSystem.removePropositions(1);
+                    }
+                    else {
+                        formalSystem.addHypothese(this.astparser.parse(ast));
+                    }
+                }
+                else {
+                    formalSystem.addHypothese(this.astparser.parse(ast));
+                }
                 this.gui.updatePropositionList(hypCount !== -1);
                 hypCount = formalSystem.propositions.findIndex(e => e.from);
             }
@@ -890,10 +930,10 @@ export class FSCmd {
         }
         // ["m", pos, null, name]
         const n = this.cmdBuffer[prevLength + 2];
-        if (n.match(/^[<>acdempuv#\.]/)) {
+        if (n.match(/^[0-9<>acdempuv#\.]/)) {
             this.cmdBuffer.pop();
             const res = this.getInputNewDeductionPos(prevLength);
-            this.gui.hintText.innerText = TR("以.<>acdempuv#开头的推理规则名称由系统保留，请重新命名");
+            this.gui.hintText.innerText = TR("以.<>acdempuv#或数字开头的推理规则名称由系统保留，请重新命名");
             return res;
         }
         if (n.match(/^\$\$/)) {
