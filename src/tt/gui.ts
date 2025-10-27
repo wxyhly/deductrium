@@ -14,6 +14,7 @@ let consts = new Set<string>;
 type definedConst = [string, AST];
 const allrules = initTypeSystem();
 export class TTGui {
+    skipRendering = false;
     onStateChange = () => { };
     core = new Core;
     disableSimpleFn = false;
@@ -154,9 +155,9 @@ export class TTGui {
             statediv.appendChild(goalDiv);
         }
     }
-    private addSpan(parentSpan: HTMLSpanElement, text: string) {
+    private addSpan(parentSpan: HTMLSpanElement, text: string, parseHTML?: boolean) {
         const span = document.createElement("span");
-        span.innerHTML = text;
+        if (parseHTML) span.innerHTML = text; else span.innerText = text;
         parentSpan.appendChild(span);
         return span;
     }
@@ -171,10 +172,10 @@ export class TTGui {
         if (ast.type === "var") {
             let el: HTMLSpanElement;
             if (ast.name.startsWith("@") && isFinite(Number(ast.name.slice(1)))) {
-                el = this.addSpan(varnode, "<sub>" + ast.name + "</sub>");
+                el = this.addSpan(varnode, "<sub>" + ast.name + "</sub>", true);
                 el.classList.add("universe");
             } else if (ast.name.startsWith("U@")) {
-                el = this.addSpan(varnode, "U<sub>" + ast.name.slice(1) + "</sub>");
+                el = this.addSpan(varnode, "U<sub>" + ast.name.slice(1) + "</sub>", true);
                 el.classList.add("universe");
             } else {
                 el = this.addSpan(varnode, ast.name);
@@ -239,7 +240,7 @@ export class TTGui {
                 case "apply":
                     if (ast.nodes[0].name === "U") {
                         const sub = parser.stringify(ast.nodes[1]);
-                        this.addSpan(varnode, `U<sub>${sub.replaceAll(/@([0-9])/g, "$1")}</sub>`).classList.add("universe");
+                        this.addSpan(varnode, `U<sub>${sub.replaceAll(/@([0-9])/g, "$1")}</sub>`, true).classList.add("universe");
                         break;
                     }
                     const br1 = !["apply", "var"].includes(ast.nodes[0].type);
@@ -571,7 +572,7 @@ export class TTGui {
                 this.addSpan(div, " - " + error);
             }
             if (ast && !error) {
-                if (ast.type[0] != ":") this.addSpan(div, " &nbsp; : &nbsp; ");
+                if (ast.type[0] != ":") this.addSpan(div, " &nbsp; : &nbsp; ", true);
                 if (type) {
                     try {
                         this.core.checkType(type, {}, null, this.core.state.inferValues);
@@ -806,12 +807,13 @@ export class TTGui {
     }
     unlock(str: string, update?: boolean) {
         this.unlockedTypes.add(str);
-        if (update) {
+        if (update && !this.skipRendering) {
             this.updateTypeList(this.unlockedTypes);
             this.getInhabitatArray()[0].onblur({} as any);
         }
     }
     updateAfterUnlock() {
+        if (this.skipRendering) return;
         this.updateTypeList(this.unlockedTypes);
         this.getInhabitatArray()[0].onblur({} as any);
     }

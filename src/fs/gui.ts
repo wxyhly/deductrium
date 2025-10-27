@@ -8,6 +8,7 @@ import { RuleTree } from "./metarule.js";
 const astmgr = new ASTMgr();
 
 export class FSGui {
+    skipRendering = false;
     formalSystem = new FormalSystem();
     actionInput: HTMLInputElement;
     hintText: HTMLDivElement;
@@ -135,6 +136,10 @@ export class FSGui {
         this.updateSysFnList();
         onchangeOmitNF();
     }
+    reload() {
+        this.formalSystem.fastmetarules = "";
+        this.enableMIFFT_RP = false;
+    }
     initCreative() {
         this.metarules = Object.keys(this.formalSystem.metaRules);
         this.formalSystem.fastmetarules = "cvuqe><:#";
@@ -155,9 +160,9 @@ export class FSGui {
             .replace(/U/g, "∪").replace(/I/g, "∩").replace(/\*/g, "×").replace(/X/g, "×").replace(/\//g, "÷").replace(/-/g, "−")
             .replace(/\|/g, "∨").replace(/÷∨/g, "|").replace(/&/g, "∧").replace(/~/g, "¬").replace(/V/g, "∀").replace(/E/g, "∃").replace(/omega/g, "ω");
     }
-    addSpan(parentSpan: HTMLSpanElement, text: string) {
+    addSpan(parentSpan: HTMLSpanElement, text: string, parseHTML?: boolean) {
         const span = document.createElement("span");
-        span.innerHTML = text;
+        if (parseHTML) span.innerHTML = text; else span.innerText = text;
         parentSpan.appendChild(span);
         return span;
     }
@@ -179,7 +184,7 @@ export class FSGui {
                 varnode.appendChild(this.ast2HTML(idx, n, false, scopes));
             }
             if (ast.name === "⊢M") {
-                this.addSpan(varnode, ` ⊢<sub>M</sub> `);
+                this.addSpan(varnode, ` ⊢<sub>M</sub> `, true);
             } else {
                 this.addSpan(varnode, ` ${ast.name} `);
             }
@@ -371,7 +376,7 @@ export class FSGui {
                     break;
                 default:
                     this.addSpan(varnode, "(");
-                    const subIsItem = "@>=<=+*UIX/\\".includes(ast.name) || ast.name === "/|";
+                    const subIsItem = "@<=+*UIX/\\".includes(ast.name) || ast.name === "/|" || ast.name === ">=";
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], subIsItem, scopes));
                     this.addSpan(varnode, ast.name.startsWith("$$") ? ` ${ast.name} ` : this.prettyPrint(ast.name));
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], subIsItem, scopes));
@@ -501,6 +506,7 @@ export class FSGui {
         }, true, this.sysfns.map(e => e[2]));
     }
     updatePropositionList(refresh?: boolean) {
+        if(this.skipRendering) return;
         this.updateGuiList("p", this.formalSystem.propositions, this.propositionList, (p) => true, (p, itInfo, it, pname) => {
             itInfo[0].addEventListener("click", () => {
                 if (this.cmd.cmdBuffer.length === 0) {
@@ -568,6 +574,7 @@ export class FSGui {
         this.draggerP.attachIdxListener();
     }
     updateDeductionList() {
+        if(this.skipRendering) return;
         const types = new Set<string>;
         const ds = this.deductions.map(d => this.formalSystem.deductions[d] || this.formalSystem.generateDeduction(d));
         for (const d of ds) {
@@ -587,6 +594,7 @@ export class FSGui {
         this.draggerD.attachIdxListener();
     }
     updateMetaRuleList(refresh?: boolean) {
+        if(this.skipRendering) return;
         this.updateGuiList("m", Object.fromEntries(this.metarules.map(e => [e, this.formalSystem.metaRules[e]])), this.metaRuleList, (p, idx) => this.metarules.includes(idx), (p, itInfo, it) => {
             itInfo[0].innerHTML = TR(p.from).replaceAll("<", "&lt;").replaceAll(">", "&gt;");
         }, refresh, this.metarules.map(e => "m" + e));
@@ -643,7 +651,7 @@ export class FSGui {
     }
     stringifyDeductionStep(dom: HTMLSpanElement, step: DeductionStep) {
         if (!dom) return `&nbsp;${step.deductionIdx} ${step.conditionIdxs.join(",")}`;
-        const span = this.addSpan(dom, "&nbsp;");
+        const span = this.addSpan(dom, "&nbsp;", true);
         const didx = this.tree2HTML(this.formalSystem.getDeductionTokens(step.deductionIdx));
         span.appendChild(didx);
         this.addSpan(span, " ");
@@ -685,7 +693,7 @@ export class FSGui {
         }
         this.updateDeductionList();
     }
-    getDeduction(id: string):Deduction {
+    getDeduction(id: string): Deduction {
         if (id === ".") return this.getDeduction(this.cmd.lastDeduction);
         // if cuv is locked, can't use cmp and vmp
         if ("cuv".includes(id[0]) && !this.formalSystem.fastmetarules.includes(id[0])) {

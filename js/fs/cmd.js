@@ -578,9 +578,9 @@ export class FSCmd {
         }
         writtenConditions.fill("?", j);
         this.gui.hintText.innerHTML = "";
-        this.gui.addSpan(this.gui.hintText, TR(`正在进行推理`) + "&nbsp; ");
+        this.gui.addSpan(this.gui.hintText, TR(`正在进行推理`) + "&nbsp; ", true);
         this.gui.hintText.appendChild(this.gui.tree2HTML(formalSystem.getDeductionTokens(cmdBuffer[1] === "." ? this.lastDeduction : cmdBuffer[1])));
-        this.gui.addSpan(this.gui.hintText, `&nbsp; ${writtenConditions.map(e => e !== "?" ? `<span class="rule-cond">${e}</span>` : e).join(", ")} : `);
+        this.gui.addSpan(this.gui.hintText, `&nbsp; ${writtenConditions.map(e => e !== "?" ? `<span class="rule-cond">${e}</span>` : e).join(", ")} : `, true);
         this.gui.hintText.appendChild(this.gui.ast2HTML("d", deduction.value, false));
         let infoWrap = document.createElement("span");
         this.gui.hintText.appendChild(document.createElement("br"));
@@ -597,12 +597,12 @@ export class FSCmd {
             varnode.className = "replvar";
             if (deduction.replaceTypes[varName] && this.gui.italicItem)
                 varnode.classList.add("item");
-            this.gui.addSpan(this.gui.hintText, " : " + err);
+            this.gui.addSpan(this.gui.hintText, " : " + err, true);
             if (astHtml) {
                 this.gui.hintText.appendChild(astHtml);
             }
             else {
-                this.gui.addSpan(this.gui.hintText, cmdBuffer[i].replace(/</g, "&lt;").replace(/>/g, "&gt;"));
+                this.gui.addSpan(this.gui.hintText, cmdBuffer[i]);
             }
             this.gui.hintText.appendChild(document.createElement("br"));
         }
@@ -784,7 +784,7 @@ export class FSCmd {
             // click item to start a cmd
             if (cmdBuffer[0] === "d" && cmdBuffer.length === 1) {
                 if (!this.gui.formalSystem.deductions[idx]) {
-                    this.gui.addSpan(this.gui.hintText, "<br>" + TR("\n请点选推理规则！"));
+                    this.gui.addSpan(this.gui.hintText, "<br>" + TR("\n请点选推理规则！"), true);
                     return;
                 }
             }
@@ -806,7 +806,7 @@ export class FSCmd {
             if (conditions + 2 > cmdBuffer.length) {
                 //wait for conditionIdx input
                 if (!idx.match(/^p[0-9]+$/)) {
-                    this.gui.addSpan(this.gui.hintText, "<br>" + TR("\n请点选定理！"));
+                    this.gui.addSpan(this.gui.hintText, "<br>" + TR("\n请点选定理！"), true);
                     return;
                 }
                 cmdBuffer.push(Number(idx.slice(1)));
@@ -827,7 +827,7 @@ export class FSCmd {
             if (conditions + 2 > cmdBuffer.length) {
                 //wait for conditionIdx input
                 if (!this.gui.formalSystem.deductions[idx]) {
-                    this.gui.addSpan(this.gui.hintText, "<br>" + TR("\n请点选推理规则！"));
+                    this.gui.addSpan(this.gui.hintText, "<br>" + TR("\n请点选推理规则！"), true);
                     return;
                 }
                 cmdBuffer.push(idx);

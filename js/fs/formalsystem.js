@@ -851,43 +851,6 @@ export class FormalSystem {
             throw e;
         }
     }
-    metaTransitTheorem(idx, from, mode) {
-        const d = this.generateDeduction(idx);
-        // |- a<>b  =>  x<>a |- x<>b
-        if (d.conditions.length !== 0)
-            throw TR("匹配条件推理规则($$0 ⊢ $$1)失败");
-        // todo:
-        // if (this.deductions["e" + idx]) return "e" + idx;
-        const oldP = this.propositions;
-        const sym = d.conclusion.name;
-        try {
-            this.removePropositions();
-            const s = this._findNewReplName(idx);
-            let pidx = 0;
-            // |- Ea   |- v(a>b)  |- Ea > Eb
-            this.addHypothese({ type: "sym", name: sym, nodes: [s, d.conclusion.nodes[0]] });
-            pidx++;
-            this.deduct({
-                deductionIdx: idx,
-                replaceValues: d.replaceNames.map(e => ({ type: "replvar", name: e })),
-                conditionIdxs: []
-            });
-            pidx++;
-            this.deduct({
-                deductionIdx: sym === ">" ? ".t" : sym === "<>" ? ".<>t" : sym === "=" ? ".=t" : '',
-                replaceValues: [],
-                conditionIdxs: [0, 1]
-            });
-            pidx++;
-            const ret = this.addMacro("e" + idx, from);
-            this.propositions = oldP;
-            return ret;
-        }
-        catch (e) {
-            this.propositions = oldP;
-            throw e;
-        }
-    }
     metaConditionUniversalTheorem(idx, from) {
         // mp
         if (this.deductions["v" + idx])
@@ -1011,8 +974,8 @@ export class FormalSystem {
                 }
             });
             d.conditions.forEach((c, id) => {
-                const p0 = this.deduct({ deductionIdx: "a6", replaceValues: [this.propositions[id].value, s], conditionIdxs: [] });
-                const p1 = this.deduct({ deductionIdx: "mp", conditionIdxs: [p0, id], replaceValues: [] });
+                // const p0 = this.deduct({ deductionIdx: "a6", replaceValues: [this.propositions[id].value, s], conditionIdxs: [] });
+                const p1 = this.deduct({ deductionIdx: "<a6", conditionIdxs: [id], replaceValues: [s] });
                 offsetCondTable[id] = p1;
             });
             generate(true);
@@ -1202,26 +1165,25 @@ export class FormalSystem {
             return "c" + idx;
         const d = this.generateDeduction(idx);
         const s = this._findNewReplName(idx);
+        const fastrule = this.fastmetarules;
         // axiom, |- A
         if (!d.conditions.length) {
             const oldP = this.propositions;
             try {
                 this.expandMacroWithDefaultValue(idx, null, true);
-                const value = this.propositions[0].value;
+                this.fastmetarules += "<";
                 this.deduct({
-                    deductionIdx: "a1", conditionIdxs: [],
-                    replaceValues: [value, s]
-                });
-                this.deduct({
-                    deductionIdx: "mp", replaceValues: [],
-                    conditionIdxs: [1, 0]
+                    deductionIdx: "<a1", conditionIdxs: [0],
+                    replaceValues: [s]
                 });
                 const ret = this.addMacro("c" + idx, from);
                 this.propositions = oldP;
+                this.fastmetarules = fastrule;
                 return ret;
             }
             catch (e) {
                 this.propositions = oldP;
+                this.fastmetarules = fastrule;
                 throw e;
             }
         }
@@ -1249,14 +1211,9 @@ export class FormalSystem {
                 return offsetCondTable[idx];
             if (!sd.conditions.length) {
                 const p0 = generate(false, idx);
-                const value = this.propositions[p0].value;
-                const p1 = this.deduct({
-                    deductionIdx: "a1", conditionIdxs: [],
-                    replaceValues: [value, s]
-                });
                 return offsetCondTable[idx] = this.deduct({
-                    deductionIdx: "mp", replaceValues: [],
-                    conditionIdxs: [p1, p0]
+                    deductionIdx: "<a1", conditionIdxs: [p0],
+                    replaceValues: [s]
                 });
             }
             this.metaConditionTheorem(sdidx, "中间步骤");
@@ -1275,10 +1232,12 @@ export class FormalSystem {
             generate(true);
             const ret = this.addMacro("c" + idx, from);
             this.propositions = oldP;
+            this.fastmetarules = fastrule;
             return ret;
         }
         catch (e) {
             this.propositions = oldP;
+            this.fastmetarules = fastrule;
             throw e;
         }
     }
@@ -1290,6 +1249,7 @@ export class FormalSystem {
         if (this.deductions[">" + idx])
             return ">" + idx;
         const d = this.generateDeduction(idx);
+        const fastrule = this.fastmetarules;
         // mp, axiom, |- A : error
         if (!d.conditions.length) {
             throw TR("推理规则不包含假设，无法与条件匹配");
@@ -1340,14 +1300,9 @@ export class FormalSystem {
             const p0 = generate(false, idx);
             // if deduction steps don't contain hyp B
             if (p0 !== -1) {
-                const value = this.propositions[p0].value;
-                const p1 = this.deduct({
-                    deductionIdx: "a1", conditionIdxs: [],
-                    replaceValues: [value, s]
-                });
                 return offsetCondTable[idx] = this.deduct({
-                    deductionIdx: "mp", replaceValues: [],
-                    conditionIdxs: [p1, p0]
+                    deductionIdx: "<a1", conditionIdxs: [p0],
+                    replaceValues: [s]
                 });
             }
             this.metaConditionTheorem(sdidx, "中间步骤");
@@ -1358,6 +1313,7 @@ export class FormalSystem {
         };
         const oldP = this.propositions;
         try {
+            this.fastmetarules += "<";
             this.removePropositions();
             d.conditions.forEach((c, id) => {
                 if (id !== d.conditions.length - 1) {
@@ -1371,9 +1327,11 @@ export class FormalSystem {
             generate(true);
             const ret = this.addMacro(">" + idx, from);
             this.propositions = oldP;
+            this.fastmetarules = fastrule;
             return ret;
         }
         catch (e) {
+            this.fastmetarules = fastrule;
             this.propositions = oldP;
             throw e;
         }

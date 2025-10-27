@@ -10,7 +10,9 @@ export class SavesParser {
                 n.remove();
         }
         arr.forEach(_ => gui.updateInhabitList());
-        gui.getInhabitatArray().forEach((e, idx) => { e.value = arr[idx]; e.onblur({}); });
+        gui.getInhabitatArray().forEach((e, idx) => { e.value = arr[idx]; });
+        gui.updateAfterUnlock();
+        gui.getInhabitatArray()[0]?.onblur({});
     }
 }
 //# sourceMappingURL=savesparser.js.map

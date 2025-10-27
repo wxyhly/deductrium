@@ -71,70 +71,15 @@ export class GameSaveLoad {
     load(game: Game, str: string, skipRollback?: boolean) {
         const rollback = this.save(game);
         try {
+            this.clearState(game);
+
             let [globaldata, hydata, fsdata, ttdata] = this.deserializeStr(str).split(splittor);
-            // console.log([globaldata, hydata, fsdata, ttdata]);
-
-            // 2025.9.7 patch player's progress: fix bug for [[add-mul]] in peano axioms
-
-            if (globaldata.includes("add-mul")) {
-                if (!fsdata.includes(`,"d+1","d+2","d*1","d*2"`)) {
-                    // unlocked +/* but not found in the [D] list, add them
-                    fsdata = fsdata.replace(`,"d10"`, `,"d10","d+1","d+2","d*1","d*2"`);
-                }
-            }
-
-
-            // 2025.10.3 added new 1st-logic toolkits
-            if (!fsdata.includes(`",".Erp","`)) {
-                if (fsdata.includes(`,".Enf&",".E&nf"`)) {
-                    if (fsdata.includes(`",".Eirp","`)) {
-                        fsdata = fsdata.replace(`",".Eirp","`, `",".Eirp",".Erp","`);
-                    } else {
-                        fsdata = fsdata.replace(`,".Enf&",".E&nf"`, `,".Enf&",".E&nf",".Emp",".Vcn",".Ecn",".Vcn<>",".Ecn<>"`);
-                        fsdata = fsdata.replace(`,".Ee",".Ei"`, `,".Ee",".Ei",".Eirp"`);
-                    }
-                }
-            }
-            if (!fsdata.includes(`",".|m1","`)) {
-                if (fsdata.includes(`,".|m"`)) {
-                    fsdata = fsdata.replace(`,".|m"`, `,".|m",".|m1",".|m2"`);
-                }
-            }
-
-            // 2025.9.27 patch player's progress: remove dS and d0, they are inconsistent with apn3
-            if (fsdata.includes(`,"dS","d0"`)) {
-                fsdata = fsdata.replace(`,"dS","d0"`, '');
-            }
-
-            // 2025.10.1 patch player's progress: fix bug for #rp fn, it cause deduction step wrong
-            const s4 = `"s4":["⊢(E!$0:($0=$1))","录制*",[["dE",[],["$0","$0=$1"]],["a4",[],["$0","~($0=$1)","$1"]],[".a32",[],["(V$0:~($0=$1))","$1=$1"]],["mp",[-1,-2],[]],["a7",[],["$1"]],["mp",[-2,-1],[]],[".<>2",[],["(E$0:($0=$1))","~(V$0:~($0=$1))"]],["mp",[-1,-7],[]],["mp",[-1,-3],[]],["dE!",[],["$0","##0","$0=$1"]],["<.<>2",[-1],[]],[".&m1",[-1],[]],["mp",[-1,-4],[]],["vv>.&1",[],["$0","##0","$0=$1","##0=$1"]],["vv>.&2",[],["$0","##0","$0=$1","##0=$1"]],["vvc.=s",[-1],[]],["vvc.=t",[-3,-1],[]],["mp",[-5,-1],[]]],["##0"]]`;
-            fsdata = fsdata.replace(s4, s4.replaceAll('$1', "#nf($1,$0)"));
-            const _add_asocc = `"_add_assoc":["⊢(($x+$y)+$z)=($x+($y+$z))","录制*",[["apn3",[],["(V##y:(V##z:(((x+##y)+##z)=(x+(##y+##z)))))","x"]],["vva7",[],["##y","##z","##y+##z"]],["zero_add",[],["##y"]],[".=s",[-1],[]],["<<a8",[-1,-3],["1"]],["vvzero_add",[],["##y","##z","##y+##z"]],["vv.=s",[-1],[]],["vv.=t",[-3,-1],[]],["mp",[-8,-1],[]],["v.i",[],["x","(V##y:(V##z:(((x+##y)+##z)=(x+(##y+##z)))))"]],["vcvva7",[],["x","(V##y:(V##z:(((x+##y)+##z)=(x+(##y+##z)))))","##y","##z","(S(x)+##y)+##z"]],["vcvvsucc_add",[],["x","(V##y:(V##z:(((x+##y)+##z)=(x+(##y+##z)))))","##y","##z","x","##y"]],["vcvv<<a8",[-1,-2],["1"]],["vcvvsucc_add",[],["x","(V##y:(V##z:(((x+##y)+##z)=(x+(##y+##z)))))","##y","##z","x+##y","##z"]],["vcvv.=s",[-2],[]],["vcvv.=t",[-1,-2],[]],["vcvv<<a8",[-7,-1],["-1"]],["vcvvsucc_add",[],["x","(V##y:(V##z:(((x+##y)+##z)=(x+(##y+##z)))))","##y","##z","x","##y+##z"]],["vcvv.=s",[-1],[]],["vcvv.=t",[-3,-1],[]],["mp",[-12,-1],[]],["<a4",[-1],["$x"]],["<a4",[-1],["$y"]],["<a4",[-1],["$z"]]],["##y","##z","##x"]],`
-            fsdata = fsdata.replace(_add_asocc, _add_asocc.replaceAll('["zero_add",[],["##y"]],[".=s",[-1],[]],["<<a8",[-1,-3],["1"]],', `["vvzero_add",[],["##y","##z","##y"]],["vv.=s",[-1],[]],["vv<<a8",[-1,-3],["1"]],`));
 
             this.deserialize(game, globaldata);
             new HySavesParser().deserialize(game.hyperGui.world, hydata);
             game.hyperGui.needUpdate = true;
             const fs_enableMIFFT_RP = game.fsGui.enableMIFFT_RP;
             new FsSavesParser(game.creative).deserialize(game.fsGui, fsdata);
-
-            // 2025.10.13 patch player's progress: fix bug for [[dU/dI/dRel]]
-            if (globaldata.includes("dU")) {
-                if (!game.fsGui.deductions.includes("dU")) {
-                    game.fsGui.deductions.push("dUnion", "dU");
-                }
-            }
-            if (globaldata.includes("dI")) {
-                if (!game.fsGui.deductions.includes("dI")) {
-                    game.fsGui.deductions.push("dI");
-                }
-            }
-            if (globaldata.includes("dRel")) {
-                if (!game.fsGui.deductions.includes("dRel")) {
-                    game.fsGui.deductions.push("dRel");
-                }
-            }
-
             game.fsGui.enableMIFFT_RP = fs_enableMIFFT_RP;
             new TtSavesParser().deserialize(game.ttGui, ttdata);
             localStorage.setItem(this.storageKey, str);
@@ -147,6 +92,7 @@ export class GameSaveLoad {
                 console.warn(str);
                 console.warn(TR("进度已回滚。"));
                 this.load(game, rollback, true);
+                window.location.href = window.location.href || "?";
             } else {
                 console.error(e);
             }
@@ -169,6 +115,13 @@ export class GameSaveLoad {
             window.location.href = window.location.href || "?";
         }
     }
+    clearState(game: Game) {
+        if (!game.creative) {
+            game.hyperGui.world.reload();
+            game.fsGui.reload();
+            game.ttGui.disableSimpleFn = true;
+        }
+    }
     serialize(game: Game) {
         return JSON.stringify([
             game.rewards, game.deductriums, game.consumed,
@@ -185,6 +138,9 @@ export class GameSaveLoad {
             rewards, deductriums, consumed, destructedGates,
             game.parcours, maxOrd, ordBase
         ] = JSON.parse(data);
+        const skipRendering = game.fsGui.skipRendering;
+        game.fsGui.skipRendering = true;
+        game.ttGui.skipRendering = true;
         for (const r of rewards) {
             if (r.startsWith("[ach]")) {
                 game.finishAchievement(r.slice(5), true);
@@ -192,6 +148,8 @@ export class GameSaveLoad {
                 game.hyperGui.world.hitReward(game.hyperGui.world.getBlock(r), r, true);
             }
         }
+        game.fsGui.skipRendering = skipRendering;
+        game.ttGui.skipRendering = skipRendering;
         // caution: rewards can modify deductriums, maxOrds and ordBases
         game.deductriums = deductriums;
         game.consumed = consumed;

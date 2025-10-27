@@ -91,6 +91,8 @@ export class SavesParser {
         gui.formalSystem.metaMacro = {};
     }
     deserialize(gui, str) {
+        const skipRendering = gui.skipRendering;
+        gui.skipRendering = true;
         const fsArrD = initFormalSystem(this.creative);
         const fsdata = this.deserializeArr(fsArrD.fs, JSON.parse(str));
         const savedMetarules = gui.formalSystem.fastmetarules;
@@ -101,6 +103,7 @@ export class SavesParser {
             gui.metarules = fsdata.arrM.slice(1);
             this.deserializeMetaMacro(gui, fsdata.arrM[0]);
         }
+        gui.skipRendering = skipRendering;
         gui.updatePropositionList(true);
         gui.updateDeductionList();
         gui.updateMetaRuleList(true);

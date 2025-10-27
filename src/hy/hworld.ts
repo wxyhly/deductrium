@@ -26,6 +26,9 @@ export class HWorld {
         this.atlasTile.generateRotors();
         initMap(this.atlasTile);
     }
+    reload(){
+        initMap(this.atlasTile);
+    }
     getBlock(hash: string) {
         const r = blockMap.get(hash) ?? blockMap.get(nameMap.get(hash));
         if (!r && hash.startsWith("1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,3,3")) {

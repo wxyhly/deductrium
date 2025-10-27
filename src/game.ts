@@ -467,6 +467,7 @@ export class Game {
                 }
                 const str = txtarea.value;
                 if (!str.trim()) { alert(TR("进度代码为空！")); } else {
+                    this.fsGui.skipRendering = true;
                     gameSaveLoad.load(this, str);
                     window.location.href = window.location.href || "?";
                 }
