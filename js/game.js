@@ -212,11 +212,21 @@ export class Game {
                 case "hyp":
                     this.fsGui.unlockedHyp = true;
                     return document.getElementById("hyp-btn").classList.remove("hide");
+                case "mkdir":
+                    this.fsGui.unlockedFolder = true;
+                    return document.getElementById("dir-btn").classList.remove("hide");
+                case "renameD":
+                    this.fsGui.unlockedRename = true;
+                    return document.getElementById("rename-btn").classList.remove("hide");
                 case "neg":
                     this.fsGui.addToDeductions("a3", "a2");
                     return;
                 case "cmpss":
                     this.hyperGui.world.navigateDraw = true;
+                    return;
+                case "sysrule":
+                    this.fsGui.unlockedSysRulePanel = true;
+                    this.fsGui.updateSysFnList();
                     return;
                 case "del-pn":
                     const tilePn = this.hyperGui.world.getBlock(".pn");

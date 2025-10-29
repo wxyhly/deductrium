@@ -82,8 +82,7 @@ export class FormalSystem {
         if (!this.deductions[name])
             throw TR("规则名称 ") + name + TR(" 不存在");
         if (this.getDeductionTokens(name).length > 1)
-            return; // this is composed, ignore it
-        // if (this.deductions[name].from.match(/$/)) throw "无法删除系统规则";
+            return false; // this is composed, ignore it
         const composedDs = [];
         for (const [n, d] of Object.entries(this.deductions)) {
             if (!d.steps)
@@ -120,6 +119,52 @@ export class FormalSystem {
         }
         delete this.deductions[name];
         return true;
+    }
+    renameDeduction(oldname, newname) {
+        if (this.getDeductionTokens(oldname).length > 1 || this.getDeductionTokens(newname).length > 1)
+            throw TR("无法重命名快速元规则");
+        if (oldname.match(/^[mad\.]/)) {
+            throw TR("无法重命名系统规则");
+        }
+        if (!this.deductions[oldname])
+            throw TR("规则名称 ") + oldname + TR(" 不存在");
+        if (this.deductions[newname])
+            throw TR("规则名称 ") + newname + TR(" 已存在");
+        const composedDs = [];
+        for (const [n, d] of Object.entries(this.deductions)) {
+            if (!d.steps)
+                continue;
+            if (oldname === n)
+                continue;
+            if (this.getDeductionTokens(n).length > 1) {
+                if (this.getdependency(oldname, n)) {
+                    composedDs.push(n);
+                }
+                continue;
+            }
+            for (const s of d.steps) {
+                if (this.getdependency(oldname, s.deductionIdx)) {
+                    const tr = this.getDeductionTokens(s.deductionIdx);
+                    ruleparser.replaceNameByName(tr, oldname, newname);
+                    s.deductionIdx = ruleparser.stringify(tr);
+                }
+            }
+        }
+        for (const [n, p] of this.propositions.entries()) {
+            const s = p.from;
+            if (!s)
+                continue;
+            if (this.getdependency(oldname, s.deductionIdx)) {
+                const tr = this.getDeductionTokens(s.deductionIdx);
+                ruleparser.replaceNameByName(tr, oldname, newname);
+                s.deductionIdx = ruleparser.stringify(tr);
+            }
+        }
+        for (const d of composedDs) {
+            delete this.deductions[d];
+        }
+        this.deductions[newname] = this.deductions[oldname];
+        delete this.deductions[oldname];
     }
     addDeduction(name, d, from, macro, tempvars) {
         const deduction = this.ast2deduction(d);

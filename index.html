@@ -1,263 +1,259 @@
 <!DOCTYPE html>
+
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0" />
-<meta charset="UTF-8">
-<title>Deductrium</title>
-<link href="gui.css" rel="stylesheet" type="text/css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0" />
+    <meta charset="UTF-8">
+    <title>Deductrium</title>
+    <link href="gui.css" rel="stylesheet" type="text/css">
 </head>
+
 <body>
-    
-<h1 style="user-select: none;">Deductrium<span id="gamemode">[...Loading...]</span></h1>
-<div id="loading">
-    <div><svg width="200" height="80" version="1.1" xmlns="http://www.w3.org/2000/svg"
-            xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 100 100" enable-background="new 0 0 0 0"
-            xml:space="preserve">
-            <circle fill="#000" stroke="none" cx="6" cy="50" r="6">
-                <animate attributeName="opacity" dur="1s" values="0;1;0" repeatCount="indefinite" begin="0.1">
-                </animate>
-            </circle>
-            <circle fill="#000" stroke="none" cx="26" cy="50" r="6">
-                <animate attributeName="opacity" dur="1s" values="0;1;0" repeatCount="indefinite" begin="0.2">
-                </animate>
-            </circle>
-            <circle fill="#000" stroke="none" cx="46" cy="50" r="6">
-                <animate attributeName="opacity" dur="1s" values="0;1;0" repeatCount="indefinite" begin="0.3">
-                </animate>
-            </circle>
-        </svg>
-    </div></div>
-<div id="panel" class="hide">
-    <button>几何层</button><button id="deduct-btn" class="hide">推理层</button><button id="type-btn"
-        class="hide">类型层</button><button id="progress-btn" class="hide">进度层</button>
-    <div id="panel-0" class="show" style="user-select: none;">
-        <label style="position: absolute;"><input type="checkbox"/>以输入形式(ascii)显示谜题</label>
-        <canvas id="hyper"></canvas></div>
-    <div id="panel-3">
-        <hr>
-        <div class="progress-btns">
-            <button>保存</button>
-            <button class="danger">加载</button>
-            <button class="danger">清除进度</button>
-            <button>Toggle Game Language to English</button>
+
+    <h1 style="user-select: none;">Deductrium<span id="gamemode">[...Loading...]</span></h1>
+    <div id="loading">
+        <div><svg width="200" height="80" version="1.1" xmlns="http://www.w3.org/2000/svg"
+                xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 100 100" enable-background="new 0 0 0 0"
+                xml:space="preserve">
+                <circle fill="#000" stroke="none" cx="6" cy="50" r="6">
+                    <animate attributeName="opacity" dur="1s" values="0;1;0" repeatCount="indefinite" begin="0.1">
+                    </animate>
+                </circle>
+                <circle fill="#000" stroke="none" cx="26" cy="50" r="6">
+                    <animate attributeName="opacity" dur="1s" values="0;1;0" repeatCount="indefinite" begin="0.2">
+                    </animate>
+                </circle>
+                <circle fill="#000" stroke="none" cx="46" cy="50" r="6">
+                    <animate attributeName="opacity" dur="1s" values="0;1;0" repeatCount="indefinite" begin="0.3">
+                    </animate>
+                </circle>
+            </svg>
         </div>
-        <div>
-            <p></p>
-            <textarea id="progress-txtarea" rows="3" style="width: 100%;"
-                onfocus="this.setSelectionRange(0,this.value.length);"></textarea>
+    </div>
+    <div id="panel" class="hide">
+        <button>几何层</button><button id="deduct-btn" class="hide">推理层</button><button id="type-btn"
+            class="hide">类型层</button><button id="progress-btn" class="hide">进度层</button>
+        <div id="panel-0" class="show" style="user-select: none;">
+            <label style="position: absolute;"><input type="checkbox" />以输入形式(ascii)显示谜题</label>
+            <canvas id="hyper"></canvas>
         </div>
-        <div id="stat"><h3>数据统计：</h3>
-        <ul>
-            <li><label>拥有推理素：</label><span id="deductrium-amount">0</span></li>
-            <li><label>累计消耗推理素：</label><span id="deductrium-consumed">0</span></li>
-            <li><label>拆除门个数：</label><span id="destructed-gates">0</span><label>块</label></li>
-            <li><label>总方块步数：</label><span id="parcours-tiles">1</span><label>块</label></li>
-            <li><label>到达过的最大序数：</label><span id="max-ord">0</span></li>
-            <li><label>能前往的最大序数：</label><span id="next-ord">1</span> (<label>逢</label><span id="ord-base">0</span><label>进位</label><span id="next-ord-stepw"></span>)</li>
-        </ul></div>
-        <div id="ach">
-            <h3>成就统计：(手机横屏最佳)</h3>
-            <div class="achievement">
-                <div>解锁了成就</div>
-                <div>我推出我</div>
-                <div>收费站拆除</div>
-                <div>你推出你，他推出他（⊢$0>$0）</div>
-                <div>If I were..</div>
-                <div>会跑的“⊢”（演绎元定理）</div>
+        <div id="panel-3">
+            <hr>
+            <div class="progress-btns">
+                <button>保存</button>
+                <button class="danger">加载</button>
+                <button class="danger">清除进度</button>
+                <button>Toggle Game Language to English</button>
             </div>
-            <div class="achievement locked">
-                <div>吃素啦</div>
-                <div>第一次消费</div>
-                <div>敢于说不</div>
-                <div>负负得正</div>
-                <div>否定爆炸</div>
-                <div>我推出你，你推出我（&lt;&gt;）</div>
+            <div>
+                <p></p>
+                <textarea id="progress-txtarea" rows="3" style="width: 100%;"
+                    onfocus="this.setSelectionRange(0,this.value.length);"></textarea>
             </div>
-            <div class="achievement locked">
-                <div>素食主义者（累计获40µg推理素）</div>
-                <div>逻辑门（与/或）</div>
-                <div>排中律是真的！(p|~p)</div>
-                <div>没毛病！~( p & ~p )</div>
-                <div>皮尔士定律((p>q)>p)>p</div>
-                <div>命题逻辑自动推理</div>
+            <div id="stat">
+                <h3>数据统计：</h3>
+                <ul>
+                    <li><label>拥有推理素：</label><span id="deductrium-amount">0</span></li>
+                    <li><label>累计消耗推理素：</label><span id="deductrium-consumed">0</span></li>
+                    <li><label>拆除门个数：</label><span id="destructed-gates">0</span><label>块</label></li>
+                    <li><label>总方块步数：</label><span id="parcours-tiles">1</span><label>块</label></li>
+                    <li><label>到达过的最大序数：</label><span id="max-ord">0</span></li>
+                    <li><label>能前往的最大序数：</label><span id="next-ord">1</span> (<label>逢</label><span
+                            id="ord-base">0</span><label>进位</label><span id="next-ord-stepw"></span>)</li>
+                </ul>
+            </div>
+            <div id="ach">
+                <h3>成就统计：(手机横屏最佳)</h3>
+                <div class="achievement">
+                    <div>解锁了成就</div>
+                    <div>我推出我</div>
+                    <div>收费站拆除</div>
+                    <div>你推出你，他推出他（⊢$0>$0）</div>
+                    <div>If I were..</div>
+                    <div>会跑的“⊢”（演绎元定理）</div>
+                </div>
+                <div class="achievement locked">
+                    <div>吃素啦</div>
+                    <div>第一次消费</div>
+                    <div>敢于说不</div>
+                    <div>负负得正</div>
+                    <div>否定爆炸</div>
+                    <div>我推出你，你推出我（&lt;&gt;）</div>
+                </div>
+                <div class="achievement locked">
+                    <div>素食主义者（累计获40µg推理素）</div>
+                    <div>逻辑门（与/或）</div>
+                    <div>排中律是真的！(p|~p)</div>
+                    <div>没毛病！~( p & ~p )</div>
+                    <div>皮尔士定律((p>q)>p)>p</div>
+                    <div>命题逻辑自动推理</div>
+
+                </div>
+                <div class="achievement locked">
+                    <div>一阶逻辑</div>
+                    <div>约束与自由</div>
+                    <div>丢掉量词，尽情替换！</div>
+                    <div>众生平等</div>
+                    <div>概括一切（概括元定理）</div>
+                    <div>命题逻辑大礼包</div>
+                </div>
+                <div class="achievement locked">
+                    <div>替换一切（互推替换元定理）</div>
+                    <div>割让量词的领土</div>
+                    <div>一阶逻辑大礼包</div>
+                    <div>量词连连消消乐</div>
+                    <div>改名换姓（换名元定理）</div>
+                    <div>加大剂量（累计获1mg推理素）</div>
+                </div>
+                <div class="achievement locked">
+                    <div>皮亚诺公理</div>
+                    <div>1+1=2</div>
+                    <div>2*2=4</div>
+                    <div>加法交换律</div>
+                    <div>乘法分配率</div>
+                    <div>致死剂量（累计获1g推理素）</div>
+                </div>
+                <div class="achievement locked">
+                    <div>3小于4</div>
+                    <div>5不整除6</div>
+                    <div>解锁素数</div>
+                    <div>7是素数</div>
+                    <div>任何数都有阶乘</div>
+                    <div>质数有无穷个</div>
+                </div>
+                <div class="achievement locked">
+                    <div>类型论</div>
+                    <div>真理之门</div>
+                    <div>简化依赖函数</div>
+                    <div>证明助手上线！</div>
+                    <div>相等类型</div>
+                    <div>自然数的归纳法</div>
+                </div>
+                <div class="achievement locked">
+                    <div>True的值都是true</div>
+                    <div>1+1=2类型论版</div>
+                    <div>相等的归纳法</div>
+                    <div>代入方程即可</div>
+                    <div>1就是1，2就是2（not (eq 1 2)）</div>
+                    <div>数论达人(5不整除7)</div>
+                </div>
+                <div class="achievement locked">
+                    <div>顺时针一圈逆时针一圈，还是回到原点</div>
+                    <div>我等价我</div>
+                    <div>泛等公理（ua）</div>
+                    <div>圆圈跟圆点不同伦（loop不是rfl）</div>
+                    <div>原来皮尔士跟他们是一伙的</div>
+                    <div>排中律是个谎言！？</div>
+                </div>
+                <div class="achievement locked">
+                    <div>ZFC集合论</div>
+                    <div>我包含我</div>
+                    <div>千里之行，始于空集</div>
+                    <div>ZFC简化大礼包</div>
+                    <div>交交并并</div>
+                    <div>ω^ω</div>
+                </div>
+                <div class="achievement locked">
+                    <div>我给且只给所有不自己理发的人理发</div>
+                    <div>集齐所有ZFC公理</div>
+                    <div>不可数</div>
+                    <div>一切皆可良序</div>
+                    <div>ω^ω^ω^ω</div>
+                    <div>临界质量（累计获50.1kg推理素）</div>
+                </div>
 
             </div>
-            <div class="achievement locked">
-                <div>一阶逻辑</div>
-                <div>约束与自由</div>
-                <div>丢掉量词，尽情替换！</div>
-                <div>众生平等</div>
-                <div>概括一切（概括元定理）</div>
-                <div>命题逻辑大礼包</div>
+            <div id="creer" class="hide">
+                <p data-tr-mark="@p">注意：创造模式与生存模式不共享进度系统。创造模式下无法体验双曲空间以及序数系统等游戏内容，前往生存模式<a href="?"
+                        target="_blank">请点击这里</a>。</p>
             </div>
-            <div class="achievement locked">
-                <div>替换一切（互推替换元定理）</div>
-                <div>割让量词的领土</div>
-                <div>一阶逻辑大礼包</div>
-                <div>量词连连消消乐</div>
-                <div>改名换姓（换名元定理）</div>
-                <div>加大剂量（累计获1mg推理素）</div>
-            </div>
-            <div class="achievement locked">
-                <div>皮亚诺公理</div>
-                <div>1+1=2</div>
-                <div>2*2=4</div>
-                <div>加法交换律</div>
-                <div>乘法分配率</div>
-                <div>致死剂量（累计获1g推理素）</div>
-            </div>
-            <div class="achievement locked">
-                <div>3小于4</div>
-                <div>5不整除6</div>
-                <div>解锁素数</div>
-                <div>7是素数</div>
-                <div>任何数都有阶乘</div>
-                <div>质数有无穷个</div>
-            </div>
-            <div class="achievement locked">
-                <div>类型论</div>
-                <div>真理之门</div>
-                <div>简化依赖函数</div>
-                <div>证明助手上线！</div>
-                <div>相等类型</div>
-                <div>自然数的归纳法</div>
-            </div>
-            <div class="achievement locked">
-                <div>True的值都是true</div>
-                <div>1+1=2类型论版</div>
-                <div>相等的归纳法</div>
-                <div>代入方程即可</div>
-                <div>1就是1，2就是2（not (eq 1 2)）</div>
-                <div>数论达人(5不整除7)</div>
-            </div>
-            <div class="achievement locked">
-                <div>顺时针一圈逆时针一圈，还是回到原点</div>
-                <div>我等价我</div>
-                <div>泛等公理（ua）</div>
-                <div>圆圈跟圆点不同伦（loop不是rfl）</div>
-                <div>原来皮尔士跟他们是一伙的</div>
-                <div>排中律是个谎言！？</div>
-            </div>
-            <div class="achievement locked">
-                <div>ZFC集合论</div>
-                <div>我包含我</div>
-                <div>千里之行，始于空集</div>
-                <div>ZFC简化大礼包</div>
-                <div>交交并并</div>
-                <div>ω^ω</div>
-            </div>
-            <div class="achievement locked">
-                <div>我给且只给所有不自己理发的人理发</div>
-                <div>集齐所有ZFC公理</div>
-                <div>不可数</div>
-                <div>一切皆可良序</div>
-                <div>ω^ω^ω^ω</div>
-                <div>临界质量（累计获50.1kg推理素）</div>
-            </div>
-            
+            <h3>若遇Bug或其它任何问题：</h3>
+            <p><label>欢迎联系游戏作者</label><a target="_blank" href="https://wxyhly.github.io/about/">Hqak</a></p>
         </div>
-        <div id="creer" class="hide">
-            <p data-tr-mark="@p">注意：创造模式与生存模式不共享进度系统。创造模式下无法体验双曲空间以及序数系统等游戏内容，前往生存模式<a href="?" target="_blank">请点击这里</a>。</p>
-        </div>
-        <h3>若遇Bug或其它任何问题：</h3>
-        <p><label>欢迎联系游戏作者</label><a target="_blank" href="https://wxyhly.github.io/about/">Hqak</a></p>
-    </div>
-    <div id="panel-1">
-        <label id="wrap-simpl-sysfn" class="hide"><input id="simpl-sysfn" type="checkbox" checked/>简化显示系统函数</label>
-        <label id="wrap-italic-item" class="hide"><input id="italic-item" type="checkbox" checked/>斜体显示项</label>
-        <div id="sysfn-subpanel" class="hide"><label>[#]系统函数规则：</label>
-            <div class="list-wrapper">
-                <div class="list" id="sysfn-list">
+        <div id="panel-1">
+            <label id="wrap-simpl-sysfn" class="hide"><input id="simpl-sysfn" type="checkbox" checked />简化显示系统函数</label>
+            <label id="wrap-italic-item" class="hide"><input id="italic-item" type="checkbox" checked />斜体显示项</label>
+            <div id="sysfn-subpanel" class="hide"><label class="before-list-wrapper">[#]系统函数规则：</label>
+                <div class="list-wrapper hide-animation">
+                    <div class="list" id="sysfn-list">
+                    </div>
                 </div>
             </div>
-        </div>
-        <div id="metarule-subpanel" class="hide"><label>[M]元规则：</label>
-            <div class="list-wrapper">
-                <div class="list" id="meta-list">
+            <div id="metarule-subpanel" class="hide"><label class="before-list-wrapper">[M]元规则：</label>
+                <div class="list-wrapper">
+                    <div class="list" id="meta-list">
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="dlist-option">
-            <label>[D]推理规则：</label>
-            <label id="show-d-0"><input name="show-d" type="checkbox" checked />命题逻辑</label>
-            <label id="show-d-1"><input name="show-d" type="checkbox" checked />一阶逻辑</label>
-            <label id="show-d-zfc"><input name="show-d" type="checkbox" checked />ZFC集合论</label>
-            <label id="show-d-zfc"><input name="show-d" type="checkbox" checked />几何公理</label>
-            <label id="show-d-sym"><input name="show-d" type="checkbox" checked />逻辑符号定义</label>
-            <label><input name="show-d" type="checkbox" checked />集合符号定义</label>
-            <label><input name="show-d" type="checkbox" checked />集合算数连接</label>
-            <label><input name="show-d" type="checkbox" checked />皮亚诺公理</label>
-            <label><input name="show-d" type="checkbox" checked />算数符号定义</label>
-            <label id="show-d-i"><input name="show-d" type="checkbox" checked />内置宏</label>
-            <label id="show-d-a"><input name="show-d" type="checkbox" checked />添加的规则</label>
-            <!-- <button id="show-d-sel-all">全选</button>
-            <button id="show-d-sel-inv">反选</button>
-            <button id="show-d-sel-filt">搜索</button> -->
-        </div>
-        <div class="list-wrapper">
-            <div class="list" id="deduct-list">
+            <label class="before-list-wrapper">[D]推理规则：</label>
+            <div class="list-wrapper">
+                <div class="list" id="deduct-list">
+                </div>
             </div>
-        </div>
-        <label>[P]定理：</label>
-        <div class="list-wrapper">
-            <div class="list" id="prop-list">
+            <label class="before-list-wrapper">[P]定理：</label>
+            <div class="list-wrapper">
+                <div class="list" id="prop-list">
+                </div>
             </div>
-        </div>
-        <div class="cmd-btns">
-            <button id="hyp-btn" class="hide">假设(hyp)</button>
-            <button>推理(d)</button>
-            <button>回退定理(pop)</button>
-            <button class="danger">清空定理(clear)</button>
-            <span id="macro-btns" class="hide">
-                <button>录制宏(m)</button>
-                <button class="danger">删除宏(del)</button>
-                <button>查看宏(entr)</button>
-                <button>展开宏(inln)</button>
-                <span id="meta-macro-btns" class="hide">
-                    <button>添加元宏(mm)</button>
+            <div class="cmd-btns">
+                <button id="hyp-btn" class="hide">假设(hyp)</button>
+                <button>推理(d)</button>
+                <button>回退定理(pop)</button>
+                <button class="danger">清空定理(clear)</button>
+                <span id="macro-btns" class="hide">
+                    <button>录制宏(m)</button>
+                    <button class="danger">删除宏(del)</button>
+                    <button>查看宏(entr)</button>
+                    <button>展开宏(inln)</button>
+                    <button id="rename-btn" class="hide">更名宏(rename)</button>
+                    <button id="dir-btn" class="hide">新文件夹(mkdir)</button>
+                    <span id="meta-macro-btns" class="hide">
+                        <button>添加元宏(mm)</button>
+                    </span>
                 </span>
-            </span>
+            </div>
+            <p>&nbsp;</p>
+            <p>&nbsp;</p>
+            <p>&nbsp;</p>
+            <p>&nbsp;</p>
+            <p>&nbsp;</p>
+            <div class="footer">
+                <text id="hint"></text><span class="right"><button>OK</button> &nbsp; <button>Esc</button> &nbsp;</span>
+                <input type="text" id="action-input" autocomplete="off" />
+                <ul id="autocomplete-list" class="autocomplete-list"></ul>
+            </div>
+            <a id="github" href="https://github.com/wxyhly/deductrium#deductrium" target="_blank"
+                style="display: none;">
+                github</a>
         </div>
-        <p>&nbsp;</p>
-        <p>&nbsp;</p>
-        <p>&nbsp;</p>
-        <p>&nbsp;</p>
-        <p>&nbsp;</p>
-        <div class="footer">
-            <text id="hint"></text><span class="right"><button>OK</button> &nbsp; <button>Esc</button> &nbsp;</span>
-            <input type="text" id="action-input" autocomplete="off"/>
-            <ul id="autocomplete-list" class="autocomplete-list"></ul>
+        <div id="panel-2">
+            <div class="tlist">
+                <div class="float-type"></div>
+                <label>公理类型：</label>
+                <div class="list-wrapper">
+                    <div class="list" id="type-list">
+                    </div>
+                </div>
+                <label>定理：</label>
+                <div class="list-wrapper">
+                    <div class="inhabitat" id="inhabit-list">
+                        <button class="inhabitat-modify" id="add-btn">+</button>
+                    </div>
+                </div>
+                <div id="copygate"></div>
+                <label>证明策略：</label><span id="tactic-hint"></span>
+                <div class="list-wrapper">
+                    <div id="tactic-list">
+                        <div id="tactic-state"></div>
+                        <button class="inhabitat-modify hide" id="tactic-remove">-</button><button
+                            class="inhabitat-modify" id="tactic-begin">+</button><input id="tactic-input"
+                            class="hide" />
+                        <div id="tactic-errmsg"></div>
+                        <div id="tactic-autofill"></div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <a id="github" href="https://github.com/wxyhly/deductrium#deductrium" target="_blank" style="display: none;">
-            github</a>
     </div>
-    <div id="panel-2">
-        <div class="tlist">
-            <div class="float-type"></div>
-            <label>公理类型：</label>
-            <div class="list-wrapper">
-                <div class="list" id="type-list">
-                </div>
-            </div>
-            <label>定理：</label>
-            <div class="list-wrapper">
-                <div class="inhabitat" id="inhabit-list">
-                    <button class="inhabitat-modify" id="add-btn">+</button>
-                </div>
-            </div>
-            <div id="copygate"></div>
-            <label>证明策略：</label><span id="tactic-hint"></span>
-            <div class="list-wrapper">
-                <div id="tactic-list">
-                    <div id="tactic-state"></div>
-                    <button class="inhabitat-modify hide" id="tactic-remove">-</button><button class="inhabitat-modify"
-                        id="tactic-begin">+</button><input id="tactic-input" class="hide" />
-                    <div id="tactic-errmsg"></div>
-                    <div id="tactic-autofill"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 </body>
 <script type="module" src="js/game.js">
 </script>

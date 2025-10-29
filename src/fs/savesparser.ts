@@ -83,7 +83,7 @@ export class SavesParser {
             fs.verbs.add(v);
         }
         for (const [k, v] of Object.entries(dictD)) {
-            this.deserializeDeduction(k, fs, v as SerilizedDeduction);
+            if ((v as any[]).length) this.deserializeDeduction(k, fs, v as SerilizedDeduction);
         }
         if (arrP)
             for (const v of arrP) {

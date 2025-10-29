@@ -4,7 +4,7 @@ import { ASTMgr } from "./astmgr.js";
 import { ASTParser } from "./astparser.js";
 export class RuleParser {
     symChar = ":,";
-    firstChar = "vuc<>#et";
+    firstChar = "vuc<>#e";
     startNotAllowed = "ad#$";
     tokenise(s) {
         let word = "";
@@ -119,6 +119,15 @@ export class RuleParser {
             return [token, this.nextRule()];
         }
         return [token];
+    }
+    replaceNameByName(r, src, dst) {
+        if (r[0] === src && r.length === 1) {
+            r[0] = dst;
+            return;
+        }
+        for (const sub of r.slice(1)) {
+            this.replaceNameByName(sub, src, dst);
+        }
     }
 }
 const assert = new AssertionSystem;

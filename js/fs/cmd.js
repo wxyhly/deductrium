@@ -176,6 +176,10 @@ export class FSCmd {
                     unlockedCmd.push("hyp");
                 if (!document.getElementById("macro-btns").classList.contains("hide"))
                     unlockedCmd.push("entr", "del", "inln");
+                if (!document.getElementById("dir-btn").classList.contains("hide"))
+                    unlockedCmd.push("mkdir");
+                if (!document.getElementById("rename-btn").classList.contains("hide"))
+                    unlockedCmd.push("rename");
                 list.push(...unlockedCmd.filter(e => e.startsWith(value)).map(e => {
                     const cmd = document.createElement("span");
                     cmd.className = "cmd";
@@ -245,8 +249,22 @@ export class FSCmd {
                     case "del": return this.execDel();
                     case "inln": return this.execInline();
                     case "entr": return this.execExpand();
-                    case "hyp": if (this.gui.unlockedHyp)
-                        return this.execHyp();
+                    case "hyp":
+                        if (this.gui.unlockedHyp)
+                            return this.execHyp();
+                        break;
+                    case "rename":
+                        if (this.gui.unlockedRename)
+                            return this.execRename();
+                        break;
+                    case "mkdir":
+                        if (this.gui.unlockedFolder)
+                            return this.execNewFolder();
+                        break;
+                    case "op-dir":
+                        if (this.gui.unlockedFolder)
+                            return this.execOpFolder();
+                        break;
                 }
             if (cmdBuffer[0].includes(" ")) {
                 const queue = cmdBuffer[0].replaceAll(/\s([@=\+\-\*XUI><&\|\\]|<>)\s/g, "$1").replaceAll(/([,\(\:])\s+/g, "$1").split(" ").filter(e => e);
@@ -740,7 +758,9 @@ export class FSCmd {
             const pos = this.gui.deductions.indexOf(this.cmdBuffer[1]);
             if (pos === -1)
                 throw TR("列表中无此规则");
-            this.gui.formalSystem.removeDeduction(this.cmdBuffer[1]);
+            if (false === this.gui.formalSystem.removeDeduction(this.cmdBuffer[1])) {
+                this.gui.deductions[pos] = "< wait to remove >";
+            }
             this.gui.deductions = this.gui.deductions.filter(d => this.gui.formalSystem.deductions[d]);
             this.gui.updateDeductionList();
             this.gui.updatePropositionList(true);
@@ -749,6 +769,83 @@ export class FSCmd {
         catch (e) {
             this.clearCmdBuffer();
             this.gui.hintText.innerText = TR("删除推理规则失败：") + e;
+        }
+    }
+    execNewFolder() {
+        if (this.cmdBuffer.length === 1) {
+            this.gui.hintText.innerText = TR("请输入新文件夹名称");
+            return;
+        }
+        const name = this.cmdBuffer[1];
+        if (name.includes("::")) {
+            this.cmdBuffer.pop();
+            this.gui.hintText.innerText = TR("非法文件夹名称");
+            return;
+        }
+        // < f > name, count, uuid, open/close
+        this.gui.deductions.push(`< f >${name}::0::${(Math.floor(Math.random() * 2176782336)).toString(36)}::-`);
+        this.gui.updateDeductionList();
+        this.clearCmdBuffer();
+    }
+    execOpFolder() {
+        if (this.cmdBuffer[1] === "rename") {
+            if (this.cmdBuffer.length === 3) {
+                this.gui.hintText.innerText = TR("请输入新文件夹名称");
+                return;
+            }
+            if (this.cmdBuffer.length === 4) {
+                const name = this.cmdBuffer[3];
+                if (name.includes("::")) {
+                    this.cmdBuffer.pop();
+                    this.gui.hintText.innerText = TR("非法文件夹名称");
+                    return;
+                }
+                const idx = this.gui.deductions.findIndex(e => e.startsWith("< f >") && e.split("::")[2] === this.cmdBuffer[2]);
+                if (idx === -1) {
+                    this.gui.hintText.innerText = TR("找不到指定文件夹");
+                    return;
+                }
+                const items = this.gui.deductions[idx].split("::");
+                items[0] = "< f >" + name;
+                this.gui.deductions[idx] = items.join("::");
+                this.gui.updateDeductionList();
+                this.clearCmdBuffer();
+            }
+        }
+    }
+    execRename() {
+        if (this.cmdBuffer.length === 1) {
+            this.gui.hintText.innerText = TR("请输入要重命名的规则名称");
+            return;
+        }
+        if (this.cmdBuffer.length === 2) {
+            this.gui.hintText.innerText = TR("请输入新名称");
+            return;
+        }
+        if (this.cmdBuffer[1] === this.cmdBuffer[2]) {
+            this.clearCmdBuffer();
+            return;
+        }
+        const badName = this.testBadNewName(this.cmdBuffer[2]);
+        if (badName) {
+            this.cmdBuffer.pop();
+            this.gui.hintText.innerText = badName;
+            return;
+        }
+        try {
+            const pos = this.gui.deductions.indexOf(this.cmdBuffer[1]);
+            this.gui.formalSystem.renameDeduction(this.cmdBuffer[1], this.cmdBuffer[2]);
+            if (pos !== -1) {
+                this.gui.deductions[pos] = this.cmdBuffer[2];
+            }
+            this.gui.updateDeductionList();
+            this.gui.updatePropositionList(true);
+            this.clearCmdBuffer();
+        }
+        catch (e) {
+            this.clearCmdBuffer();
+            this.gui.hintText.innerText = TR("重命名推理规则失败：") + e;
+            return;
         }
     }
     execClear() {
@@ -930,31 +1027,29 @@ export class FSCmd {
         }
         // ["m", pos, null, name]
         const n = this.cmdBuffer[prevLength + 2];
-        if (n.match(/^[0-9<>acdempuv#\.]/)) {
+        const badInfo = this.testBadNewName(n);
+        if (badInfo) {
             this.cmdBuffer.pop();
             const res = this.getInputNewDeductionPos(prevLength);
-            this.gui.hintText.innerText = TR("以.<>acdempuv#或数字开头的推理规则名称由系统保留，请重新命名");
-            return res;
-        }
-        if (n.match(/^\$\$/)) {
-            this.cmdBuffer.pop();
-            const res = this.getInputNewDeductionPos(prevLength);
-            this.gui.hintText.innerText = TR("以$$开头的推理规则名称由系统保留，请重新命名");
-            return res;
-        }
-        if (n.includes(",") || n.includes(":") || n.includes(" ")) {
-            this.cmdBuffer.pop();
-            const res = this.getInputNewDeductionPos(prevLength);
-            this.gui.hintText.innerText = TR("推理规则名称中禁止出现空格或由系统保留的“:”或“,”符号，请重新命名");
-            return res;
-        }
-        if (this.gui.formalSystem.deductions[n]) {
-            this.cmdBuffer.pop();
-            const res = this.getInputNewDeductionPos(prevLength);
-            this.gui.hintText.innerText = TR(`推理规则名称`) + n + TR(`已存在或被系统保留，请重新命名`);
+            this.gui.hintText.innerText = badInfo;
             return res;
         }
         return true;
+    }
+    testBadNewName(name) {
+        if (name.match(/^[0-9<>acdempuv#\.]/)) {
+            return TR("以.<>acdempuv#或数字开头的推理规则名称由系统保留，请重新命名");
+        }
+        if (name.match(/^\$\$/)) {
+            return TR("以$$开头的推理规则名称由系统保留，请重新命名");
+        }
+        if (name.includes(",") || name.includes(":") || name.includes(" ")) {
+            return TR("推理规则名称中禁止出现空格或由系统保留的“:”或“,”符号，请重新命名");
+        }
+        if (this.gui.formalSystem.deductions[name]) {
+            return TR(`推理规则名称`) + name + TR(`已存在或被系统保留，请重新命名`);
+        }
+        return null;
     }
     onEsc() {
         if (this.cmdBuffer[0] === "entr") {

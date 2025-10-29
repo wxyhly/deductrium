@@ -6,7 +6,7 @@ import { ASTParser } from "./astparser.js";
 export type RuleTree = [string, ...RuleTree[]] | [string];
 export class RuleParser {
     symChar = ":,";
-    firstChar = "vuc<>#et";
+    firstChar = "vuc<>#e";
     startNotAllowed = "ad#$";
     private tokenise(s: string) {
         let word = "";
@@ -114,6 +114,14 @@ export class RuleParser {
             return [token, this.nextRule()];
         }
         return [token];
+    }
+    replaceNameByName(r: RuleTree, src: string, dst: string) {
+        if (r[0] === src && r.length === 1) {
+            r[0] = dst; return;
+        }
+        for (const sub of r.slice(1)) {
+            this.replaceNameByName(sub as RuleTree, src, dst);
+        }
     }
 }
 

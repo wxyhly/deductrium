@@ -192,8 +192,11 @@ export class Game {
                 case "delgate": return;
                 case "macro": this.fsGui.unlockedMacro = true; return document.getElementById("macro-btns").classList.remove("hide");
                 case "hyp": this.fsGui.unlockedHyp = true; return document.getElementById("hyp-btn").classList.remove("hide");
+                case "mkdir": this.fsGui.unlockedFolder = true; return document.getElementById("dir-btn").classList.remove("hide");
+                case "renameD": this.fsGui.unlockedRename = true; return document.getElementById("rename-btn").classList.remove("hide");
                 case "neg": this.fsGui.addToDeductions("a3", "a2"); return;
                 case "cmpss": this.hyperGui.world.navigateDraw = true; return;
+                case "sysrule": this.fsGui.unlockedSysRulePanel = true; this.fsGui.updateSysFnList(); return;
                 case "del-pn":
                     const tilePn = this.hyperGui.world.getBlock(".pn");
                     tilePn.text += "\n （此门已拆除）"; tilePn.type = 0;
