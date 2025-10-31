@@ -807,7 +807,7 @@ export class FSGui {
                         list.appendChild(itInfo);
                         if (i)
                             continue;
-                        this.addSpan(itInfo, "➕").addEventListener("click", e => {
+                        this.addSpan(itInfo, " ➕ ").addEventListener("click", e => {
                             if (!this.cmd.cmdBuffer.length) {
                                 for (let i = this.deductions.indexOf(pname), j = 0; j < Number(pname.split("::")[1]); i++, j++) {
                                     const d = this.deductions[i];
@@ -818,7 +818,7 @@ export class FSGui {
                             }
                             this.updateDeductionList();
                         });
-                        this.addSpan(itInfo, "➖").addEventListener("click", e => {
+                        this.addSpan(itInfo, " ➖ ").addEventListener("click", e => {
                             if (!this.cmd.cmdBuffer.length) {
                                 for (let i = this.deductions.indexOf(pname), j = 0; j < Number(pname.split("::")[1]); i++, j++) {
                                     const d = this.deductions[i];
@@ -829,13 +829,13 @@ export class FSGui {
                             }
                             this.updateDeductionList();
                         });
-                        this.addSpan(itInfo, "✏️").addEventListener("click", e => {
+                        this.addSpan(itInfo, " ✏️ ").addEventListener("click", e => {
                             if (!this.cmd.cmdBuffer.length) {
                                 this.cmd.cmdBuffer.push("op-dir", "rename", fuuid);
                                 this.cmd.execCmdBuffer();
                             }
                         });
-                        this.addSpan(itInfo, "🗑️").addEventListener("click", e => {
+                        this.addSpan(itInfo, " 🗑️ ").addEventListener("click", e => {
                             if (!this.cmd.cmdBuffer.length) {
                                 if (!confirm(TR("该操作将删除文件夹，并将里面的内容散列在上级目录中，确定要删除<") + (pname.slice(5).split("::")[0]) + TR(">吗？")))
                                     return;

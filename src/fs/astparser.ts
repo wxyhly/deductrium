@@ -185,12 +185,13 @@ export class ASTParser {
             }
             return { type: "fn", name: "{", nodes };
         } else if (this.acceptSym("-")) {
-            // -n in #rp(.,.,., here)
-            if (this.acceptVar()) {
-                return { type: "replvar", name: "-" + this.prevToken(1) };
-            } else {
-                throw TR("语法错误");
-            }
+            // -n in Z
+            if (this.acceptVar()) return { type: "replvar", name: "-" + this.prevToken(1) };
+            throw TR("语法错误");
+        } else if (this.acceptSym("+")) {
+            // +n in Z
+            if (this.acceptVar()) return { type: "replvar", name: "+" + this.prevToken(1) };
+            throw TR("语法错误");
         } else {
             throw TR("语法错误");
         }

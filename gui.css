@@ -110,10 +110,12 @@
 
 .freeVar {
     font-weight: bold;
+    line-break: auto;
 }
 
 .boundedVar {
     color: #595;
+    line-break: auto;
 }
 
 .universe {
@@ -122,6 +124,7 @@
 
 .replvar {
     color: brown;
+    line-break: auto;
 }
 
 .item:not(.constant) {
@@ -146,12 +149,14 @@ span.omit-nf {
     border-bottom: lightgreen solid;
     background-color: rgba(0, 255, 0, 0.1);
     border-radius: 4px;
+    line-break: auto;
 }
 
 span.omit-nf.rp {
     border-bottom: lightpink solid;
     background-color: rgba(255, 0, 255, 0.1);
     border-radius: 4px;
+    line-break: auto;
 }
 
 sub.omit-nf,
@@ -198,6 +203,7 @@ div.dir-val {
 
 .dir-bar {
     color: #999;
+    flex-shrink: 0;
 }
 
 
@@ -269,7 +275,7 @@ h1 {
     background-color: ivory;
     text-align: center;
     line-height: 25px;
-    min-width: 32px;
+    /* min-width: 32px; */
 }
 
 .list .dir-idx {
@@ -298,11 +304,11 @@ div.dir-val:not(.dir-info):hover {
 }
 
 .dragging-bottom {
-    border-bottom: 2px solid orange;
+    border-bottom: 2px solid orange !important;
 }
 
 .dragging-top {
-    border-top: 2px solid orange;
+    border-top: 2px solid orange !important;
 }
 
 .macro-substep {
@@ -324,6 +330,9 @@ div.dir-val:not(.dir-info):hover {
 .list .val {
     width: 100%;
     padding-left: 3px;
+    line-break: anywhere;
+    display: flex;
+    align-items: flex-start;
 }
 
 
