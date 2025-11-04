@@ -303,7 +303,7 @@ export class FSCmd {
                 const fsd = Object.assign({}, fs.deductions);
                 const prop = fs.propositions.slice(0);
                 try {
-                    fs.fastmetarules = "cvuqe><:#";
+                    fs.fastmetarules = "cvuqe><:#zZQ";
                     fs.expandMacroWithDefaultValue(item);
                     fs.fastmetarules = fmr;
                     fs.deductions = fsd;
@@ -325,7 +325,7 @@ export class FSCmd {
                 const fsd = Object.assign({}, fs.deductions);
                 const prop = fs.propositions.slice(0);
                 try {
-                    fs.fastmetarules = "cvuqe><:#";
+                    fs.fastmetarules = "cvuqe><:#zZQ";
                     fs.expandMacroWithProp(Number(p));
                     fs.fastmetarules = fmr;
                     fs.deductions = fsd;
@@ -388,7 +388,7 @@ export class FSCmd {
             }
             const fmr = formalSystem.fastmetarules;
             const fsd = Object.assign({}, formalSystem.deductions);
-            formalSystem.fastmetarules = "cvuqe><:#";
+            formalSystem.fastmetarules = "cvuqe><:#zZQ";
             if (inlineRule) {
                 formalSystem.expandMacroWithDefaultValue(cmdBuffer[1]);
             } else {
@@ -558,6 +558,7 @@ export class FSCmd {
         }
         // a deduction is chosen, we verify vars and conditions
         let deduction: Deduction;
+        if (cmdBuffer[1].startsWith("d ")) cmdBuffer[1] = cmdBuffer[1].slice(2);
         try {
             deduction = cmdBuffer[1] === "." ? this.gui.getDeduction(this.lastDeduction) : this.gui.getDeduction(cmdBuffer[1]);
         } catch (e) { }
@@ -712,6 +713,20 @@ export class FSCmd {
         this.clearCmdBuffer();
         this.gui.hintText.innerText = TR("元宏录制成功");
     }
+    addWrongDeduction(n: string) {
+        const s = {
+            "apn5x": "⊢#rp($0,$1,0)>(Vx:(x@N>(#rp($0,$1,x)>#rp($0,$1,S(x))))>Vx:(x@N>#rp($0,$1,x)))",
+            "asepx": "⊢VxEyVz(z@y<>(z@x&$0))",
+        }[n];
+        if (!s) throw null;
+        if (this.gui.formalSystem.deductions[n]) return;
+        const ast = this.astparser.parse(s);
+        this.gui.formalSystem.addDeduction(n, ast, "错误的公理");
+        if (!this.gui.deductions.includes("n")) {
+            this.gui.deductions.push(n);
+            this.gui.updateDeductionList();
+        }
+    }
     execPop() {
         this.gui.formalSystem.removePropositions(1);
         this.gui.updatePropositionList(true);
@@ -753,6 +768,21 @@ export class FSCmd {
         this.gui.updateDeductionList();
         this.clearCmdBuffer();
     }
+    // execMetaInln() {
+    //     // metaInln c/v/e val
+    //     const v = this.astparser.parse(this.cmdBuffer[2]);
+    //     const token = this.cmdBuffer[1];
+    //     const _ = { type: "replvar", name: " " };
+    //     const ast: AST = token === "c" ? { type: "sym", name: ">", nodes: [v, _] } :
+    //         token === "v" ? { type: "sym", name: "V", nodes: [v, _] } : { type: "sym", name: "E", nodes: [v, _] };
+    //     this.gui.formalSystem.propositions.push({
+    //         value: ast,
+    //         from: {
+    //             deductionIdx: "[ " + token + " ]",
+    //             conditionIdxs: [], replaceValues: [v]
+    //         }
+    //     });
+    // }
     execOpFolder() {
         if (this.cmdBuffer[1] === "rename") {
             if (this.cmdBuffer.length === 3) {

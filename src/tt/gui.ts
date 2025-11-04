@@ -810,12 +810,12 @@ export class TTGui {
         this.unlockedTypes.add(str);
         if (update && !this.skipRendering) {
             this.updateTypeList(this.unlockedTypes);
-            this.getInhabitatArray()[0].onblur({} as any);
+            this.getInhabitatArray()[0]?.onblur({} as any);
         }
     }
     updateAfterUnlock() {
         if (this.skipRendering) return;
         this.updateTypeList(this.unlockedTypes);
-        this.getInhabitatArray()[0].onblur({} as any);
+        this.getInhabitatArray()[0]?.onblur({} as any);
     }
 }

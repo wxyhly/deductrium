@@ -184,7 +184,7 @@ export class FSGui {
     }
     initCreative() {
         this.metarules = Object.keys(this.formalSystem.metaRules);
-        this.formalSystem.fastmetarules = "cvuqe><:#";
+        this.formalSystem.fastmetarules = "cvuqe><:#zZQ";
         document.getElementById("metarule-subpanel").classList.remove("hide");
         document.getElementById("macro-btns").classList.remove("hide");
         this.unlockedHyp = true;
@@ -930,9 +930,19 @@ export class FSGui {
             if (this.deductions.includes(it)) continue;
             // if .XX is locked, can't use it
             if (it[0] === "." && !(
-                this.formalSystem.fastmetarules.includes("#") && (this.formalSystem.generateNatLiteralOp(it) || this.formalSystem.generateNatLiteralIsNat(it))
+                this.formalSystem.fastmetarules.includes("#") && (
+                    this.formalSystem.generateNatLiteralOp(it) || this.formalSystem.generateNatLiteralIsNat(it)
+                ) ||
+                (this.formalSystem.fastmetarules.includes("Z") && (this.formalSystem.generateZLiteralIsZ(it) || this.formalSystem.generateZLiteralOp(it)))
+
             )) return null;
-            if (it[0] === "a" || it[0] === "d") return null;
+            if (it[0] === "a" || it[0] === "d") {
+                if (!(
+                    (this.formalSystem.fastmetarules.includes("#") && this.formalSystem.generateNatLiteralDef(it)) ||
+                    (this.formalSystem.fastmetarules.includes("z") && this.formalSystem.generateZLiteralDef(it))
+                ))
+                    return null;
+            }
         }
 
         try {

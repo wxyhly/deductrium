@@ -51,7 +51,8 @@ export class SavesParser {
         const dlist = gui.deductions;
         const userD = {};
         for (const [n, d] of Object.entries(fs.deductions)) {
-            if (!d.from.endsWith("*"))
+            // save a..x
+            if (!d.from.endsWith("*") && !n.endsWith("x"))
                 continue;
             if (n.startsWith("c") || n.startsWith("<") || n.startsWith(">") || n.startsWith("v") || n.startsWith("u") || n.startsWith("e") || n.startsWith(".")) {
                 continue;

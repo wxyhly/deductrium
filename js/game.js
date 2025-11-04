@@ -158,6 +158,12 @@ export class Game {
                     this.addDeductriums(-needed);
                     return true;
                 }
+                if (tile.text.endsWith("#imm")) {
+                    if (Object.keys(this.fsGui.formalSystem.deductions).find(e => e.startsWith("a") && e.endsWith("x"))) {
+                        return false;
+                    }
+                    return true;
+                }
                 return false;
             };
             if (!gateTest())
@@ -165,6 +171,8 @@ export class Game {
             const achievement = this.achievementsTable[tile.name ?? tile.text];
             if (achievement)
                 this.finishAchievement(achievement);
+            if (tile.text.endsWith("#imm"))
+                return true;
             if (this.rewards.includes("delgate") && !this.rewards.includes("hash") && tile.type !== 4) {
                 tile.text += "\n （此门已拆除）";
                 tile.type = 0;
@@ -179,6 +187,7 @@ export class Game {
             this.updateProgressParam();
         };
         this.hyperGui.world.onGetReward = (hash, tile, isLoading) => {
+            let text;
             if (tile.type === TileBlockType.Gate) {
                 tile.text += "\n （此门已拆除）";
                 if (tile.name && !this.rewards.includes(tile.name))
@@ -585,6 +594,24 @@ export class Game {
                     return;
                 case "natop":
                     return this.fsGui.formalSystem.fastmetarules += "#";
+                case "dZn":
+                    return this.fsGui.formalSystem.fastmetarules += "z";
+                case "dZop":
+                    return this.fsGui.formalSystem.fastmetarules += "Z";
+                case "apn5-err-out":
+                    this.fsGui.cmd.addWrongDeduction("apn5x");
+                    text = langMgr.dataEnInCanvas[tile.text] ?? tile.text;
+                    return setTimeout(() => {
+                        tile.text = text;
+                        tile.type = TileBlockType.Reward;
+                    }, 1);
+                case "asep-err-out":
+                    this.fsGui.cmd.addWrongDeduction("asepx");
+                    text = langMgr.dataEnInCanvas[tile.text] ?? tile.text;
+                    return setTimeout(() => {
+                        tile.text = text;
+                        tile.type = TileBlockType.Reward;
+                    }, 1);
                 case "omit-fn":
                     document.getElementById("wrap-simpl-sysfn").classList.remove("hide");
                     this.fsGui.onchangeOmitNF();

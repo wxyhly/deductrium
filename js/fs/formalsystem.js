@@ -287,7 +287,7 @@ export class FormalSystem {
     }
     replaceTempVar(ast, tempvarTable) {
         if (ast.type === "replvar" && ast.name.match(this.localNameRule)) {
-            ast.name = ast.name.replace(/^#([^#].*)$/, "##$1");
+            ast.name = ast.name === "#" ? "##" : ast.name.replace(/^#([^#].*)$/, "##$1");
             while (tempvarTable.has(ast.name)) {
                 ast.name += "#";
             }
@@ -301,7 +301,8 @@ export class FormalSystem {
     // when inline, recover ##0 to #0. if outter has #0, change it to #0#
     recoverTempVar(ast, tempvarTable) {
         if (ast.type === "replvar" && ast.name.match(/^##.+$/)) {
-            ast.name = ast.name.replace(/^##(.+)$/, "#$1");
+            // special case: # -> ## -> ###
+            ast.name = ast.name === "###" ? "#" : ast.name.replace(/^##(.+)$/, "#$1");
             while (tempvarTable.has(ast.name)) {
                 ast.name += "#";
             }
@@ -514,6 +515,13 @@ export class FormalSystem {
                 generated ??= this.generateNatLiteralIsNat(dname);
                 generated ??= this.generateNatLiteralOp(dname);
             }
+            if (unlocked.includes("z")) {
+                generated ??= this.generateZLiteralDef(dname);
+            }
+            if (unlocked.includes("Z")) {
+                generated ??= this.generateZLiteralIsZ(dname);
+                generated ??= this.generateZLiteralOp(dname);
+            }
             if (generated)
                 return this.deductions[generated];
         }
@@ -617,6 +625,124 @@ export class FormalSystem {
                 { conditionIdxs: [-1, op === "+" ? -5 : -4], replaceValues: [], deductionIdx: vpre + ".=t" }
         ].filter(e => e);
         return this.addDeduction(vpre + name, parser.parse(`⊢${V}(${a}${op}${b}=${op === "+" ? a + b : a * b})`), "元规则生成*", steps, new Set());
+    }
+    generateZLiteralDef(name) {
+        const n = name.match(/^dZ([\+\-])?([0-9]|[1-9][0-9]+)$/);
+        if (!n)
+            return;
+        if (this.deductions[name])
+            return name;
+        const num = (n[1] ?? "+") + n[2];
+        let pos = "0", min = "0";
+        if (n[1] === "-") {
+            min = n[2];
+        }
+        else {
+            pos = n[2];
+        }
+        return this.addDeduction(name, parser.parse(`⊢${num} = Z((${pos},${min}))`), "算数符号定义");
+    }
+    generateZLiteralIsZ(name) {
+        const n = name.match(/^\.([\+\-])?([0-9]|[1-9][0-9]+)@Z$/);
+        if (!n)
+            return;
+        if (this.deductions[name])
+            return name;
+        const num = (n[1] ?? "+") + n[2];
+        let pos = "apn1", min = "apn1";
+        if (n[1] === "-") {
+            min = Number(n[2]) !== 0 ? `.${n[2]}@N` : "apn1";
+        }
+        else {
+            pos = Number(n[2]) !== 0 ? `.${n[2]}@N` : "apn1";
+        }
+        const steps = [
+            { conditionIdxs: [], replaceValues: [], deductionIdx: `:${pos}:${min},.@Z` },
+            { conditionIdxs: [], replaceValues: [], deductionIdx: `dZ` + num },
+            { conditionIdxs: [-1, -2], replaceValues: [{ type: "replvar", name: "0" }], deductionIdx: `:.=s,<<a8` },
+        ];
+        return this.addDeduction(name, parser.parse(`⊢(${num}@Z)`), "元规则生成*", steps, new Set());
+    }
+    generateZLiteralOp(name) {
+        const n = name.match(/^\.([\+\-])?([0-9]|[1-9][0-9]+)([\+\-\*])([\+\-])?([0-9]|[1-9][0-9]+)$/);
+        if (!n)
+            return;
+        if (this.deductions[name] || this.generateNatLiteralOp(name))
+            return name;
+        const num1 = (n[1] ?? "+") + n[2];
+        let pos1 = "apn1", min1 = "apn1";
+        let p11 = "0", p12 = "0";
+        if (n[1] === "-") {
+            min1 = Number(n[2]) !== 0 ? `.${n[2]}@N` : "apn1";
+            p12 = n[2];
+        }
+        else {
+            pos1 = Number(n[2]) !== 0 ? `.${n[2]}@N` : "apn1";
+            p11 = n[2];
+        }
+        const num2 = (n[4] ?? "+") + n[5];
+        let pos2 = "apn1", min2 = "apn1";
+        let p21 = "0", p22 = "0";
+        if (n[4] === "-") {
+            min2 = Number(n[5]) !== 0 ? `.${n[5]}@N` : "apn1";
+            p22 = n[5];
+        }
+        else {
+            pos2 = Number(n[5]) !== 0 ? `.${n[5]}@N` : "apn1";
+            p21 = n[5];
+        }
+        const num3 = n[3] === "+" ? BigInt(num1) + BigInt(num2) : n[3] === "-" ? BigInt(num1) - BigInt(num2) : BigInt(num1) * BigInt(num2);
+        const writeValue = (...v) => v.map(e => ({ type: "replvar", name: e }));
+        const _0 = [{ type: "replvar", name: "0" }];
+        const a8 = { conditionIdxs: [-1, -2], replaceValues: _0, deductionIdx: `<<a8` };
+        const steps = [
+            { conditionIdxs: [], replaceValues: [], deductionIdx: `:${pos1}:${min1},.Xi` },
+            { conditionIdxs: [], replaceValues: [], deductionIdx: `:${pos2}:${min2},.Xi` },
+            { conditionIdxs: [-2, -1], replaceValues: [], deductionIdx: `<<dZ` + n[3] },
+            { conditionIdxs: [], replaceValues: writeValue(p11, p12), deductionIdx: `:.Pr1,.=s` }, a8,
+            { conditionIdxs: [], replaceValues: writeValue(p21, p22), deductionIdx: `:.Pr1,.=s` }, a8,
+            { conditionIdxs: [], replaceValues: writeValue(p11, p12), deductionIdx: `:.Pr2,.=s` }, a8,
+            { conditionIdxs: [], replaceValues: writeValue(p21, p22), deductionIdx: `:.Pr2,.=s` }, a8,
+            { conditionIdxs: [], replaceValues: [], deductionIdx: `:dZ${num1},.=s` }, a8,
+            { conditionIdxs: [], replaceValues: [], deductionIdx: `:dZ${num2},.=s` }, a8,
+            { conditionIdxs: [], replaceValues: [], deductionIdx: n[3] === "+" ? `.${p11}+${p21}` : n[3] === "*" ? `.${p11}*${p21}` : `.${p11}+${p22}` }, a8,
+            { conditionIdxs: [], replaceValues: [], deductionIdx: n[3] === "+" ? `.${p12}+${p22}` : n[3] === "*" ? `.${p12}*${p22}` : `.${p12}+${p21}` }, a8,
+        ];
+        let a = n[3] === "+" ? BigInt(p11) + BigInt(p21) : BigInt(p11) + BigInt(p22);
+        let b = n[3] === "+" ? BigInt(p12) + BigInt(p22) : BigInt(p12) + BigInt(p21);
+        if (n[3] === "*") {
+            steps.push({ conditionIdxs: [], replaceValues: [], deductionIdx: `.${p11}*${p22}` }, a8);
+            steps.push({ conditionIdxs: [], replaceValues: [], deductionIdx: `.${p12}*${p21}` }, a8);
+            const x11_21 = BigInt(p11) * BigInt(p21);
+            const x12_22 = BigInt(p12) * BigInt(p22);
+            const x11_22 = BigInt(p11) * BigInt(p22);
+            const x21_12 = BigInt(p21) * BigInt(p12);
+            steps.push({ conditionIdxs: [], replaceValues: [], deductionIdx: `.${x11_21}+${x12_22}` }, a8);
+            steps.push({ conditionIdxs: [], replaceValues: [], deductionIdx: `.${x11_22}+${x21_12}` }, a8);
+            a = x11_21 + x12_22;
+            b = x11_22 + x21_12;
+        }
+        if (a > 0n && b > 0n) {
+            if (a >= b) {
+                const a_min_b = a - b;
+                const a_min_bN = a_min_b === 0n ? "apn1" : `.${a_min_b}@N`;
+                steps.push({ conditionIdxs: [], replaceValues: [], deductionIdx: `:${a_min_bN}:apn1:.${b}@N,.Zr` });
+                steps.push({ conditionIdxs: [], replaceValues: [], deductionIdx: `.${a_min_b}+${b}` }, a8);
+                steps.push({ conditionIdxs: [], replaceValues: [], deductionIdx: `.0+${b}` }, a8);
+            }
+            else {
+                const b_min_a = b - a;
+                const b_min_aN = `.${b_min_a}@N`;
+                steps.push({ conditionIdxs: [], replaceValues: [], deductionIdx: `:apn1:${b_min_aN}:.${a}@N,.Zr` });
+                steps.push({ conditionIdxs: [], replaceValues: [], deductionIdx: `.0+${a}` }, a8);
+                steps.push({ conditionIdxs: [], replaceValues: [], deductionIdx: `.${b_min_a}+${a}` }, a8);
+            }
+        }
+        steps.push({ conditionIdxs: [], replaceValues: [], deductionIdx: `dZ` + num3 });
+        if (a > 0n && b > 0n)
+            steps.push({ conditionIdxs: [-1, -2], replaceValues: [], deductionIdx: `.=t` });
+        steps.push({ conditionIdxs: [n[3] === "*" ? -2 : (18 - steps.length), -1], replaceValues: [], deductionIdx: `:#:.=s,.=t` });
+        return this.addDeduction(name, parser.parse(`⊢(${num1}${n[3]}${num2}=${num3 >= 0n ? "+" + num3 : num3})`), "元规则生成*", steps, new Set());
     }
     deduct(step, inlineMode, partialTest) {
         const { conditionIdxs, deductionIdx, replaceValues } = step;
@@ -961,8 +1087,11 @@ export class FormalSystem {
         const d = this.generateDeduction(idx);
         if (!d)
             throw TR("条件中的推理规则不存在");
-        if (!d.conditions.length)
-            return this.metaConditionUniversalTheorem(idx, from);
+        if (!d.conditions.length) {
+            this.metaConditionUniversalTheorem(idx, from);
+            this.deductions["u" + idx] = this.deductions["v" + idx];
+            return "u" + idx;
+        }
         const s = this._findNewReplName(idx);
         for (const [idx, cond] of d.conditions.entries()) {
             if (assert.nf(s.name, cond) === -1) {

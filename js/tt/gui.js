@@ -883,14 +883,14 @@ export class TTGui {
         this.unlockedTypes.add(str);
         if (update && !this.skipRendering) {
             this.updateTypeList(this.unlockedTypes);
-            this.getInhabitatArray()[0].onblur({});
+            this.getInhabitatArray()[0]?.onblur({});
         }
     }
     updateAfterUnlock() {
         if (this.skipRendering)
             return;
         this.updateTypeList(this.unlockedTypes);
-        this.getInhabitatArray()[0].onblur({});
+        this.getInhabitatArray()[0]?.onblur({});
     }
 }
 //# sourceMappingURL=gui.js.map

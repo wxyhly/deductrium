@@ -698,7 +698,6 @@ export class AssertionSystem {
                     astmgr.assign(c, wrapped); // wrap inside
                 }
                 astmgr.assign(ast, sub); // unwrap outside
-                console.assert(isItem === false);
                 this.expand(ast, verbSyms.includes(sub.name), varLists);
                 return;
             }
