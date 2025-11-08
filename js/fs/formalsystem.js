@@ -1607,7 +1607,7 @@ export class FormalSystem {
         const solver = new ConstrainSolver();
         const assertions = [];
         const mt = solver.solveConstrain(constrains, assertions);
-        solver.dbg(mt, constrains, assertions);
+        // solver.dbg(mt, constrains, assertions);
         const nfTable = solver.addAssertions(mt, assertions);
         // use match table to replace all iteratively (include itself, nftable and dconds/dconcs)
         const finished = new Set;

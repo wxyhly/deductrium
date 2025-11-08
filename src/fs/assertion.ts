@@ -3,7 +3,7 @@ import { AST, ASTMgr } from "./astmgr.js";
 const astmgr = new ASTMgr;
 const logicSyms = ["<>", ">", "~", "&", "|"];
 const quantSyms = ["E", "E!", "V"];
-const verbSyms = ["@", "=", "<", "<=", ">=","/|"];
+const verbSyms = ["@", "=", "<", "<=", ">=", "/|"];
 // const verbFns = ["Prime", "Equiv", "Order", "WellOrder", "Rel", "Point", "Line", "Plane", "Between", "Angle"];
 const fnSyms = ["U", "I", "S", "+", "-", "*", "X", "/", "\\"];
 
@@ -491,22 +491,23 @@ export class AssertionSystem {
         if (!ast.nodes?.length) return res; // end of node, find 0
         const qp = this.getQuantParams(ast);
         if (qp) {
-            if (nth === -1) {
-                const bounded = this.astEq(qp[0], subAst);
-                if (bounded === T) return res; // can't match bounded var
-                if (bounded === U) return false;
-            }
+            const bounded = this.astEq(qp[0], subAst);
+            if (bounded === T) return res; // can't match bounded var
+            if (bounded === U) return false;
             scope.push(qp[0]);
             return this.getSubAstMatchTimesAndReplace(qp[1], subAst, newAst, nth, scope, res, right);
         }
         const backup = astmgr.clone(ast);
         if (ast.type === "sym" && (ast.name === "{|" || ast.name === "|}")) {
+            const bounded = this.astEq(ast.nodes[0], subAst);
+            if (bounded === U) return false;
             if ((!right) === (ast.name === "{|")) {
                 let subres = this.getSubAstMatchTimesAndReplace(ast.nodes[1], subAst, newAst, nth, scope.slice(0), res, right);
                 if (subres === false) {
                     astmgr.assign(ast, backup);
                     return false;
                 }
+                if (bounded === T) return res; // can't match bounded var
                 scope.push(ast.nodes[0]);
                 subres = this.getSubAstMatchTimesAndReplace(ast.nodes[2], subAst, newAst, nth, scope, res, right);
                 if (subres === false) {
@@ -519,6 +520,7 @@ export class AssertionSystem {
                     astmgr.assign(ast, backup);
                     return false;
                 }
+                if (bounded === T) return res; // can't match bounded var
                 subres = this.getSubAstMatchTimesAndReplace(ast.nodes[1], subAst, newAst, nth, scope, res, right);
                 if (subres === false) {
                     astmgr.assign(ast, backup);

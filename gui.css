@@ -55,14 +55,17 @@
 
 .fn {
     color: blueviolet;
+    line-break: auto;
 }
 
 .verb {
     color: #a60;
+    line-break: auto;
 }
 
 .sysfn {
     color: darkblue;
+    line-break: auto;
 }
 
 .rule-node {
