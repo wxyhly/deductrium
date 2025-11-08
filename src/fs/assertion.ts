@@ -810,7 +810,7 @@ export class AssertionSystem {
                         // [T, F] => U
                         crp = res === T ? T : AllF ? F : U;
                     }
-                    if (crp === F) throw TR("断言失败：#rp执行替换后自由变量将被量词约束");
+                    if (crp !== T) throw TR("断言失败：#rp执行替换后自由变量将被量词约束");
                 }
                 astmgr.assign(ast, sub); // unwrap
             };
