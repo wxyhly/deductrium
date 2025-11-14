@@ -623,7 +623,7 @@ export class Game {
                 case "type": return document.getElementById("type-btn").classList.remove("hide");
                 case "ttsimplFn":
                     this.ttGui.disableSimpleFn = false;
-                    return this.ttGui.getInhabitatArray()[0].onblur({});
+                    return this.ttGui.getInhabitatArray()[0]?.onblur({});
                 case "ttnotFn": return this.ttGui.unlock("(False)0", true);
                 case "ttEq":
                     for (let i = 0; i < 7; i++)

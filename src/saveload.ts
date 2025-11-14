@@ -145,6 +145,7 @@ export class GameSaveLoad {
             if (r.startsWith("[ach]")) {
                 game.finishAchievement(r.slice(5), true);
             } else {
+                if (r === "zh-en") continue;
                 game.hyperGui.world.hitReward(game.hyperGui.world.getBlock(r), r, true);
             }
         }
