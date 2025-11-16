@@ -184,7 +184,7 @@ export class FSGui {
     }
     initCreative() {
         this.metarules = Object.keys(this.formalSystem.metaRules);
-        this.formalSystem.fastmetarules = "cvuqe><:#zZQ";
+        this.formalSystem.fastmetarules = "cvuqe><:#zZQR";
         document.getElementById("metarule-subpanel").classList.remove("hide");
         document.getElementById("macro-btns").classList.remove("hide");
         this.unlockedHyp = true;
@@ -423,7 +423,7 @@ export class FSGui {
                     break;
                 default:
                     this.addSpan(varnode, "(");
-                    const subIsItem = "@<=+*UIX/\\".includes(ast.name) || ast.name === "/|" || ast.name === ">=";
+                    const subIsItem = "-@<=+*UIX/\\".includes(ast.name) || ast.name === "/|" || ast.name === ">=";
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], subIsItem, scopes));
                     this.addSpan(varnode, ast.name.startsWith("$$") ? ` ${ast.name} ` : this.prettyPrint(ast.name));
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], subIsItem, scopes));
@@ -939,7 +939,9 @@ export class FSGui {
             if (it[0] === "a" || it[0] === "d") {
                 if (!(
                     (this.formalSystem.fastmetarules.includes("#") && this.formalSystem.generateNatLiteralDef(it)) ||
-                    (this.formalSystem.fastmetarules.includes("z") && this.formalSystem.generateZLiteralDef(it))
+                    (this.formalSystem.fastmetarules.includes("z") && this.formalSystem.generateZLiteralDef(it))  ||
+                    (this.formalSystem.fastmetarules.includes("R") && this.formalSystem.generateRLiteralDef(it))  ||
+                    (this.formalSystem.fastmetarules.includes("Q") && this.formalSystem.generateQLiteralDef(it)) 
                 ))
                     return null;
             }

@@ -383,11 +383,11 @@ export function initFormalSystem(creative) {
         "dZ*": ["⊢$x@NXN>($y@NXN>Z($x)*Z($y)=Z((Pr1($x)*Pr1($y)+Pr2($x)*Pr2($y),Pr1($x)*Pr2($y)+Pr2($x)*Pr1($y))))", "集合符号定义", null],
         "dZ<=": ["⊢$x@NXN>($y@NXN>(Z($x)<=Z($y)<> Pr1($x)+Pr2($y)<=Pr2($x)+Pr1($y)))", "集合符号定义", null],
         "< f >#-2~+2定义": [],
-        "dZ-2": ["⊢-2=Z((0,2))", "算数符号定义", null],
-        "dZ-1": ["⊢-1=Z((0,1))", "算数符号定义", null],
-        "dZ0": ["⊢+0=Z((0,0))", "算数符号定义", null],
-        "dZ1": ["⊢+1=Z((1,0))", "算数符号定义", null],
-        "dZ2": ["⊢+2=Z((2,0))", "算数符号定义", null],
+        "dZ-2": [],
+        "dZ-1": [],
+        "dZ0": [],
+        "dZ1": [],
+        "dZ2": [],
         "< f />#-2~+2定义": [],
         "< f />#符号定义::5": [],
         ".@Z": ["$x@N,$y@N⊢Z(($x,$y))@Z", "内置宏", [[".Xi", [0, 1], []], ["dZ", [], []], ["d{|@}", [], ["Z(($x,$y))", "###", "NXN", "Z(###)"]], [".Erp", [], ["(###@(NXN))&(Z(###)=Z(($x,$y)))", "###", "($x,$y)"]], ["a7", [], ["Z(($x,$y))"]], [".&", [-5, -1], []], ["mp", [-3, -1], []], ["<<.<>2", [-5, -1], []], [".{|@}cn", [], ["###", "x", "NXN", "Z(###)"]], [":#:.=s,.=t", [-1, -8], []], ["<<a8", [-1, -3], ["-1"]]], ["###", "##"]],
@@ -395,6 +395,16 @@ export function initFormalSystem(creative) {
         ".Z+s": ["⊢($x@Z)>(($y@Z)>(($x+$y)=($y+$x)))", "内置宏", [["dZ", [], []], ["vvdZ+", [], ["x", "y", "x", "y"]], ["vvdZ+", [], ["x", "y", "y", "x"]], ["vv.cs", [-1], []], ["vvc.i", [], ["x", "y", "x@(NXN)", "y@(NXN)"]], ["vva1", [], ["x", "y", "x@(NXN)", "y@(NXN)"]], ["vvcc<:.X,<.<>1", [-1], []], ["vvcc.&2", [-1], []], ["vvcc<:.X,<.<>1", [-4], []], ["vvcc.&2", [-1], []], ["vvcc.&1", [-3], []], ["vvcc.&1", [-2], []], ["vvcc.&2", [-5], []], ["vvcc.&2", [-4], []], ["vvcc<<.+s", [-4, -3], []], ["vvcc<<.+s", [-3, -2], []], ["vvcc<<a8", [-2, -15], ["0"]], ["vvcc<<a8", [-2, -1], ["0"]], ["vvcc:#:.=s,.=t", [-1, -15], []], ["u<a6", [-1], ["m", "n"]], ["vvvv<a1", [-1], ["Z(x)=m"]], ["vvvv<a1", [-1], ["Z(y)=n"]], ["vvvvc<:a8,<a2", [-1], ["0"]], ["vvvv<:a8,<a2", [-1], ["0"]], ["vvvv.cs", [-1], []], ["vvvvc.cs", [-1], []], ["vvvv.&m2", [-1], []], ["vvvvc.&m2", [-1], []], ["vvv<:.Vnf>,<.<>1", [-1], []], ["vvvc.Vcn", [-1], ["x"]], ["vvvc<:.V>nf,<.<>1", [-1], []], ["vv<:.V>nf,<.<>1", [-1], []], ["vvd{|@}", [], ["n", "m", "m", "x", "NXN", "Z(x)"]], ["vv<.<>1", [-1], []], ["vvce.&s", [-1], []], ["vv.t", [-1, -4], []], ["vvd{|@}", [], ["n", "m", "n", "x", "NXN", "Z(x)"]], ["vv<.<>1", [-1], []], ["vv.cs", [-3], []], ["vvce.&s", [-2], []], ["vv.t", [-1, -2], []], [":.=s,<<a8", [-41, -1], ["0"]], [".Vcn", [-1], ["##n##"]], ["v<a4", [-1], ["$x"]], ["<a4", [-1], ["$y"]], [".cs", [-1], []]], ["##n##"]],
         "< f />#整数": [],
         "< f >#有理数": [],
+        "< f >#整数与小数定义": [],
+        "dQ-2": [],
+        "dQ-1": [],
+        "dQ0": [],
+        "dQ1": [],
+        "dQ2": [],
+        "d0.5": [],
+        "d-3.14": [],
+        "d5.": [],
+        "< f />#整数与小数定义": [],
         "dfQ": ["⊢Vx:(x@ZX(Z\\{+0})>Q(x)={y@ZX(Z\\{+0})|Pr1(x)*Pr2(y)=Pr2(x)*Pr1(y)})", "集合符号定义", null],
         "dQ": ["⊢Q={Q(x)|x@ZX(Z\\{+0})}", "集合符号定义", null],
         "dQ+": ["⊢$x@ZX(Z\\{+0})>($y@ZX(Z\\{+0})>Q($x)+Q($y)=Q((Pr1($x)*Pr2($y)+Pr1($y)*Pr2($x),Pr2($x)*Pr2($y))))", "集合符号定义", null],
@@ -403,6 +413,26 @@ export function initFormalSystem(creative) {
         "dQ/": ["⊢$x@ZX(Z\\{+0})>($y@(Z\\{+0})X(Z\\{+0})>Q($x)/Q($y)=Q((Pr1($x)*Pr2($y),Pr2($x)*Pr1($y))))", "集合符号定义", null],
         "dQ<=": ["⊢$x@ZX(Z\\{+0})>($y@ZX(Z\\{+0})>Pr2($x)*Pr2($y)>=0>(Q($x)<=Q($y)<> Pr1($x)*Pr2($y)<=Pr2($x)*Pr1($y))))", "集合符号定义", null],
         "< f />#有理数": [],
+        "< f >#实数": [],
+        "< f >#整数与小数定义::1": [],
+        "dR-2": [],
+        "dR-1": [],
+        "dR0": [],
+        "dR1": [],
+        "dR2": [],
+        "dR0.5": [],
+        "d-3.14r": [],
+        "< f />#整数与小数定义::1": [],
+        "ddkCut": ["⊢ Va(DdkCut(a) <> (~a={}&~a=Q&(Q\\a) U a = Q  & VxVy:(x@a>y@Q\\a>(x<=y&~x=y) ) & ~Ex(x@a&Vy(y@a>x>=y))))", "集合符号定义", null],
+        "dR": ["⊢ R={a@Pow(Q)|DdkCut(a)}", "集合符号定义", null],
+        "dR+": ["⊢VxVy(x@R>y@R>x+y={z@Q|EmEn(m@x&n@y&z=m+n)})", "集合符号定义", null],
+        "dR-": ["⊢VxVy(x@R>y@R>x-y={z@Q|EmEn(m@x&n@Q\\y&z=m-n)})", "集合符号定义", null],
+        "dR*1": ["⊢VxVy(x@R>y@R>Vm(m@Q\\x>m>=0q)>Vm(m@Q\\y>m>=0q)>x*y={z@Q|~EmEn(m@Q\\x&n@Q\\y&z=m*n)})", "集合符号定义", null],
+        "dR*2": ["⊢VxVy(x@R>y@R>(x*y = 0r-(0r-x)*y & x*y = 0r-x*(0r-y)))", "集合符号定义", null],
+        "dR/1": ["⊢VxVy(x@R>y@R> 0q@x > y/x = y*{z@Q|z>=0&Em(m@x&z=1q/m)})", "集合符号定义", null],
+        "dR/2": ["⊢VxVy(x@R>y@R>x/(0r-y)=0r-x/y)", "集合符号定义", null],
+        "dR<=": ["⊢$x@R>$y@R>($x<=$y <> $x<$y))", "集合符号定义", null],
+        "< f />#实数": [],
         "< f />#数系": [],
     };
     const intMacros = {
@@ -412,7 +442,7 @@ export function initFormalSystem(creative) {
     };
     const consts = ["{}", "omega", "N", "Z", "+0", "-0", "Q", "R"];
     const fns = ["Union", "Pow", "S", "Pr1", "Pr2", "Z"];
-    const verbs = ["Prime", "Equiv", "Order", "WellOrder", "Rel", "Point", "Line", "Plane", "Between", "Angle"];
+    const verbs = ["Prime", "Equiv", "Order", "WellOrder", "Rel", "DdkCut", "Point", "Line", "Plane", "Between", "Angle"];
     const sp = new SavesParser();
     sp.deserializeArr(fs, [consts, fns, verbs, [], sysAxioms, null, null]);
     if (creative)

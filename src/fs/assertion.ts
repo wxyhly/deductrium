@@ -1063,7 +1063,7 @@ export class AssertionSystem {
         }
     }
     isConst(name: string) {
-        return this.consts.has(name) || name.match(/^[\-\+]?([0-9]|[1-9][0-9]+)$/);
+        return this.consts.has(name) || name.match(/^[\-\+]?([0-9]|[1-9][0-9]+)(\.[0-9]*)?[qrc]?$/);
     }
     isNameQuantVarIn(name: string, ast: AST) {
         if (this.getQuantParams(ast)) {

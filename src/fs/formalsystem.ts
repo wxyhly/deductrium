@@ -491,6 +491,12 @@ export class FormalSystem {
                 generated ??= this.generateZLiteralIsZ(dname);
                 generated ??= this.generateZLiteralOp(dname);
             }
+            if (unlocked.includes("Q")) {
+                generated ??= this.generateQLiteralDef(dname);
+            }
+            if (unlocked.includes("R")) {
+                generated ??= this.generateRLiteralDef(dname);
+            }
             if (generated) return this.deductions[generated];
         }
         throw "null";
@@ -691,6 +697,35 @@ export class FormalSystem {
         return this.addDeduction(name, parser.parse(`⊢(${num1}${n[3]}${num2}=${num3 >= 0n ? "+" + num3 : num3})`), "元规则生成*", steps, new Set());
 
     }
+    generateQLiteralDef(name: string) {
+        let n = name.match(/^dQ([\+\-])?([0-9]|[1-9][0-9]+)q?$/) || name.match(/^d([\+\-])?([0-9]|[1-9][0-9]+)q$/);
+        if (this.deductions[name]) return name;
+        if (n) {
+            const num = (n[1] === "-" ? "-" : "") + n[2];
+            return this.addDeduction(name, parser.parse(`⊢${num}q = Q((${(n[1] ?? "+") + n[2]},+1))`), "算数符号定义");
+        }
+        n = name.match(/^dQ?([\+\-])?([0-9]|[1-9][0-9]+)\.([0-9]*)q?$/);
+        if (!n) return;
+        const [_, sym, a, b] = n;
+        const num = (sym === "-" ? "-" : "") + a + "." + b;
+        const int = a + b;
+        return this.addDeduction(name, parser.parse(`⊢${num} = Q((${(n[1] ?? "+") + (int.replace(/^0*/, "") ?? "0")},+1${"0".repeat(b.length)}))`), "算数符号定义");
+    }
+    generateRLiteralDef(name: string) {
+        let n = name.match(/^dR([\+\-])?([0-9]|[1-9][0-9]+)r?$/) || name.match(/^d([\+\-])?([0-9]|[1-9][0-9]+)r$/);
+        if (this.deductions[name]) return name;
+        if (n) {
+            const num = (n[1] === "-" ? "-" : "") + n[2];
+            return this.addDeduction(name, parser.parse(`⊢${num}r = {x@Q|x<=${num}&~x=${num}}`), "算数符号定义");
+        }
+        n = name.match(/^dR?([\+\-])?([0-9]|[1-9][0-9]+)\.([0-9]*)r?$/);
+        if (!n) return;
+        const [_, sym, a, b] = n;
+        const num = (sym === "-" ? "-" : "") + a + "." + b;
+
+        return this.addDeduction(name, parser.parse(`⊢${num}r = {x@Q|x<=${num}&~x=${num}}`), "算数符号定义");
+    }
+
     deduct(step: DeductionStep, inlineMode?: DeductInlineMode | ((step: DeductionStep, conclusion: AST) => DeductInlineMode), partialTest?: boolean) {
         const { conditionIdxs, deductionIdx, replaceValues } = step;
         const deduction = this.generateDeduction(deductionIdx);

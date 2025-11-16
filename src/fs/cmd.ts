@@ -303,7 +303,7 @@ export class FSCmd {
                 const fsd = Object.assign({}, fs.deductions);
                 const prop = fs.propositions.slice(0);
                 try {
-                    fs.fastmetarules = "cvuqe><:#zZQ";
+                    fs.fastmetarules = "cvuqe><:#zZQRR";
                     fs.expandMacroWithDefaultValue(item);
                     fs.fastmetarules = fmr;
                     fs.deductions = fsd;
@@ -325,7 +325,7 @@ export class FSCmd {
                 const fsd = Object.assign({}, fs.deductions);
                 const prop = fs.propositions.slice(0);
                 try {
-                    fs.fastmetarules = "cvuqe><:#zZQ";
+                    fs.fastmetarules = "cvuqe><:#zZQR";
                     fs.expandMacroWithProp(Number(p));
                     fs.fastmetarules = fmr;
                     fs.deductions = fsd;
@@ -388,7 +388,7 @@ export class FSCmd {
             }
             const fmr = formalSystem.fastmetarules;
             const fsd = Object.assign({}, formalSystem.deductions);
-            formalSystem.fastmetarules = "cvuqe><:#zZQ";
+            formalSystem.fastmetarules = "cvuqe><:#zZQR";
             if (inlineRule) {
                 formalSystem.expandMacroWithDefaultValue(cmdBuffer[1]);
             } else {
