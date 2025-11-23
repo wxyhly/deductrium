@@ -264,7 +264,7 @@ export class FSCmd {
                     } catch (e) {
                         // do nothing but wait for unknown cmd
                     }
-                    if (this.gui.metarules.includes(cmdBuffer[0].slice(1))) {
+                    if (cmdBuffer[0][0] === "m" && this.gui.metarules.includes(cmdBuffer[0].slice(1))) {
                         cmdBuffer[0] = cmdBuffer[0].slice(1);
                         cmdBuffer.unshift("meta");
                         this.execCmdBuffer();
