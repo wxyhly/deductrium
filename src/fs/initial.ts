@@ -470,7 +470,7 @@ export function initFormalSystem(creative: boolean) {
         "ump": ["#nf($0,$2)>#nf($1,$2),#nf($0,$2)⊢(V$2:#nf($1,$2))", "元规则生成*", [["mp", [0, 1], []], ["a6", [], ["$1", "$2"]], ["mp", [-1, -2], []]]],
     };
     const consts = ["{}", "omega", "N", "Z", "+0", "-0", "Q", "R"];
-    const fns = ["Union", "Pow", "S", "Pr1", "Pr2", "Z"];
+    const fns = ["Union", "Pow", "S", "Pr1", "Pr2", "Z", "Q"];
     const verbs = ["Prime", "Equiv", "Order", "WellOrder", "Rel", "DdkCut", "Point", "Line", "Plane", "Between", "Angle"];
     const sp = new SavesParser();
     sp.deserializeArr(fs, [consts, fns, verbs, [], sysAxioms, null, null]);

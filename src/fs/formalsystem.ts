@@ -1089,6 +1089,8 @@ export class FormalSystem {
             });
         }
         const oldP = this.propositions;
+        const fastrules = this.fastmetarules;
+        this.fastmetarules += "<";
         try {
             this.removePropositions();
             d.conditions.forEach((c, id) => {
@@ -1098,6 +1100,7 @@ export class FormalSystem {
                     throw TR(`向`) + TR(`第${id + 1}个`) + TR(`条件添加不自由断言时出现不一致：`) + e;
                 }
             });
+
             d.conditions.forEach((c, id) => {
                 // const p0 = this.deduct({ deductionIdx: "a6", replaceValues: [this.propositions[id].value, s], conditionIdxs: [] });
                 const p1 = this.deduct({ deductionIdx: "<a6", conditionIdxs: [id], replaceValues: [s] });
@@ -1106,9 +1109,11 @@ export class FormalSystem {
             generate(true);
             const ret = this.addMacro("u" + idx, from);
             this.propositions = oldP;
+            this.fastmetarules = fastrules;
             return ret;
         } catch (e) {
             this.propositions = oldP;
+            this.fastmetarules = fastrules;
             throw e;
         }
     }
@@ -1257,12 +1262,12 @@ export class FormalSystem {
         const d = this.generateDeduction(idx);
         const s = this._findNewReplName(idx);
         const fastrule = this.fastmetarules;
+        this.fastmetarules += "<";
         // axiom, |- A
         if (!d.conditions.length) {
             const oldP = this.propositions;
             try {
                 this.expandMacroWithDefaultValue(idx, null, true);
-                this.fastmetarules += "<";
                 this.deduct({
                     deductionIdx: "<a1", conditionIdxs: [0],
                     replaceValues: [s]
