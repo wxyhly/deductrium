@@ -568,7 +568,7 @@ export class Game {
                     return this.unlockMetarule("cvt");
                 case "highlightd": return this.hyperGui.world.highLightGetD = true;
                 case "peano":
-                    for (let i = 1; i <= 3; i++)
+                    for (let i = 1; i <= 5; i++)
                         this.fsGui.addToDeductions("apn" + i);
                     for (let i = 1; i <= 10; i++)
                         this.fsGui.addToDeductions("d" + i);

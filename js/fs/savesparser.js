@@ -93,6 +93,10 @@ export class SavesParser {
         gui.formalSystem = fsdata.fs;
         gui.formalSystem.fastmetarules = savedMetarules;
         gui.deductions = fsdata.arrD;
+        // 25-11-25: bug fix player's progress
+        if (gui.deductions.includes("apn3") && !gui.deductions.includes("apn4") && !gui.deductions.includes("apn5")) {
+            gui.deductions.push("apn4", "apn5");
+        }
         if (fsdata.arrM[0]) {
             gui.metarules = fsdata.arrM.slice(1);
             this.deserializeMetaMacro(gui, fsdata.arrM[0]);

@@ -412,7 +412,7 @@ export const mapData = `
 :mvt,0@概括元定理是说[n]若定理的所有条件[n]都没自由出现$0[n]则可单独在结论中[n]加上量词V$0
 // 分离公理与空集
 
-:aExt,1#[n]Vx:Vy:((Vz:z@x<>z@y)>(x=y))[n]#p
+:aExt,1#[n]Vx:Vy:((Vz:(z@x<>z@y))>(x=y))[n]#p
 :%,1$[[aSep]]解锁ZFC集合论[n]分离公理(aSep)
 :%*,2#[[ext<]]Vx:Vy:((x<y)>((y<x)>(x=y)))[n]#p
 :%*,2,3#[[elV2]](($x<$y)&($y<$x)) > ($x=$y)[n]#p
