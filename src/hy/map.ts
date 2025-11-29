@@ -518,7 +518,7 @@ export const mapData = `
     // :d(),3,2#($a\\$b)U$b=$aU$b[n]#p
     :d(),3,2,5$获取5mg推理素
     
-    :d(),1# Vx:Vy:E!d:Va:Vb:[n]((a@x&b@y)<>(a,b)@d)[n]#p
+    :d(),1# Vx:Vy:Ed:Va:Vb:[n]((a@x&b@y)<>(a,b)@d)[n]#p
     :d(),1,2$[[dX]]解锁集合[n]笛卡尔积运算[n]“×”(X)
     :dX,1#(1,2)@NXN[n]#p
     :%,1;1;1@..........
