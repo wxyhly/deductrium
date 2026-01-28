@@ -697,6 +697,14 @@ export class FSGui {
         n[1] = String(count(Number(n[1])));
         this.deductions[idx] = n.join("::");
     }
+    removeDeductionFolderCount(name: string[]) {
+        const scope = this.scanDeductionFolderScope(name);
+        for (const s of Object.values(scope)) {
+            for (const [uuid] of s) {
+                this.setDeductionFolderCount(uuid, c => c - 1);
+            }
+        }
+    }
     private drawDeductionList(
         logicArray: Deduction[], list: HTMLElement,
         setInfo: (term: Deduction, itInfo: HTMLElement[], it: HTMLElement, label: string) => void,
@@ -797,11 +805,8 @@ export class FSGui {
                         this.addSpan(itInfo, " 🗑️ ").addEventListener("click", e => {
                             if (!this.cmd.cmdBuffer.length) {
                                 if (!confirm(TR("该操作将删除文件夹，并将里面的内容散列在上级目录中，确定要删除<") + (pname.slice(5).split("::")[0]) + TR(">吗？"))) return;
-                                const scope = this.scanDeductionFolderScope([pname]);
                                 this.deductions.splice(this.deductions.indexOf(pname), 1);
-                                for (const [uuid] of scope[pname]) {
-                                    this.setDeductionFolderCount(uuid, c => c - 1);
-                                }
+                                this.removeDeductionFolderCount([pname]);
                             }
                             this.updateDeductionList();
                         });
@@ -939,9 +944,9 @@ export class FSGui {
             if (it[0] === "a" || it[0] === "d") {
                 if (!(
                     (this.formalSystem.fastmetarules.includes("#") && this.formalSystem.generateNatLiteralDef(it)) ||
-                    (this.formalSystem.fastmetarules.includes("z") && this.formalSystem.generateZLiteralDef(it))  ||
-                    (this.formalSystem.fastmetarules.includes("R") && this.formalSystem.generateRLiteralDef(it))  ||
-                    (this.formalSystem.fastmetarules.includes("Q") && this.formalSystem.generateQLiteralDef(it)) 
+                    (this.formalSystem.fastmetarules.includes("z") && this.formalSystem.generateZLiteralDef(it)) ||
+                    (this.formalSystem.fastmetarules.includes("R") && this.formalSystem.generateRLiteralDef(it)) ||
+                    (this.formalSystem.fastmetarules.includes("Q") && this.formalSystem.generateQLiteralDef(it))
                 ))
                     return null;
             }

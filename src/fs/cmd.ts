@@ -740,10 +740,17 @@ export class FSCmd {
         try {
             const pos = this.gui.deductions.indexOf(this.cmdBuffer[1]);
             if (pos === -1) throw TR("列表中无此规则");
+            const toRemove:string[] = [this.cmdBuffer[1]];
+            for(const d of this.gui.deductions){
+                if(!this.gui.formalSystem.deductions[d] && !d.startsWith("< f >")){
+                    toRemove.push(d);
+                }
+            }
             if (false === this.gui.formalSystem.removeDeduction(this.cmdBuffer[1])) {
                 this.gui.deductions[pos] = "< wait to remove >";
             }
-            this.gui.deductions = this.gui.deductions.filter(d => this.gui.formalSystem.deductions[d]);
+            this.gui.removeDeductionFolderCount(toRemove);
+            this.gui.deductions = this.gui.deductions.filter(d => (this.gui.formalSystem.deductions[d]||d.startsWith("< f >")));
             this.gui.updateDeductionList();
             this.gui.updatePropositionList(true);
             this.clearCmdBuffer();

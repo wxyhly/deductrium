@@ -742,6 +742,14 @@ export class FSGui {
         n[1] = String(count(Number(n[1])));
         this.deductions[idx] = n.join("::");
     }
+    removeDeductionFolderCount(name) {
+        const scope = this.scanDeductionFolderScope(name);
+        for (const s of Object.values(scope)) {
+            for (const [uuid] of s) {
+                this.setDeductionFolderCount(uuid, c => c - 1);
+            }
+        }
+    }
     drawDeductionList(logicArray, list, setInfo, customIdx) {
         this.onStateChange();
         while (list.lastChild) {
@@ -839,11 +847,8 @@ export class FSGui {
                             if (!this.cmd.cmdBuffer.length) {
                                 if (!confirm(TR("该操作将删除文件夹，并将里面的内容散列在上级目录中，确定要删除<") + (pname.slice(5).split("::")[0]) + TR(">吗？")))
                                     return;
-                                const scope = this.scanDeductionFolderScope([pname]);
                                 this.deductions.splice(this.deductions.indexOf(pname), 1);
-                                for (const [uuid] of scope[pname]) {
-                                    this.setDeductionFolderCount(uuid, c => c - 1);
-                                }
+                                this.removeDeductionFolderCount([pname]);
                             }
                             this.updateDeductionList();
                         });
