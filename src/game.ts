@@ -52,7 +52,7 @@ export class Game {
         "5R6": "5不整除6", "dPrime": "解锁素数", "prm7": "7是素数", "ex!": "任何数都有阶乘", "infprm": "质数有无穷个",
         "aExt": "ZFC集合论", ".<i": "我包含我", "ext<": "我包含我", "empty": "千里之行，始于空集", ".zfc": "ZFC简化大礼包", "UUII": "交交并并",
         "a@a": "我给且只给所有不自己理发的人理发", "vwo": "一切皆可良序", "delAl": "不可数",
-        "d()":"确定坐标，精确制导","dX":"笛卡尔：积，故我在","dSd0":"皮亚诺，你被解雇啦！","dZ":"正正负负(Z)",
+        "d()": "确定坐标，精确制导", "dX": "笛卡尔：积，故我在", "dSd0": "皮亚诺，你被解雇啦！", "dZ": "正正负负(Z)",
         "type": "类型论", "ttrue": "真理之门", "ttsimplFn": "简化依赖函数", "ttactic1": "证明助手上线！", "ttEq": "相等类型", "AllTrue": "True的值都是true",
         "ttindnat": "自然数的归纳法", "tt1+1": "1+1=2类型论版", "ttindeq": "相等的归纳法", "0+x": "代入方程即可", "x+x": "代入方程即可", "1neq2": "1就是1，2就是2（not (eq 1 2)）", "tt5R7": "数论达人(5不整除7)",
         "S1S1": "顺时针一圈逆时针一圈，还是回到原点", "eqvid": "我等价我", "ttua": "泛等公理（ua）", "looprfl": "圆圈跟圆点不同伦（loop不是rfl）", "ttpierce": "原来皮尔士跟他们是一伙的", "lemlie": "排中律是个谎言！？",
@@ -150,7 +150,13 @@ export class Game {
                 let reg: RegExpMatchArray;
                 if ((reg = tile.text.match(/^通过此门需消耗推理素(.+)$/)) && reg[1]) {
                     const needed = parseDeductriumAmout(reg[1]);
-                    if (this.deductriums < needed) return false;
+                    if (this.deductriums < needed) {
+                        // if the player is stucked due to lack of money, but without unlocking progress layer, give him/her a restart button
+                        if (needed < 8 && document.getElementById("progress-btn").classList.contains("hide") && !document.getElementById("deduct-btn").classList.contains("hide")) {
+                            document.querySelector(".restart").classList.remove("hide");
+                        }
+                        return false;
+                    }
                     this.consumed += needed;
                     this.addDeductriums(-needed);
                     return true;
@@ -197,7 +203,7 @@ export class Game {
             if (achievement) this.finishAchievement(achievement, isLoading);
             switch (tile.name) {
                 case "dL": return document.getElementById("deduct-btn").classList.remove("hide");
-                case "progL": return document.getElementById("progress-btn").classList.remove("hide");
+                case "progL": document.querySelector(".restart").classList.add("hide"); return document.getElementById("progress-btn").classList.remove("hide");
                 case "delgate": return;
                 case "macro": this.fsGui.unlockedMacro = true; return document.getElementById("macro-btns").classList.remove("hide");
                 case "hyp": this.fsGui.unlockedHyp = true; return document.getElementById("hyp-btn").classList.remove("hide");
@@ -503,6 +509,7 @@ export class Game {
             }, 20);
         });
         progressBtns[2].addEventListener("click", () => gameSaveLoad.reset());
+        document.querySelector(".restart").addEventListener("click", () => gameSaveLoad.reset());
         progressBtns[3].addEventListener("click", () => { langMgr.setLang(langMgr.lang === "en" ? "zh" : "en"); window.location.reload() });
 
         const saves = localStorage.getItem(gameSaveLoad.storageKey);

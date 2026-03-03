@@ -652,7 +652,8 @@ class LangMgr {
         "不可数": "Uncountable",
         "一切皆可良序": "Everything Is Well-Ordered",
         "ω^ω^ω^ω": "ω^ω^ω^ω",
-        "临界质量（累计获50.1kg推理素）": "Critical Mass (Accumulated 50.1kg of Deductrium)"
+        "临界质量（累计获50.1kg推理素）": "Critical Mass (Accumulated 50.1kg of Deductrium)",
+        "⟳重置游戏": "⟳RESTART"
     };
     tr(text, mode) {
         if (this.lang === "zh")

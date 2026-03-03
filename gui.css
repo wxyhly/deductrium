@@ -619,3 +619,17 @@ div#loading div {
     color: #666;
     font-size: 12px;
 }
+
+.restart{
+    color: #888;
+    font-family: monospace;
+    position: fixed;
+    left: 5px;
+    bottom: 5px;
+    font-size: 2em;
+    background-color: rgba(255, 255, 255, 0.6);
+}
+.restart label:hover{
+    color: red;
+    cursor: pointer;
+}

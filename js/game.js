@@ -153,8 +153,13 @@ export class Game {
                 let reg;
                 if ((reg = tile.text.match(/^通过此门需消耗推理素(.+)$/)) && reg[1]) {
                     const needed = parseDeductriumAmout(reg[1]);
-                    if (this.deductriums < needed)
+                    if (this.deductriums < needed) {
+                        // if the player is stucked due to lack of money, but without unlocking progress layer, give him/her a restart button
+                        if (needed < 8 && document.getElementById("progress-btn").classList.contains("hide") && !document.getElementById("deduct-btn").classList.contains("hide")) {
+                            document.querySelector(".restart").classList.remove("hide");
+                        }
                         return false;
+                    }
                     this.consumed += needed;
                     this.addDeductriums(-needed);
                     return true;
@@ -214,7 +219,9 @@ export class Game {
                 this.finishAchievement(achievement, isLoading);
             switch (tile.name) {
                 case "dL": return document.getElementById("deduct-btn").classList.remove("hide");
-                case "progL": return document.getElementById("progress-btn").classList.remove("hide");
+                case "progL":
+                    document.querySelector(".restart").classList.add("hide");
+                    return document.getElementById("progress-btn").classList.remove("hide");
                 case "delgate": return;
                 case "macro":
                     this.fsGui.unlockedMacro = true;
@@ -812,6 +819,7 @@ export class Game {
             }, 20);
         });
         progressBtns[2].addEventListener("click", () => gameSaveLoad.reset());
+        document.querySelector(".restart").addEventListener("click", () => gameSaveLoad.reset());
         progressBtns[3].addEventListener("click", () => { langMgr.setLang(langMgr.lang === "en" ? "zh" : "en"); window.location.reload(); });
         const saves = localStorage.getItem(gameSaveLoad.storageKey);
         // autosave while updated within a time interval
