@@ -1,3 +1,4 @@
+import { TRC } from "../lang.js";
 // genOrd([1, 2, 3, 4, 3, 2, 2, 1, 2,3,4,2,3,4]);
 // printOrd([1, 2, 3, 3, 2, 2, 1, 2, 3, 2, 2,3]);
 // console.log(printOrd([1, 2, 3, 2, 3]));
@@ -261,7 +262,7 @@ export function genOrdTiles(blockMap, nameMap, p, tile, ord, depth = 5) {
                 if (prime) {
                     const nt = p.getNeighborAndDir(t, (n % 4 === 1) ? 0 : 3, true)[0];
                     blockMap.set(nt.join(","), {
-                        type: 0, text: {
+                        type: 0, text: TRC({
                             "139": "我是程序化生成的\n你玩得过我？",
                             "149": "好了，我也不怕\n跟你撕破脸",
                             "157": "走到天荒地老\n谁怕谁",
@@ -283,7 +284,7 @@ export function genOrdTiles(blockMap, nameMap, p, tile, ord, depth = 5) {
                             "911": "空袭预警！\n空袭预警！",
                             "1009": "恭喜你，步数破千！",
                             "8191": "恭喜你，到达了\n第五个梅森素数",
-                        }[n] ?? "", name: undefined
+                        }[n] ?? ""), name: undefined
                     });
                 }
             }

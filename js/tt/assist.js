@@ -126,6 +126,8 @@ export class Assist {
             || typ.type === "+" || typ.type === "X" || typ.type === "S");
     }
     intro(s) {
+        if (!s)
+            throw TR("意外的空表达式");
         s = s.trim();
         if (s.includes(" ")) {
             return this.intros(s);
@@ -156,7 +158,7 @@ export class Assist {
         return this;
     }
     intros(s) {
-        if (!s.trim())
+        if (!s?.trim())
             throw TR("意外的空表达式");
         s.split(" ").map(ss => ss ? this.intro(ss) : "");
         return this;

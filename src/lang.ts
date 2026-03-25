@@ -698,4 +698,5 @@ class LangMgr {
 }
 export const langMgr = new LangMgr();
 export const TR = (text: string, mode?: string) => langMgr.tr(text, mode);
+export const TRC = (text: string, mode?: string) => langMgr.trc(text);
 export const TRC1 = (text: string) => langMgr.trc1(text);

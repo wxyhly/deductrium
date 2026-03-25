@@ -684,5 +684,6 @@ class LangMgr {
 }
 export const langMgr = new LangMgr();
 export const TR = (text, mode) => langMgr.tr(text, mode);
+export const TRC = (text, mode) => langMgr.trc(text);
 export const TRC1 = (text) => langMgr.trc1(text);
 //# sourceMappingURL=lang.js.map
