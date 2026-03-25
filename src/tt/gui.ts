@@ -1,8 +1,7 @@
 import { TR } from "../lang.js";
 import { Assist } from "./assist.js";
 import { AST, ASTParser } from "./astparser.js";
-import { Context } from "./check.js";
-import { Core } from "./core.js";
+import { Core,Context } from "./core.js";
 import { TypeRule, initTypeSystem } from "./initial.js";
 const parser = new ASTParser;
 const constructors = new Set<string>();

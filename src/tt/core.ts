@@ -326,6 +326,8 @@ export class Core {
                 this.replaceVar(repl, tfn.name, ast.nodes[1]);
                 this.reduce(repl);
                 ast.checked = repl;
+            } else {
+                this.error(ast, TR("非函数尝试作用"), ignoreErr);
             }
             return ast.checked;
         }
@@ -380,11 +382,11 @@ export class Core {
             let assertionT: boolean;
             try {
 
-               let maxReplacement = Object.keys(this.state.inferValues).length + 1;
+                let maxReplacement = Object.keys(this.state.inferValues).length + 1;
                 while (maxReplacement-- && Core.replaceByMatch(ast.nodes[0].checked, this.state.inferValues, /^\?/));
-                
-               maxReplacement = Object.keys(this.state.inferValues).length + 1;
-               while (maxReplacement-- && Core.replaceByMatch(ast.nodes[1].checked, this.state.inferValues, /^\?/));
+
+                maxReplacement = Object.keys(this.state.inferValues).length + 1;
+                while (maxReplacement-- && Core.replaceByMatch(ast.nodes[1].checked, this.state.inferValues, /^\?/));
                 assertionT = this.equal(
                     ast.nodes[0].checked,
                     ast.nodes[1].checked,

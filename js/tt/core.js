@@ -345,6 +345,9 @@ export class Core {
                 this.reduce(repl);
                 ast.checked = repl;
             }
+            else {
+                this.error(ast, TR("非函数尝试作用"), ignoreErr);
+            }
             return ast.checked;
         }
         if (ast.type === "X" || ast.type === "," || ast.type === "+") {

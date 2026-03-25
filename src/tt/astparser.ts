@@ -184,6 +184,8 @@ export class ASTParser {
             } else {
                 val = { type: "var", name: this.prevToken(1) };
             }
+        }else{
+            throw TR("表达式不完整");
         }
         return val;
     }
