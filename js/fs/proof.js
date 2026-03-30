@@ -95,8 +95,8 @@ export class Proof {
                 const replaceValues = !ta ? [ast.nodes[1]] : !tb ? [ast.nodes[0]] : [];
                 return [ta && tb, this.fs.deduct({ deductionIdx: prefix + ".&" + dname, conditionIdxs, replaceValues })];
             }
-            throw TR("无法对非命题逻辑符号进行真值指派");
         }
+        throw TR("无法对非命题逻辑符号进行真值指派");
     }
     cca1(vars, id, hyps) {
         const truth = !!((hyps >> id) & 1);

@@ -532,7 +532,7 @@ export class FSCmd {
                 case "cmt":
                     if (!this.getInputNewDeductionPos(4)) return;
                     // ["m","cpt",cond0,cond1,  pos, null, name]
-                    newName = formalSystem.metaCombineTheorem(cmdBuffer[2], cmdBuffer[3], "元规则生成*");
+                    newName = formalSystem.metaCombineTheorem([cmdBuffer[2]], cmdBuffer[3], "元规则生成*");
                     afterName = cmdBuffer[4];
                     break;
                 default:
