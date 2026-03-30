@@ -422,7 +422,7 @@ export class Core {
     }
     desugar(ast) {
         if (ast.type === "X") {
-            const nast = this.preprocessInfered(parser.parse("@Prod _ _ ?A (Lx:?A.?B)"), true);
+            const nast = this.preprocessInfered(parser.parse("@Prod _ _ ?A (L_:?A.?B)"), true);
             nast.nodes[0].nodes[1] = ast.nodes[0];
             nast.nodes[1].nodes[0] = ast.nodes[0];
             nast.nodes[1].nodes[1] = ast.nodes[1];
@@ -435,7 +435,7 @@ export class Core {
             return nast;
         }
         else if (ast.type === ",") {
-            const nast = this.preprocessInfered(parser.parse("@pair _ _ _ (Lx:?a：.?b：) ?a ?b"), true);
+            const nast = this.preprocessInfered(parser.parse("@pair _ _ _ (L_:?a：.?b：) ?a ?b"), true);
             const dfn = nast.nodes[0].nodes[0].nodes[1];
             dfn.nodes[0] = ast.nodes[0].checked;
             dfn.nodes[1] = ast.nodes[1].checked;
