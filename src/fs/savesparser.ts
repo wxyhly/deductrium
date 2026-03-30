@@ -39,10 +39,20 @@ export class SavesParser {
         // if fs has tempvars record, then serialize it
         return deduction.tempvars?.size ? [value, deduction.from, steps, Array.from(deduction.tempvars)] : [value, deduction.from, steps];
     }
+
+    // 26-3-30: bug fix: rule "<.a1_n" not exist, use ":c{rec},.cs" instead
+
+    private fixbug260330_(num: number) {
+        return num === 3 ? ":ca1,.cs" : (":c" + this.fixbug260330_(num - 1) + ",.cs");
+    }
+    private fixbug260330(s: string) {
+        const num = Number(s.match(/>\.a1\_([1-9][0-9]*)$/)[1]);
+        return s.replace(/>\.a1\_([1-9][0-9]*)$/, this.fixbug260330_(num));
+    }
     deserializeDeduction(name: string, fs: FormalSystem, sd: SerilizedDeduction) {
         // deserialized data is reliable, no need to regen tempvars
         fs.addDeduction(name, astparser.parse(sd[0]), sd[1], sd[2]?.map(e => ({
-            deductionIdx: e[0], conditionIdxs: e[1], replaceValues: e[2].map(v => astparser.parse(v))
+            deductionIdx: e[0].includes(">.a1_") ? this.fixbug260330(e[0]) : e[0], conditionIdxs: e[1], replaceValues: e[2].map(v => astparser.parse(v))
         })), sd[3] ? new Set(sd[3]) : new Set());
     }
     serialize(gui: FSGui) {
@@ -97,7 +107,7 @@ export class SavesParser {
         gui.formalSystem = fsdata.fs;
         gui.formalSystem.fastmetarules = savedMetarules;
         gui.deductions = fsdata.arrD;
-        
+
         // 25-11-25: bug fix player's progress
         if (gui.deductions.includes("apn3") && !gui.deductions.includes("apn4") && !gui.deductions.includes("apn5")) {
             gui.deductions.push("apn4", "apn5");

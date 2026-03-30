@@ -106,25 +106,26 @@ export class Proof {
         });
         const gen = (l: number) => {
             if (l < 3) throw "cannot reached";
-            const name = ".a1_" + l;
-            if (this.fs.deductions[name]) return name;
-            const p = this.fs.propositions;
-            this.fs.propositions = [];
-            try {
-                this.fs.addHypothese({ type: "replvar", name: "$0" });
-                for (let i = 1; i < l; i++) {
-                    this.fs.deduct({
-                        deductionIdx: "<a1", conditionIdxs: [i - 1],
-                        replaceValues: [{ type: "replvar", name: "$" + i }]
-                    });
-                }
-                this.fs.addMacro(name, "元规则生成*");
-                this.fs.propositions = p;
-                return name;
-            } catch (e) {
-                this.fs.propositions = p;
-                throw e;
-            }
+            if(l===3) return ":ca1,.cs";
+            return ":c"+gen(l-1)+",.cs";
+            // if (this.fs.deductions[name]) return name;
+            // const p = this.fs.propositions;
+            // this.fs.propositions = [];
+            // try {
+            //     this.fs.addHypothese({ type: "replvar", name: "$0" });
+            //     for (let i = 1; i < l; i++) {
+            //         this.fs.deduct({
+            //             deductionIdx: "<a1", conditionIdxs: [i - 1],
+            //             replaceValues: [{ type: "replvar", name: "$" + i }]
+            //         });
+            //     }
+            //     this.fs.addMacro(name, "元规则生成*");
+            //     this.fs.propositions = p;
+            //     return name;
+            // } catch (e) {
+            //     this.fs.propositions = p;
+            //     throw e;
+            // }
         }
         // a>b> c>c
         if (id === len - 1) {
@@ -135,7 +136,7 @@ export class Proof {
             return [truth, this.fs.deduct({ deductionIdx: prefix + "a1", conditionIdxs: [], replaceValues })];
         }
         return [truth, this.fs.deduct({
-            deductionIdx: prefix + ">" + gen(len - id), conditionIdxs: [], replaceValues
+            deductionIdx: prefix + gen(len - id), conditionIdxs: [], replaceValues
         })];
     }
 }
