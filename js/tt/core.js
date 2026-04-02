@@ -1154,15 +1154,38 @@ export class Compute {
                     }
                     catch (e) { }
             }
-            if (fn === "mul" && matched.length > 3 && matched[2].type === "var" && matched[3].type === "var") {
+            if (fn === "mul" && matched.length > 3) {
                 // mul 1 2 := 1*2
-                try {
-                    const bint = BigInt(matched[2].name) * BigInt(matched[3].name);
-                    Core.assign(ast, wrapVar(String(bint)), true);
-                    modified = true;
-                    continue;
+                if (matched[2].type === "var" && matched[3].type === "var") {
+                    try {
+                        const bint = BigInt(matched[2].name) * BigInt(matched[3].name);
+                        Core.assign(ast, wrapVar("0"), true);
+                        modified = true;
+                        continue;
+                    }
+                    catch (e) { }
                 }
-                catch (e) { }
+                if (matched[3].name === "0" && matched[3].type === "var") {
+                    try {
+                        Core.assign(ast, matched[2], true);
+                        modified = true;
+                        continue;
+                    }
+                    catch (e) { }
+                }
+                const dstrct = matched[3];
+                // add x (succ y)
+                if (dstrct.type === "apply" && dstrct.nodes[0].name === "succ") {
+                    try {
+                        // remove inner succ
+                        Core.assign(dstrct, dstrct.nodes[1], true);
+                        // add outter add
+                        Core.assign(ast, wrapApply(wrapApply(wrapVar("add"), ast), matched[2])); // when wrap, soor move
+                        modified = true;
+                        continue;
+                    }
+                    catch (e) { }
+                }
             }
             // indord C 0 s l ord
             if (fn === "ind_Ord" && matched.length > 6) {
