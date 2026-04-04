@@ -777,7 +777,7 @@ export const mapData = `
     :%*,4@不同于传统编程中的函数[n]函数输出值的类型[n]可以依赖于输入的自变量
     :%*,4,5@λx:U.λy:x.y类型为[n]Πx:U,Πy:x,x[n]因为λy:x.y[n]类型为Πy:x,x
 :%,5#Pa:U,Px:a,a[n]#t
-:%*,4$获取1mg推理素
+:%*,4$获取0.2mg推理素
 :%,0#Px:True,Py:False,True[n]#t
 :%,5#Pa:U,Pb:U,Px:a,Py:b,a[n]#t
 :%,0$[[ttsimplFn]]解锁简写非依赖函数[n]类型符号“→”（->）
@@ -795,7 +795,7 @@ export const mapData = `
     :%*,5,0,5,0@例：λx:A→B.λy:A.x y[n]的类型为(A→B)→(A→B)[n]因为x y的类型为B
     :%*,5,0,5,0,5@“存在某个值其类型是A”[n]可翻译成“A是定理”[n]那个值就是该命题[n]成立的证据
     :%*,5,0,5,0,5,0@旁边的#t门打不开？[n]付费后给提示
-    :%*,5,0,5,0,5,0,3#[[hint-tt-a3]]通过此门需消耗推理素1mg
+    :%*,5,0,5,0,5,0,3#[[hint-tt-a3]]通过此门需消耗推理素0.3mg
 :%,0#Pa:U,Pb:U,Pc:U,(a->b->c)->(a->b)->(a->c)[n]#t
 :%,5$[[ttnotFn]]解锁简写否定符号“not”[n]即，将“A->False”[n]简写为“not A”
     :%*,3$[[ttactic1]]解锁证明策略[n]intro/expand/apply
@@ -816,7 +816,7 @@ export const mapData = `
 :%,0#eq False False[n]#t
     :%*,2,1@“eq”其实有些隐藏参数[n]故其类型中带问号[n]系统可通过[n]上下文的函数作用[n]智能推断匹配[n]问号开头的类型
     :%*,2,1,0@[n]完整版是多元函数“@eq”[n]它接受以下参数[n]1.全类的下标数字u[n]2.类型a:Uu[n]3.值x:a与值y:a[n]最后得到一个命题(即Uu类型)[n]eq省略了前两个参数
-    :%*,3$获取2mg推理素
+    :%*,3$获取0.1mg推理素
     :%*,4@提示：一般来说没必要[n]使用“expand eq”将其[n]展开为“@eq”[n]展开前后虽都定义相等[n]但这只会让目标更复杂
 :%,5#eq (False->False) (not False)[n]#t
 :%*,5$[[ttrfl]]解锁rfl与相应证明策略[n](自动推断定义相等)
@@ -825,7 +825,7 @@ export const mapData = `
 :%*,2@自然数“1”定义为[n]succ 0[n]“2”定义为[n]succ (succ 0)[n] ...
 :%,0$[[ttBool]]解锁布尔类型Bool
 :%,2#eq 0b 0b[n]#t
-:%,3$获取1mg推理素
+:%,3$获取0.1mg推理素
 
 // tt ind_xxx
 
@@ -846,7 +846,7 @@ export const mapData = `
     :%*,4@要构造类型Sx:nat,eq x 1[n]需要提供一个nat类型的值x[n]和eq x 1类型的值[n]明显我们可以选择1:nat[n]和refl 1 : eq 1 1[n]组成依赖有序对
     :%*,4,5@因此也可把该[n]依赖有序对类型[n]理解为命题“存在x:nat[n]使得eq x 1成立”
     :%,5#Sx:nat,eq x 1[n]#t
-    :%*,4#通过此门需消耗推理素2mg
+    :%*,4#通过此门需消耗推理素1mg
     :%*,4,1$[[ttacticEx]]解锁证明策略[n]“ex”与“case”
     :%*,4,5$[[tthyp]]解锁证明策略“hyp”（假设）[n]通过“hyp XXX”可以引入[n]新的证明子目标XXX[n]完成后将得到值:XXX[n]作为条件供后续证明使用[n]执行“hyp a:A”可将引入的目标[n]证明后得到的变量命名为a
     :%,0$[[ttSum]]解锁和类型“+”
@@ -854,7 +854,7 @@ export const mapData = `
     :%,5@提示：可以直接在定理列表中[n]写xxx : XXX[n]断言xxx有类型XXX[n]系统类型推断可自动[n]匹配并验证其正确性
     :%,0#True + False[n]#t
     :%,5#False + True[n]#t
-    :%,5#通过此门需消耗推理素2mg
+    :%,5#通过此门需消耗推理素1mg
     :%,0$[[ttacticLR]]解锁证明策略[n]“left”/“right”
     :ttSum,0#Px:Bool,(eq x 0b)+(eq x 1b)[n]#t
     :%*,3@欲证该命题，需对x:Bool[n]通过ind_Bool分类讨论[n]建议采用“destruct”/“rfl”[n]“left”/“right”等证明策略[n]辅助构造证据
@@ -863,28 +863,28 @@ export const mapData = `
             :ttindProd,5@依赖有序对类型只有唯一[n]的带两个参数的构造子pair[n]因此仅需证明由任意的两值[n]组成的有序对成立，[n]就可证对所有有序对成立
             :%,5#Pa:U,Pb:U,aXb -> a[n]#t
             :%*,2@提示：可通过ind_Prod定义函数[n]f : aXb -> a，[n]使得对任意x:a和y:b[n]有f (x,y) === x
-            :%,0$获取3mg推理素
+            :%,0$获取1.5mg推理素
             :%*,4#Pa:U,Pb:U,Pc:U,(a->b->c)->((aXb)->c)[n]#t
-            :%*,4,5$获取5mg推理素
+            :%*,4,5$获取2.5mg推理素
             :%*,4,5,2#Pa:U,Pb:U,Pc:U,((aXb)->c)->(a->b->c)[n]#t
-            :%*,4,5,2,5$获取5mg推理素
+            :%*,4,5,2,5$获取2.5mg推理素
             :%*,5#Pa:U,Pb:U,Px:aXb,eq x (pr0 x, pr1 x)[n]#t
             :%,3$[[ttpr]]解锁投影函数pr0/pr1[n]与依赖投影函数prd1
             :%*,4#Px:U,Pa:U,Pb:U,(x->aXb)->(x->a)X(x->b)[n]#t
-            :%*,4,5$获取5mg推理素
+            :%*,4,5$获取2.5mg推理素
             :%*,2#Pa:U,Pb:U,(aXb)->(bXa)[n]#t
-            :%*,2,1$获取2mg推理素
+            :%*,2,1$获取1mg推理素
             :%,3#eq (pr0 (1,2)) 1[n]#t
             :%,3#eq (pr1 (3,4)) 4[n]#t
-            :%,3$获取1mg推理素
+            :%,3$获取0.5mg推理素
         :ttindProd,0,4$[[ttindSum]]解锁ind_Sum
             :ttindSum,1@和类型A+B有两个[n]分别带一个参数的构造子[n]要证对所有A+B的值均成立[n]需分别证明任意a:A对(inl a)成立，[n]且任意b:B对(inr b)成立
             :%*,3#Pa:U,Pb:U,(a+b)->(b+a)[n]#t
-            :%*,3,1$获取2mg推理素
+            :%*,3,1$获取1mg推理素
             :%*,3,1,2#Pa:U,Pb:U,Pc:U,[n]((a+b)+c)->(a+(b+c))[n]#t
-            :%*,3,1,2,5$获取2mg推理素
+            :%*,3,1,2,5$获取1mg推理素
             :%,2#Pa:U,Pb:U,Pc:U,[n](a->c)->(b->c)->(a+b)->c[n]#t
-            :%,1$获取2mg推理素
+            :%,1$获取1mg推理素
             :%*,2@不会解可交钱绕行
             :%*,2,1#通过此门需消耗推理素5mg
             :%*,2,1,2@
@@ -912,25 +912,25 @@ export const mapData = `
     :%*,3,1,2,1,1#(Pa:U,(not(not a))->a)[n]->(Pa:U,a+(not a))[n]#t
     :%*,3,1,2,1,1,1#(Pa:U,a+(not a))->[n](Pa:U,(not(not a))->a)[n]#t
     :%*,3,1,2,1,1,1,1#[[ttpierce]](Pa:U,a+(not a))->[n](Pa:U,Pb:U,((a->b)->a)->a)[n]#t
-    :%*,3,1,2,1,1,1,1,1$获取22mg推理素
-    :%*,3,5$获取2mg推理素
+    :%*,3,1,2,1,1,1,1,1$获取12mg推理素
+    :%*,3,5$获取0.99mg推理素
     :%,4#[[lemlie]]not Pa:U,a+(not a)[n]#t
-    :%,5$获取1g推理素
+    :%,5$获取0.2g推理素
 :ttBool,4$[[ttindFalse]]解锁ind_False
 :%,3@类型False没有值[n]要证对任意x:False成立[n]其实都永远成立[n]引入ind_False作为[n]该事实的证据[n]即“从谬误能推出一切”
 :%*,1#Pa:U,False->a[n]#t
-:%*,1,5$获取2mg推理素
+:%*,1,5$获取1mg推理素
 :%,5#False->(eq 0b 1b)[n]#t
-:%,2$获取2mg推理素
+:%,2$获取1mg推理素
 :ttBool,3$[[ttindBool]]解锁ind_Bool[n]提示：后方可解锁[n]ind_nat与[n]策略destruct
 :%,3@类型Bool有值0b和1b[n]要证对任意x:Bool成立[n]只需对0b与1b均成立[n]引入ind_Bool作为[n]该事实的证据
 :%*,4@提示：需分别证明[n]1. (not (eq 0b 0b))[n]->(eq 0b 1b)；[n]2. (not (eq 1b 0b))[n]->(eq 1b 1b)。[n]还有困难可交钱给更多提示
-:%*,4,5#通过此门需消耗推理素2mg
+:%*,4,5#通过此门需消耗推理素0.5mg
 :%*,4,5,3@ind_Bool函数首先接受[n]一个关于x:Bool的命题[n]然后分别接受对0b与1b[n]成立的命题证据[n]最后返回该命题的证据
 :%*,4,5,4@看看值“ind_Bool [n](Lx:Bool.(not (eq x 0b))[n]->(eq x 1b))”的类型[n]它将提醒你还需要[n]提供哪些参数
 :%*,4,5,4,5@1.要证关于0b的命题[n]可通过假设“not (eq 0b 0b)”[n]得到一个False类型的值[n]然后用否定爆炸ind_False即可；[n]2.要证关于1b的命题则很简单
 :%,5#Px:Bool,[n](not (eq x 0b))[n]->(eq x 1b)[n]#t
-:%*,3$获取10mg推理素
+:%*,3$获取2mg推理素
 
 // nat 递归函数
 
@@ -955,7 +955,7 @@ export const mapData = `
 :%,5#Px:nat,eq (double (succ x))[n](succ (succ (double x)))[n]#t
 :%,5#Px:nat,eq (add x 0) x[n]#t
 :%*,0@来都来了，[n]这点小钱都出不起吗？[n]赶紧交钱，[n]不然你自己想办法过去
-:%*,0,2#通过此门需消耗推理素7.777mg
+:%*,0,2#通过此门需消耗推理素4.444mg
 :%,5#[[0+x]]Px:nat,eq (add 0 x) x[n]#t
 :%*,4#Sf:nat->nat,[n](eq (f 0) 0) X[n](Pn:nat,eq (f(succ n)) n)[n]#t
 :%*,4,1$[[ttpred]]解锁“前继”函数[n]pred : nat->nat
@@ -971,12 +971,12 @@ export const mapData = `
 :%*,1,4#Pa:nat,eq a (pred (succ a))[n]#t
 :%*,1,4,4#Pa:nat,Pb:nat,[n](eq (succ a) (succ b))[n]->(eq (pred (succ a)) (pred (succ b)))[n]#t
 :%,2#Pa:nat,Pb:nat,[n](eq (succ a) (succ b))[n]->(eq a b)[n]#t
-:%*,5$获取10mg推理素
+:%*,5$获取3mg推理素
 :%,2#not (eq 0 1)[n]#t
 :%,5#[[1neq2]]not (eq 1 2)[n]#t
 :%*,5$[[ttap]]解锁常见相等类型证据[n]ap/trans/apd
 :%*,5,2@1.ap是x=y推出[n]f(x)=f(y)的证据[n]2.trans是若x=y，则命题对x成立[n]就能推出对y成立的证据[n]3.apd是ap的依赖类型函数版本[n]由于x与y可以不定义相等[n]故若f(x)与f(y)类型不同[n]无法直接用eq比较相等[n]需要通过trans函数转换到[n]同一类型后才能用eq比较
-:%*,2$获取11.2mg推理素
+:%*,2$获取5.2mg推理素
 :%,0$[[ttS1]]解锁圆周类型[n]S1[n](高阶同伦归纳类型)
 :%,0,4#[[S1S1]]eq (refl base)[n](compeq loop (inveq loop))[n]#t
 :%,3$[[tteqv]]解锁“等价”关系[n]eqv: U->U->U

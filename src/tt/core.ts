@@ -312,20 +312,24 @@ export class Core {
             }
             const tap = this.check(ast.nodes[1], context, ignoreErr);
             if (!tfn || !tap) return;
-            if (!tfn.nodes) this.error(ast, TR("非函数尝试作用"), ignoreErr);
-            if (!this.equal(tfn.nodes[0], tap, context)) {
-                this.error(ast, TR("函数作用类型不匹配"), ignoreErr);
-                // ast.checked = wrapVar("函数作用类型不匹配");
+            // if (!tfn.nodes) this.error(ast, TR("非函数尝试作用"), ignoreErr);
+            if (tfn.nodes && this.equal(tfn.nodes[0], tap, context)) {
+                if (tfn.type === "->") {
+                    // reffering
+                    ast.checked = tfn.nodes[1];
+                } else if (tfn.type === "P") {
+                    const repl = Core.clone(tfn.nodes[1]);
+                    // reffering
+                    this.replaceVar(repl, tfn.name, ast.nodes[1]);
+                    this.reduce(repl);
+                    ast.checked = repl;
+                }
+                return ast.checked;
             }
-            else if (tfn.type === "->") {
-                // reffering
-                ast.checked = tfn.nodes[1];
-            } else if (tfn.type === "P") {
-                const repl = Core.clone(tfn.nodes[1]);
-                // reffering
-                this.replaceVar(repl, tfn.name, ast.nodes[1]);
-                this.reduce(repl);
-                ast.checked = repl;
+            const id = this.state.inferId;
+            if (this.equal(tfn, wrapLambda("P", "_", tap, wrapVar("?" + (this.state.inferId++))), context)) {
+                ast.checked = this.state.inferValues["?" + id];
+                return ast.checked;
             } else {
                 this.error(ast, TR("非函数尝试作用"), ignoreErr);
             }
@@ -917,6 +921,46 @@ export class Compute {
                     modified = true; continue;
                 }
             }
+
+            // ind_Sum c cinl cinr (inl x) := cinl x
+            if (fn === "ind_Sum" && matched.length > 5) {
+                if (matched[5].nodes?.[0].name === "inl") {
+                    let tail = matched.length - 6;
+                    while (tail--) ast = ast.nodes[0];
+                    Core.assign(ast, wrapApply(matched[3], matched[5].nodes[1]), true);
+                    modified = true; continue;
+                } else if (matched[5].nodes?.[0].name === "inr") {
+                    let tail = matched.length - 6;
+                    while (tail--) ast = ast.nodes[0];
+                    Core.assign(ast, wrapApply(matched[4], matched[5].nodes[1]), true);
+                    modified = true; continue;
+                }
+            }
+            if (fn === "@ind_Sum" && matched.length > 10) {
+                if (matched[10].nodes?.[0].name === "inl") {
+                    let tail = matched.length - 11;
+                    while (tail--) ast = ast.nodes[0];
+                    Core.assign(ast, wrapApply(matched[8], matched[10].nodes[1]), true);
+                    modified = true; continue;
+                } else if (matched[10].nodes?.[0].name === "inr") {
+                    let tail = matched.length - 11;
+                    while (tail--) ast = ast.nodes[0];
+                    Core.assign(ast, wrapApply(matched[9], matched[10].nodes[1]), true);
+                    modified = true; continue;
+                }
+            }
+
+            // ind_S1 c cb cl base := cb
+            // apd (ind_S1 c cb cl) loop := cb
+            if (fn === "ind_S1" && matched.length > 5) {
+                if (matched[5].name === "base") {
+                    let tail = matched.length - 6;
+                    while (tail--) ast = ast.nodes[0];
+                    Core.assign(ast, matched[3], true);
+                    modified = true; continue;
+                }
+            }
+
             // indEqa A _ c a refla := 
             if (fn === "ind_eq" && matched.length > 6) {
                 if (matched[6].name === "rfl") {
@@ -1074,7 +1118,7 @@ export class Compute {
                         // remove inner succ
                         Core.assign(dstrct, dstrct.nodes[1], true);
                         // add outter add
-                        Core.assign(ast, wrapApply(wrapApply(wrapVar("add"),ast), matched[2])); // when wrap, soor move
+                        Core.assign(ast, wrapApply(wrapApply(wrapVar("add"), ast), matched[2])); // when wrap, soor move
                         modified = true; continue;
                     } catch (e) { }
                 }
