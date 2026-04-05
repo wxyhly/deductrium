@@ -343,6 +343,10 @@ export class Core {
                 }
                 return ast.checked;
             }
+            else if (tfn.type === "->" || tfn.type === "P") {
+                this.error(ast, TR("函数作用类型不匹配"), ignoreErr);
+                return ast.checked;
+            }
             const id = this.state.inferId;
             if (this.equal(tfn, wrapLambda("P", "_", tap, wrapVar("?" + (this.state.inferId++))), context)) {
                 ast.checked = this.state.inferValues["?" + id];
@@ -912,11 +916,11 @@ export class Compute {
                 Core.assign(ast, wrapVar("rfl"), true);
                 continue;
             }
-            if (fn === "refl" && matched.length > 2) {
-                tempReduce.push([ast, Core.clone(ast)]);
-                Core.assign(ast, wrapVar("rfl"), true);
-                continue;
-            }
+            // if (fn === "refl" && matched.length > 2) {
+            //     tempReduce.push([ast, Core.clone(ast)]);
+            //     Core.assign(ast, wrapVar("rfl"), true);
+            //     continue;
+            // }
             // temporal reduce, for later matching (e.g. ind_Prod ... @pair)
             if (fn === "@pair" && matched.length > 4) {
                 let tail = matched.length - 5;
@@ -1035,13 +1039,65 @@ export class Compute {
                 }
             }
             // ind_S1 c cb cl base := cb
-            // apd (ind_S1 c cb cl) loop := cb
             if (fn === "ind_S1" && matched.length > 5) {
                 if (matched[5].name === "base") {
                     let tail = matched.length - 6;
                     while (tail--)
                         ast = ast.nodes[0];
                     Core.assign(ast, matched[3], true);
+                    modified = true;
+                    continue;
+                }
+            }
+            // apd c (ind_S1 c cb cl) loop := cl
+            if (fn === "apd" && matched.length > 4) {
+                if (matched[4].name === "loop" && matched[3].nodes?.[0]?.nodes?.[0]?.nodes?.[0].name === "ind_S1") {
+                    let tail = matched.length - 5;
+                    while (tail--)
+                        ast = ast.nodes[0];
+                    Core.assign(ast, matched[3].nodes[1], true);
+                    modified = true;
+                    continue;
+                }
+            }
+            if (fn === "@apd" && matched.length > 7) {
+                if (matched[7].name === "loop" && matched[6].nodes?.[0]?.nodes?.[0]?.nodes?.[0].name === "ind_S1") {
+                    let tail = matched.length - 8;
+                    while (tail--)
+                        ast = ast.nodes[0];
+                    Core.assign(ast, matched[6].nodes[1], true);
+                    modified = true;
+                    continue;
+                }
+            }
+            if (fn === "apd" && matched.length > 4) {
+                // apd c f (refl x) := refl (f x)
+                if (matched[4].nodes?.[0]?.name === "refl") {
+                    let tail = matched.length - 5;
+                    while (tail--)
+                        ast = ast.nodes[0];
+                    Core.assign(matched[4].nodes[1], wrapApply(matched[3], matched[4].nodes[1]));
+                    Core.assign(ast, matched[4], true);
+                    modified = true;
+                    continue;
+                }
+                // apd c f rfl := rfl
+                if (matched[4].name === "rfl") {
+                    let tail = matched.length - 5;
+                    while (tail--)
+                        ast = ast.nodes[0];
+                    Core.assign(ast, matched[4], true);
+                    modified = true;
+                    continue;
+                }
+            }
+            // trans c rfl a := a
+            if (fn === "trans" && matched.length > 4) {
+                if (matched[3].name === "rfl" || matched[3].nodes?.[0]?.name === "refl") {
+                    let tail = matched.length - 5;
+                    while (tail--)
+                        ast = ast.nodes[0];
+                    Core.assign(ast, matched[4], true);
                     modified = true;
                     continue;
                 }

@@ -859,6 +859,9 @@ export class TTGui {
                 this.autofillTactics(assist);
             }
             catch (e) {
+                if (typeof e === "object") {
+                    e = TR("当前策略因未知表达式错误执行失败");
+                }
                 document.getElementById("tactic-errmsg").innerText = e;
             }
             let astShow;

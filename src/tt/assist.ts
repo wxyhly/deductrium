@@ -14,18 +14,6 @@ export class Assist {
         this.elem = { type: "var", name: "(?#0)", checked: target };
         this.goal = [{ context: {}, type: target, ast: this.elem }];
     }
-    ls() {
-        // console.log(this.goal.length + "个证明目标：");
-        // const logGoal = (goal: { context: Context, type: AST, ast: AST }) => {
-        //     for (const [k, v] of Object.entries(goal.context)) {
-        //         console.log("  " + k + " : " + core.print(v));
-        //     }
-        //     console.log("-------------------");
-        //     console.log(core.print(goal.type));
-        // }
-        // this.goal.forEach(g => logGoal(g));
-        // return this;
-    }
     markTargets() {
         let count = 0;
         for (const g of this.goal) {
@@ -78,7 +66,7 @@ export class Assist {
         const defs1 = Object.keys(core.state.userDefs);
         const defs2 = Object.keys(core.state.sysDefs);
         const defs = new Set([...defs1, ...defs2]);
-        const ignore = new Set(["add", "mul", "addO", "mulO", "leqO", "pair", "natO"]);
+        const ignore = new Set(["add", "mul", "addO", "mulO", "leqO", "pair", "natO", "eq"]);
         for (const v of defs) {
             if (vars.has(v)) {
                 if (ignore.has(v) || v.startsWith("ind_")) continue;
@@ -110,7 +98,7 @@ export class Assist {
     }
     isIndType(typ: AST) {
         return (typ.name === "nat" || typ.name === "Bool" || typ.name === "True" || typ.name === "False"
-            || typ.type === "+" || typ.type === "X" || typ.type === "S");
+            || typ.type === "+" || typ.type === "X" || typ.type === "S") || typ.nodes?.[0]?.nodes?.[0]?.name === "eq";
     }
     intro(s: string) {
         if (!s) throw TR("意外的空表达式");
@@ -148,10 +136,16 @@ export class Assist {
         if (typeof ast === "string") { ast = parser.parse(ast); }
         const goal = this.goal.shift();
         if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
-        const astType = core.check(ast, goal.context, false);
-        if (core.equal(astType, goal.type, goal.context)) {
-            Core.assign(goal.ast, ast);
-            return this;
+        let astType;
+        try {
+            astType = core.check(ast, goal.context, false);
+            if (core.equal(astType, goal.type, goal.context)) {
+                Core.assign(goal.ast, ast);
+                return this;
+            }
+        } catch (e) {
+            this.goal.unshift(goal);
+            throw e;
         }
         if (astType.type !== "P" && astType.type !== "->") {
             this.goal.unshift(goal);
@@ -177,7 +171,13 @@ export class Assist {
         if (!eq) throw TR("请输入用于改写的相等假设");
         const goal = this.goal.shift();
         if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
-        const matched = Core.match(core.check(eq, goal.context, false), parser.parse("eq $2 $3"), /^\$/) || Core.match(core.check(eq, goal.context, false), parser.parse("@eq $0 $1 $2 $3"), /^\$/);
+        let matched: { [variable: string]: AST; };
+        try {
+            matched = Core.match(core.check(eq, goal.context, false), parser.parse("eq $2 $3"), /^\$/) || Core.match(core.check(eq, goal.context, false), parser.parse("@eq $0 $1 $2 $3"), /^\$/);
+        } catch (e) {
+            this.goal.unshift(goal);
+            throw e;
+        }
         if (!matched) {
             this.goal.unshift(goal);
             throw TR("使用rewrite策略必须提供一个相等类型");
@@ -212,7 +212,13 @@ export class Assist {
         if (!eq) throw TR("请输入用于改写的相等假设");
         const goal = this.goal.shift();
         if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
-        const matched = Core.match(core.check(eq, goal.context, false), parser.parse("eq $2 $3"), /^\$/) || Core.match(core.check(eq, goal.context, false), parser.parse("@eq $0 $1 $2 $3"), /^\$/);
+        let matched: { [variable: string]: AST; };
+        try {
+            matched = Core.match(core.check(eq, goal.context, false), parser.parse("eq $2 $3"), /^\$/) || Core.match(core.check(eq, goal.context, false), parser.parse("@eq $0 $1 $2 $3"), /^\$/);
+        } catch (e) {
+            this.goal.unshift(goal);
+            throw e;
+        }
         if (!matched) {
             this.goal.unshift(goal);
             throw TR("使用rewrite策略必须提供一个相等类型");
@@ -371,6 +377,26 @@ export class Assist {
             Core.assign(goal.ast, newAst);
             core.replaceVar(goal.type, n, { type: "var", name: "true" });
             goal.ast = goal.ast.nodes[0].nodes[1];
+            this.goal.unshift(goal);
+            delete goal.context[n];
+        } else if (nType.nodes?.[0]?.nodes?.[0]?.name === "eq") {
+            const x = nType.nodes?.[0]?.nodes?.[1];
+            const y = nType.nodes?.[1];
+            matched["$x"] = Core.clone(x);
+            matched["$y"] = Core.clone(y);
+            matched["$typex"] = core.check(x, goal.context, false);
+            const ny = Core.getNewName(y.type === "var" ? y.name : "y", new Set(Object.keys(goal.context)));
+            // m: eq f(x) f(y)
+            // ind_eq f(x) Ly':T.Lm:eq f(x) y'.goal[f(y)/y']??.
+            let newAst = parser.parse(`ind_eq $x (L${ny}:$typex.L${n}:eq $x ${ny}.$1) (?#0) $y $nast`);
+            matched["$1"] = this.genReplaceFn(matched["$1"], y, ny);
+            Core.replaceByMatch(newAst, matched, /^\$/);
+            Core.assign(goal.ast, newAst);
+            core.replaceVar(goal.type, n, wrapApply(wrapVar("refl"), matched["$x"]));
+            const replaced = this.genReplaceFn(goal.type, y, ny);
+            Core.replaceByMatch(replaced, { [ny]: x }, /./);
+            Core.assign(goal.type, replaced);
+            goal.ast = goal.ast.nodes[0].nodes[0].nodes[1];
             this.goal.unshift(goal);
             delete goal.context[n];
         } else if (nType.name === "False") {

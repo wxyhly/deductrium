@@ -221,6 +221,7 @@ class LangMgr {
         "目标": "Goal ",
         "当前目标：": "Current goal: ",
         "：": ": ",
+        "当前策略因未知表达式错误执行失败": "Current strategy failed due to unknown expression error",
         "表达式因错误而丢失": "Expression lost due to error",
         "类型": "TYPE",
         "构造": "CTOR",

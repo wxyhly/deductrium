@@ -66,7 +66,7 @@ export function initTypeSystem() {
     addRule("_类型", "eq");
     addRule("@构造", "@refl : Pu:U@,Pa:Uu,Px:a,@eq u a x x");
     addRule("@构造", "refl := @refl _ _");
-    addRule("@构造", "rfl := @refl _ _ _");
+    addRule("@构造", "rfl := refl _");
     addRule("_构造", "refl");
     addRule("_构造", "rfl");
     addRule("@解构", "@ind_eq : Pu:U@,Pv:U@,Pa:Uu,Px:a,PC:Py:a,(@eq u a x y)->Uv,Pc:C x (@refl u a x),Py:a,Pm:@eq u a x y,C y m");
@@ -82,7 +82,7 @@ export function initTypeSystem() {
     addRule("定义", "ap:=@ap _ _ _ _");
     addRule("定义", "@trans:=La:U_.Lx:a.Ly:a.Lb:a->U_.ind_eq x (Ly:a.Lm:eq x y.(b x)->(b y)) (Lx:b x.x) y");
     addRule("定义", "trans:=@trans _ _ _");
-    addRule("定义", "@apd:=La:U_.Lx:a.Ly:a.Lb:a->U_.Lf:Px:a,b x.Lp:eq x y.ind_eq x (Ly:a.Lp:eq x y. eq (@trans a x y b p (f x)) (f y)) (refl (f x)) y p");
+    addRule("定义", "@apd:=La:U_.Lx:a.Ly:a.Lb:a->U_.Lf:Px:a,b x.Lp:eq x y.ind_eq x (Ly:a.Lp:eq x y. eq (trans b p (f x)) (f y)) (refl (f x)) y p");
     addRule("定义", "apd:=@apd _ _ _");
     addRule("定义", "@inveq:=La:U_.Lx:a.ind_eq x (Ly:a.Lm:eq x y.eq y x) rfl");
     addRule("定义", "inveq:=@inveq _ _ _");
