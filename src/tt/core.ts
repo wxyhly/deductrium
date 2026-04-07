@@ -756,8 +756,8 @@ class UniverseLevel {
     }
     static succ(ast: AST) {
         const u = UniverseLevel.get(ast);
-        if (typeof u === "number") {
-            return wrapU("@" + String(u + 1));
+        if (typeof u === "bigint") {
+            return wrapU("@" + String(u + 1n));
         }
         if (u === false) throw TR("尝试对非全类操作层级");
         return {
@@ -774,8 +774,8 @@ class UniverseLevel {
     static max(a: AST, b: AST) {
         const u = UniverseLevel.get(a);
         const v = UniverseLevel.get(b);
-        if (typeof u === "number" && typeof v === "number") {
-            return wrapApply(wrapVar("U"), wrapVar("@" + String(Math.max(u, v))));
+        if (typeof u === "bigint" && typeof v === "bigint") {
+            return wrapApply(wrapVar("U"), wrapVar("@" + String(u > v ? u : v)));
         }
         if (u === false || v === false) throw TR("尝试对非全类操作层级");
         if (a.type === "var" || b.type === "var") return wrapApply(wrapVar("U"), wrapVar("?"));
@@ -789,9 +789,9 @@ class UniverseLevel {
         };
     }
     /** check whether ast is universe, return its level number, if level is not given return true, if it is not universe, return false */
-    static get(ast: AST): number | boolean {
+    static get(ast: AST): bigint | boolean {
         if (ast.type === "var" && ast.name === "U") {
-            return 0;
+            return 0n;
         }
         if (ast.type === "var" && ast.name.endsWith(":")) {
             // an unknown inffered type
@@ -800,7 +800,7 @@ class UniverseLevel {
         if (ast.type === "apply" && ast.nodes[0].name === "U") {
             if (ast.nodes[1].name[0] === "@") {
                 const s = ast.nodes[1].name.slice(1);
-                if (NatLiteral.is(s)) return Number(s);
+                if (NatLiteral.is(s)) return BigInt(s);
             }
             return true;
         }
