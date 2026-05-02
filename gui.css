@@ -449,8 +449,11 @@ div.hintbar {
     border: 0;
     background-color: #AAA;
     color: white;
-    width: 20px;
+    overflow: hidden;
     margin-right: 1px;
+}
+.inhabitat-modify:hover {
+    color: #8F0;
 }
 
 .inhabitat-div {

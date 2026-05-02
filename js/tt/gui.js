@@ -510,7 +510,7 @@ export class TTGui {
         }
         return currentIdx ?? arr.indexOf(input);
     }
-    updateInhabitList() {
+    updateInhabitList(insertPos) {
         const input = document.createElement("input");
         const div = document.createElement("div");
         const button = document.createElement("button");
@@ -537,11 +537,16 @@ export class TTGui {
             wrapper.classList.remove("error");
             wrapper.classList.remove("infering");
             if (!input.value.trim()) {
-                if (nextInput && ev["updateDefs"]) {
+                const current = this.getInhabitatArray().indexOf(input);
+                const [removed] = this.userDefinedConsts.splice(current, 1);
+                wrapper.remove();
+                if (removed)
+                    macro.delete(removed[0]);
+                if (nextInput && (removed || ev["updateDefs"]))
                     nextInput.onblur({ updateDefs: true });
-                }
                 return;
             }
+            this.userDefinedConsts[currentIdx] = null;
             let ast;
             let parseError = "";
             let error = "";
@@ -553,8 +558,8 @@ export class TTGui {
                 wrapper.classList.add("error");
             }
             if (!ast && !parseError) {
-                if (nextInput) {
-                    nextInput.onblur({});
+                if (nextInput && ev["updateDefs"]) {
+                    nextInput.onblur({ updateDefs: true });
                 }
                 return false;
             }
@@ -664,23 +669,15 @@ export class TTGui {
             }
         });
         button.classList.add("inhabitat-modify");
-        button.innerText = "-";
+        button.innerText = "+";
         const wrapper = document.createElement("div");
         wrapper.classList.add("wrapper");
-        this.inhabitList.insertBefore(wrapper, document.getElementById("add-btn"));
+        this.inhabitList.insertBefore(wrapper, insertPos ?? document.getElementById("add-btn"));
         wrapper.appendChild(button);
         wrapper.appendChild(input);
         wrapper.appendChild(div);
         button.addEventListener("click", () => {
-            const current = this.getInhabitatArray().indexOf(input);
-            const [removed] = this.userDefinedConsts.splice(current, 1);
-            wrapper.remove();
-            if (removed)
-                macro.delete(removed[0]);
-            const next = this.getInhabitatArray()[current];
-            if (next && removed)
-                next.onblur({ updateDefs: true });
-            this.onStateChange();
+            this.updateInhabitList(wrapper);
         });
         input.focus();
     }

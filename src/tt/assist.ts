@@ -364,14 +364,14 @@ export class Assist {
             this.goal.unshift(goal); throw e;
         }
         if (!this.isIndType(nType)) { this.goal.unshift(goal); throw TR("只能解构归纳类型的变量"); }
-        for (const [k, v, id] of goal.context) {
-            if (Core.getFreeVars(v).has(n)) {
-                if (Core.getFreeVars(goal.type).has(k)) {
-                    this.goal.unshift(goal); throw TR("解构失败：其它变量依赖该变量");
-                }
-                // delete goal.context[k];
-            }
-        }
+        // for (const [k, v, id] of goal.context) {
+        //     if (Core.getFreeVars(v).has(n)) {
+        //         if (Core.getFreeVars(goal.type).has(k)) {
+        //             this.goal.unshift(goal); throw TR("解构失败：其它变量依赖该变量");
+        //         }
+        //         // delete goal.context[k];
+        //     }
+        // }
         const excludedSet = new Set(goal.context.map(e => e[0]));
 
         const matched = { "$1": Core.clone(goal.type), "$nast": nast, "$typeN": nType };

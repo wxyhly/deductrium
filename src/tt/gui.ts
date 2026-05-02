@@ -464,7 +464,7 @@ export class TTGui {
         return currentIdx ?? arr.indexOf(input);
     }
 
-    updateInhabitList() {
+    updateInhabitList(insertPos?: HTMLDivElement) {
         const input = document.createElement("input");
 
         const div = document.createElement("div");
@@ -482,7 +482,7 @@ export class TTGui {
         // todo: when remove a ":=", must be updated, so input must record value before edited
         // todo: left btn is to drag order(click: add new line after it), if trim ast str is empty, then remove it aotomatically
         input.onblur = ev => {
-            if(!ev["updateDefs"]) ev["updateDefs"] = input["needUpdate"];
+            if (!ev["updateDefs"]) ev["updateDefs"] = input["needUpdate"];
             delete input["needUpdate"];
             this.onStateChange();
             const currentIdx = this.getHottDefCtxt(input);
@@ -492,11 +492,14 @@ export class TTGui {
             wrapper.classList.remove("error");
             wrapper.classList.remove("infering");
             if (!input.value.trim()) {
-                if (nextInput && ev["updateDefs"]) {
-                    nextInput.onblur({ updateDefs: true } as any);
-                }
+                const current = this.getInhabitatArray().indexOf(input);
+                const [removed] = this.userDefinedConsts.splice(current, 1);
+                wrapper.remove();
+                if (removed) macro.delete(removed[0]);
+                if (nextInput && (removed || ev["updateDefs"])) nextInput.onblur({ updateDefs: true } as any);
                 return;
             }
+            this.userDefinedConsts[currentIdx] = null;
             let ast: AST;
             let parseError = "";
             let error = "";
@@ -507,8 +510,8 @@ export class TTGui {
                 wrapper.classList.add("error");
             }
             if (!ast && !parseError) {
-                if (nextInput) {
-                    nextInput.onblur({} as any);
+                if (nextInput && ev["updateDefs"]) {
+                    nextInput.onblur({ updateDefs: true } as any);
                 }
                 return false;
             }
@@ -602,27 +605,21 @@ export class TTGui {
                 this.executeTactic(input.value);
             } else {
                 input.classList.remove("hide");
-                input["needUpdate"] = input.value.includes(":="); 
+                input["needUpdate"] = input.value.includes(":=");
                 input.focus();
                 div.classList.add("hide");
             }
         });
         button.classList.add("inhabitat-modify");
-        button.innerText = "-";
+        button.innerText = "+";
         const wrapper = document.createElement("div");
         wrapper.classList.add("wrapper");
-        this.inhabitList.insertBefore(wrapper, document.getElementById("add-btn"));
+        this.inhabitList.insertBefore(wrapper, insertPos ?? document.getElementById("add-btn"));
         wrapper.appendChild(button);
         wrapper.appendChild(input);
         wrapper.appendChild(div);
         button.addEventListener("click", () => {
-            const current = this.getInhabitatArray().indexOf(input);
-            const [removed] = this.userDefinedConsts.splice(current, 1);
-            wrapper.remove();
-            if (removed) macro.delete(removed[0]);
-            const next = this.getInhabitatArray()[current];
-            if (next && removed) next.onblur({ updateDefs: true } as any);
-            this.onStateChange();
+            this.updateInhabitList(wrapper);
         });
         input.focus();
     }
