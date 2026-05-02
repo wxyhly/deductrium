@@ -97,6 +97,10 @@ export function initTypeSystem() {
     addRule("定义", "inveq:=@inveq _ _ _");
     addRule("定义", "@compeq:=La:U_.Lx:a.Ly:a.Lz:a.ind_eq x (Ly:a.Lm:eq x y.(eq y z)->(eq x z)) (Lm:eq x z.m) y");
     addRule("定义", "compeq:=@compeq _ _ _ _");
+    addRule("定义", "@transconst:=λa:U.λb:U.λx:a.λy:a.λm:eq x y.λk:b.ind_eq x (λy':a.(λm:eq x y'.eq (trans (λx:a.b) m k) k)) rfl y m");
+    addRule("定义", "transconst:=@transconst _ _ _ _");
+    addRule("定义", "@ap_apd:=λa:U.λb:U.λx:a.λy:a.λf:a→b.λp:eq x y.ind_eq x (λy':a.(λp:eq x y'.eq (apd (λx:a.b) f p) (compeq (transconst p (f x)) (ap f p)))) rfl y p");
+    addRule("定义", "ap_apd:=@ap_apd _ _ _ _");
 
 
     typeName = "Prod";

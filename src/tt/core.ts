@@ -426,6 +426,7 @@ export class Core {
                     delete infered.checked;
                     this.state.errormsg.pop();
                 }
+                this.markAndCheckInferedValue(infered, context);
                 ast.checked = { type: ":", nodes: [infered, infered.checked ?? wrapVar("_")], name: "" };
             } else {
                 Core.assign(ast, ori, true);
@@ -439,6 +440,9 @@ export class Core {
                         [ast.name, ast.nodes[0], ast.bondVarId], context
                     ) : context
                 );
+            }
+            if (ast.type === "var" && ast.name[0] === "?" && this.state.inferTable.solved.has(ast.name)) {
+                Core.assign(ast, Core.clone(this.state.inferTable.rel[ast.name], true));
             }
         }
     }
@@ -748,7 +752,14 @@ export class Core {
                 // add a succ(b) -> succ(add a b)
                 if (fn === "add") { Core.assign(ast, wrapApply(wrapVar("succ"), wrapApply(list[0], list[1], list[2].nodes[1]))); return true; }
                 // mul a succ(b) -> add(mul(a b) a)
-                if (fn === "mul") { Core.assign(ast, wrapApply(wrapVar("add"), wrapApply(list[0], list[1], list[2].nodes[1]), Core.clone(list[1],true))); return true; }
+                if (fn === "mul") { Core.assign(ast, wrapApply(wrapVar("add"), wrapApply(list[0], list[1], list[2].nodes[1]), Core.clone(list[1], true))); return true; }
+            }
+            if (list[2].nodes?.[0]?.name === "0") {
+                // add a 0 -> a
+                if (fn === "add") { Core.assign(ast, list[1]); return true; }
+                // mul a 0 -> 0
+                if (fn === "mul") { Core.assign(ast, wrapVar("0")); return true; }
+                if (fn === "pow") { Core.assign(ast, wrapVar("1")); return true; }
             }
             if (!NatLiteral.is(list[1]) || !NatLiteral.is(list[2])) return false;
             try {
