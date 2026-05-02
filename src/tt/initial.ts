@@ -23,6 +23,7 @@ export function initTypeSystem() {
     addRule("@解构", "ind_True := @ind_True _");
     addRule("_解构", "ind_True");
     addRule("计算", "ind_True ?C ?ctrue true === ?ctrue");
+    addRule("@计算", "@ind_True _ _ ?ctrue true === ?ctrue");
 
     typeName = "False";
     addRule("类型", "False:U");
@@ -42,6 +43,9 @@ export function initTypeSystem() {
     addRule("_解构", "ind_Bool");
     addRule("计算", "ind_Bool ?C ?c0b ?c1b 0b === ?c0b");
     addRule("计算", "ind_Bool ?C ?c0b ?c1b 1b === ?c1b");
+    
+    addRule("@计算", "@ind_Bool _ _ ?c0b _ 0b === ?c0b");
+    addRule("@计算", "@ind_Bool _ _ _ ?c1b 1b === ?c1b");
 
     typeName = "nat";
     addRule("类型", "nat:U");
@@ -52,11 +56,14 @@ export function initTypeSystem() {
     addRule("_解构", "ind_nat");
     addRule("计算", "ind_nat ?C ?c0 ?csucc 0 === ?c0");
     addRule("计算", "ind_nat ?C ?c0 ?csucc (succ ?n) === ?csucc ?n (ind_nat ?C ?c0 ?csucc ?n)");
+    addRule("@计算", "@ind_nat _ _ ?c0 _ 0 === ?c0");
+    addRule("@计算", "@ind_nat ?u ?C ?c0 ?csucc (succ ?n) === ?csucc ?n (@ind_nat ?u ?C ?c0 ?csucc ?n)");
     typeName = "(nat)";
     addRule("定义", "pred:=ind_nat (Lx:nat.nat) 0 (Lx:nat.Ly:nat.x)");
     addRule("定义", "double:=ind_nat (Lx:nat.nat) 0 (Ly:nat.Lz:nat.succ (succ z))");
-    addRule("定义", "add:=Lx:nat.Ly:nat.ind_nat (Lx:nat.nat->nat) (Lx:nat.x) (Ly:nat.Lh:nat->nat.Lx:nat.succ (h x))y x");
-    addRule("定义", "mul:=Lx:nat.Ly:nat.ind_nat (Lx:nat.nat->nat) (Lx:nat.0) (Ly:nat.Lh:nat->nat.Lx:nat.add (h x) x)y x");
+    addRule("定义", "add:=Lx:nat.ind_nat (Ly:nat.nat) x (Lx:nat.succ)");
+    addRule("定义", "mul:=Lx:nat.ind_nat (Ly:nat.nat) 0 (Lk:nat.Ln:nat.add n x)");
+    addRule("定义", "pow:=Lx:nat.ind_nat (Ly:nat.nat) 1 (Lk:nat.Ln:nat.mul n x)");
     addRule("定义", "encode_nat:=ind_nat (Lx:nat.nat->U ) (ind_nat (Ly:nat.U ) True (Lz:nat.Lz':U .False ))  (Ly':nat,Lfn:nat->U.(ind_nat (Ly:nat.U ) False (Lz:nat.Lz':U .fn z )))");
 
 
@@ -72,7 +79,9 @@ export function initTypeSystem() {
     addRule("@解构", "@ind_eq : Pu:U@,Pv:U@,Pa:Uu,Px:a,PC:Py:a,(@eq u a x y)->Uv,Pc:C x (@refl u a x),Py:a,Pm:@eq u a x y,C y m");
     addRule("@解构", "ind_eq := @ind_eq _ _ _");
     addRule("_解构", "ind_eq");
-    addRule("计算", "ind_eq ?x ?C ?crfl ?x (refl ?x) === ?crlf");
+    addRule("计算", "ind_eq ?x ?C ?crfl ?x (refl ?x) === ?crfl");
+    addRule("@计算", "ind_eq _ _ ?crfl _ (@refl ?1 ?2 ?3) === ?crfl");
+    addRule("@计算", "@ind_eq _ _ _ _ _ ?crfl _ (@refl ?1 ?2 ?3) === ?crfl");
     addRule("@解构", "@ind_eq2 : Pu:U@,Pv:U@,Pa:Uu,PC:Px:a,Py:a,(@eq u a x y)->Uv,Pc:Px:a,C x x (@refl u a x),Px:a,Py:a,Pm:@eq u a x y,C x y m");
     addRule("@解构", "ind_eq2 := @ind_eq2 _ _ _");
     addRule("_解构", "ind_eq2");
@@ -96,26 +105,28 @@ export function initTypeSystem() {
     addRule("@类型", "?A X ?B := @Prod _ _ ?A (Lx:?A.?B)");
     addRule("_类型", "Sx:?A,?B x");
     addRule("_类型", "?A X ?B := Sx:?A,?B");
-    addRule("@构造", "@pair : Pu:U@,Pv:U@,Pa:Uu,Pb:a->Uv,Pxa:a,Pxb:b xa,Sx:a,b x");
+    addRule("@构造", "@pair : Pu:U@,Pv:U@,Pa:Uu,Pb:a->Uv,Pxa:a,Pxb:b xa,@Prod u v a (Lx:a,b x)");
     addRule("@构造", "pair := @pair _ _ _");
     addRule("_构造", "pair");
     addRule("构造", "(?a,?b) := pair (Lx:?a：.?b：) ?a ?b");
-    addRule("@解构", "@ind_Prod : Pu:U@,Pv:U@,Pw:U@,Pa:Uu,Pb:a->Uv,PC:(Sx:a,b x)->Uw,(Pxa:a,Pxb:b xa,(C (pair b xa xb)))->(Px:Sx:a,b x,C x)");
+    addRule("@解构", "@ind_Prod : Pu:U@,Pv:U@,Pw:U@,Pa:Uu,Pb:a->Uv,PC:(@Prod u v a (Lx:a,b x))->Uw,(Pxa:a,Pxb:b xa,(C (@pair u v a b xa xb)))->(Px:@Prod u v a (Lx:a,b x),C x)");
     addRule("@解构", "ind_Prod := @ind_Prod _ _ _ _");
     addRule("_解构", "ind_Prod");
     addRule("计算", "ind_Prod ?b ?C ?c (pair ?b ?xa ?xb) === ?c ?xa ?xb");
+    addRule("@计算", "ind_Prod _ _ ?c (@pair ?1 ?2 ?3 ?4 ?xa ?xb) === ?c ?xa ?xb");
+    addRule("@计算", "@ind_Prod _ _ _ _ _ _ ?c (@pair ?1 ?2 ?3 ?4 ?xa ?xb) === ?c ?xa ?xb");
     typeName = "(Prod)";
-    addRule("定义", "@pr0:=La:U_.Lb:U_.ind_Prod (Lx:a.b) (Lx:aXb.a) (Lx:a.Ly:b.x)");
+    addRule("定义", "@pr0:=La:U_.Lb:a->U_.ind_Prod (Lx:a.b x) (Lx:Sz:a,b z.a) (Lx:a.Ly:b x.x)");
     addRule("定义", "pr0:=@pr0 _ _");
-    addRule("定义", "@prd1:=La:U_.Lb:a->U_.ind_Prod b (Lm:Sz:a,b z.b (pr0 m)) (Lxa:a.Lxb:b xa.xb)");
-    addRule("定义", "prd1:=@prd1 _ ");
     addRule("定义", "@pr1:=La:U_.Lb:U_.ind_Prod (Lx:a.b) (Lm:aXb.b) (Lxa:a.Lxb:b.xb)");
     addRule("定义", "pr1:=@pr1 _ _");
+    addRule("定义", "@prd1:=La:U_.Lb:a->U_.ind_Prod b (Lm:Sz:a,b z.b (pr0 m)) (Lxa:a.Lxb:b xa.xb)");
+    addRule("定义", "prd1:=@prd1 _ _");
 
     typeName = "Sum";
     addRule("@类型", "@Sum : Pu:U@,Pv:U@,Uu->Uv->(U(@max u v))");
     addRule("@类型", "?A + ?B := @Sum _ _ ?A ?B");
-    addRule("_类型", "?A + ?B");
+    addRule("_类型", "?A + ?B : U(@max ?u ?v)");
     addRule("@构造", "@inl : Pu:U@,Pv:U@,Pa:Uu,Pb:Uv,Pxa:a,a + b");
     addRule("@构造", "inl := @inl _ _ _ _");
     addRule("_构造", "inl");
@@ -126,7 +137,9 @@ export function initTypeSystem() {
     addRule("@解构", "ind_Sum := @ind_Sum _ _ _ _ _");
     addRule("_解构", "ind_Sum");
     addRule("计算", "ind_Sum ?C ?cinl ?cinr (inl ?xa) === ?cinl ?xa");
+    addRule("@计算", "@ind_Sum _ _ _ _ _ _ ?cinl _ (@inl _ _ _ _ ?xa) === ?cinl ?xa");
     addRule("计算", "ind_Sum ?C ?cinl ?cinr (inr ?xb) === ?cinr ?xb");
+    addRule("@计算", "@ind_Sum _ _ _ _ _ _ _ ?cinr (@inr _ _ _ _ ?xb) === ?cinr ?xb");
     typeName = "eqv";
     addRule("_定义", "@eqv:=Lu:U@,La:Uu,Lb:Uu,Sf:a->b,(Sg:b->a,Px:a,eq x (g(f x)))X(Sh:b->a,Px:b, eq x (f(h x)))");
     addRule("_定义", "eqv:=@eqv _");
@@ -144,9 +157,15 @@ export function initTypeSystem() {
     addRule("构造", "base:S1");
     addRule("@构造", "loop:@eq @0 S1 base base");
     addRule("_构造", "loop");
-    addRule("解构", "ind_S1: PC:S1->U,Pcb:(C base),Pcl: @eq _ (C base) cb cb,Pm:S1,C m");
+    addRule("@解构", "@ind_S1: Pu:U@,PC:S1->Uu,Pcb:(C base),Pcl: @eq u (C base) cb cb,Pm:S1,C m");
+    addRule("@解构", "ind_S1:=@ind_S1 _");
+    addRule("_解构", "ind_S1");
     addRule("计算", "ind_S1 ?C ?cb ?cl base === ?cb");
-    addRule("计算", "apd ?C (ind_S1 ?C ?cb ?cl) ?p === ?cl");
+    addRule("@计算", "@ind_S1 _ _ ?cb _ base === ?cb");
+    addRule("@解构", "@loopcomp : Pu:U@,PC:S1->Uu,Pcb:(C base),Pcl: @eq u (C base) cb cb, Pm:@eq @0 S1 base base.eq (@apd S1 base base C (@ind_S1 u C cb cl) m) cl");
+    addRule("@解构", "loopcomp := @loopcomp _ _ _ _");
+    // addRule("_计算", "loopcomp ?p : eq apd ?C (ind_S1 ?C ?cb ?cl) ?p  ?cl");
+    // addRule("计算", "apd ?C (ind_S1 ?C ?cb ?cl) ?p === ?cl");
     typeName = "Ord"
     addRule("类型","Ord:U");
     addRule("构造","0O:Ord");

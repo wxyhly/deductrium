@@ -1,4 +1,5 @@
 import { TR } from "../lang.js";
+export const debugBoundVarId = true;
 export class ASTParser {
     keywords = [":=", "->", "~=", "===", "@ind_Sum", "ind_Sum", "@Sum", "Sum", "@ind_S1", "ind_S1", "S1", "@ind_Prod", "ind_Prod", "@Prod", "Prod"];
     symChar = ".:,()PSLX~*+";
@@ -6,7 +7,7 @@ export class ASTParser {
     cursor = 0;
     tokens;
     token;
-    stringify(ast) {
+    stringify(ast, omitParenthese) {
         if (!ast)
             return TR('表达式丢失');
         const nd = ast.nodes;
@@ -41,23 +42,37 @@ export class ASTParser {
             return `(${this.stringify(nd[0])}×${this.stringify(nd[1])})`;
         }
         if (ast.type === "L") {
-            return `(λ${ast.name}:${this.stringify(nd[0])}.${this.stringify(nd[1])})`;
+            let s = "";
+            if (debugBoundVarId && ast.bondVarId)
+                s = "{" + ast.bondVarId + "}";
+            return `(λ${ast.name + s}:${this.stringify(nd[0], true)}.${this.stringify(nd[1], true)})`;
         }
         if (ast.type === "P") {
-            return `(Π${ast.name}:${this.stringify(nd[0])},${this.stringify(nd[1])})`;
+            let s = "";
+            if (debugBoundVarId && ast.bondVarId)
+                s = "{" + ast.bondVarId + "}";
+            return `(Π${ast.name + s}:${this.stringify(nd[0], true)},${this.stringify(nd[1], true)})`;
         }
         if (ast.type === "S") {
-            return `(Σ${ast.name}:${this.stringify(nd[0])},${this.stringify(nd[1])})`;
+            let s = "";
+            if (debugBoundVarId && ast.bondVarId)
+                s = "{" + ast.bondVarId + "}";
+            return `(Σ${ast.name + s}:${this.stringify(nd[0], true)},${this.stringify(nd[1], true)})`;
         }
         if (ast.type === "var") {
-            return ast.name;
+            let s = "";
+            if (debugBoundVarId && ast.bondVarId)
+                s = "{" + ast.bondVarId + "}";
+            return ast.name + s;
         }
         if (ast.type === "apply") {
             if (ast.nodes[0].name === "U" && ast.nodes[1].name === "@0")
                 return `U`;
             if (ast.nodes[0].name === "U")
                 return `(${this.stringify(nd[0])}${this.stringify(nd[1])})`;
-            return `(${this.stringify(nd[0])} ${this.stringify(nd[1])})`;
+            if (omitParenthese)
+                return `${this.stringify(nd[0], omitParenthese)} ${this.stringify(nd[1])}`;
+            return `(${this.stringify(nd[0], true)} ${this.stringify(nd[1])})`;
         }
     }
     parse(s) {

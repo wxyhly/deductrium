@@ -249,6 +249,9 @@ class LangMgr {
         "定义相等断言失败": "Definitional equality assertion failed",
         "未知的全类层级运算": "Unknown universe type operation",
         "尝试对非全类操作层级": "Attempted to use hierarchy operator for non-universe object",
+        "类型推断错误：发现循环引用": "Type inference error: Circular reference detected",
+        "本应约束的变量在类型推断时自由出现：": "Variable that should be bound occurs free during type inference: ",
+        "由系统保留": " is reserved by the system",
         // game.ts
         "、后继指数提升": " with successor exponential boost",
         "（此门已拆除）": "(Destructed Gate)",
@@ -264,8 +267,8 @@ class LangMgr {
         // fs/cmd.ts
         "命令：": "Command: ",
         " 共": ". Total ",
-        "可复制定理内容，按Esc取消": "Copying propoition content is avaliable, press Esc to cancel",
-        "可复制生成定理的命令，按Esc取消": "Copying propoition generation command is avaliable, press Esc to cancel",
+        "可复制定理内容，按Esc取消": "Copying proposition content is available, press Esc to cancel",
+        "可复制生成定理的命令，按Esc取消": "Copying proposition generation command is available, press Esc to cancel",
         "无效命令": "Invalid command",
         "意外的错误：": "Unexpected error: ",
         "请输入或点击要展开的推理规则或定理\n按Esc取消": "Please enter or click the deduction rule or props to expand\nPress Esc to cancel",

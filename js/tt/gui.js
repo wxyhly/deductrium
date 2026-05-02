@@ -1,7 +1,7 @@
 import { TR } from "../lang.js";
 import { Assist } from "./assist.js";
-import { ASTParser } from "./astparser.js";
-import { Core } from "./core.js";
+import { ASTParser, debugBoundVarId } from "./astparser.js";
+import { Core, assignContext } from "./core.js";
 import { initTypeSystem } from "./initial.js";
 const parser = new ASTParser;
 const constructors = new Set();
@@ -10,6 +10,7 @@ const macro = new Set();
 const sysmacro = new Set();
 let consts = new Set;
 const allrules = initTypeSystem();
+const reservedConsts = new Set;
 export class TTGui {
     skipRendering = true;
     onStateChange = () => { };
@@ -22,12 +23,30 @@ export class TTGui {
     unlockedTypes;
     unlockedTactics;
     inhabitList = document.getElementById("inhabit-list");
-    // tactic mode
+    // tactic mode: tactic-begin for waiting clicking theorem
     mode = null;
     // "_" for infered, "@" for original
     inferDisplayMode = "_";
     userDefinedConsts = [];
     sysDefinedConsts = [];
+    initTypeList() {
+        for (const rule of allrules) {
+            if (rule.postfix === "计算") {
+                const applyList = [];
+                let sub = rule.ast.nodes[0];
+                while (sub.type === "apply") {
+                    applyList.unshift(sub.nodes[1]);
+                    sub = sub.nodes[0];
+                }
+                applyList.unshift(sub);
+                this.core.state.computeRules[sub.name] ??= [];
+                this.core.state.computeRules[sub.name].push({
+                    pattern: this.core.flattenApplyList(rule.ast.nodes[0]),
+                    result: rule.ast.nodes[1]
+                });
+            }
+        }
+    }
     constructor(creative, skipRendering) {
         this.skipRendering = skipRendering;
         this.unlockedTypes = new Set(creative ? allrules.map(r => r.id) : ["True0", "True1", "False0"]);
@@ -37,6 +56,7 @@ export class TTGui {
             this.unlockedTactics = new Set(["qed"]);
             this.disableSimpleFn = true;
         }
+        this.initTypeList();
         this.updateInhabitList();
         document.getElementById("add-btn").addEventListener("click", () => {
             this.updateInhabitList();
@@ -61,8 +81,8 @@ export class TTGui {
             if (this.mode?.length > 1) {
                 this.mode.pop();
                 const newmode = this.mode.slice(1);
-                input.value = parser.stringify(this.mode[0].theorem);
-                this.executeTactic(input.value);
+                // input.value = parser.stringify(this.mode[0].theorem);
+                this.executeTactic(this.mode[0].theorem);
                 for (let i = 0; i < newmode.length; i++) {
                     input.value = newmode[i];
                     this.addTactic(i < newmode.length - 1);
@@ -132,25 +152,23 @@ export class TTGui {
             const g = assist.goal[count];
             statediv.appendChild(document.createElement("hr"));
             const goalDiv = document.createElement("div");
-            const scope = Object.keys(g.context).map(n => ({ type: "var", name: n }));
-            for (const [k, v] of Object.entries(g.context)) {
-                const vc = Core.clone(v);
+            const scope = g.context.map(e => ({ type: "var", name: e[0], bondVarId: e[2] }));
+            for (const [k, v, id] of g.context) {
                 const ast = {
-                    type: ":", name: "", nodes: [
-                        { type: "var", name: k }, vc
-                    ]
+                    type: ":", name: "", nodes: [{ type: "var", name: k }, v]
                 };
-                this.core.checkType(ast, g.context);
-                goalDiv.appendChild(this.ast2HTML("", ast, scope, g.context, this.getInhabitatArray().length));
-                goalDiv.appendChild(document.createElement("br"));
+                ast.nodes[0].checked = ast.nodes[1];
+                goalDiv.prepend(document.createElement("br"));
+                goalDiv.prepend(this.ast2HTML("", ast, scope, g.context, this.getInhabitatArray().length));
             }
             goalDiv.appendChild(document.createElement("br"));
             this.addSpan(goalDiv, count ? TR("目标") + (count) + TR("：") : TR("当前目标："));
+            const printType = Core.clone(g.type);
             try {
-                this.core.checkType(g.type, g.context);
+                this.core.checkType(printType, g.context, false);
             }
             catch (e) { }
-            goalDiv.appendChild(this.ast2HTML("", g.type, scope, g.context, this.getInhabitatArray().length));
+            goalDiv.appendChild(this.ast2HTML("", printType, scope, g.context, this.getInhabitatArray().length));
             if (count) {
                 goalDiv.style.opacity = "0.5";
                 goalDiv.style.backgroundColor = "#DDD";
@@ -168,7 +186,7 @@ export class TTGui {
         parentSpan.appendChild(span);
         return span;
     }
-    ast2HTML(idx, ast, scopes = [], context = {}, userLineNumber = 0) {
+    ast2HTML(idx, ast, scopes = [], context = [], userLineNumber = 0) {
         const varnode = document.createElement("span");
         if (!ast) {
             varnode.innerText = TR("表达式因错误而丢失");
@@ -177,8 +195,11 @@ export class TTGui {
         const astStr = parser.stringify(ast);
         varnode.setAttribute("ast-string", astStr);
         if (ast.type === "var") {
+            if (idx === "Checked" && ast.name === "_" && ast.checked?.type === ":") {
+                return this.ast2HTML("Checked", ast.checked.nodes[0], scopes, context, userLineNumber);
+            }
             let el;
-            if (ast.name.startsWith("@") && isFinite(Number(ast.name.slice(1)))) {
+            if (ast.name.startsWith("@") && (isFinite(Number(ast.name.slice(1))) || ast.name === "@succ" || ast.name === "@max")) {
                 el = this.addSpan(varnode, "<sub>" + ast.name + "</sub>", true);
                 el.classList.add("universe");
             }
@@ -188,6 +209,9 @@ export class TTGui {
             }
             else {
                 el = this.addSpan(varnode, ast.name);
+            }
+            if (debugBoundVarId && ast.bondVarId) {
+                this.addSpan(el, "<sup>" + ast.bondVarId + "</sup>", true);
             }
             const scopeStack = scopes.slice(0);
             const astname = ast.name.replace(/'+$/g, "");
@@ -232,7 +256,7 @@ export class TTGui {
                 case ":=":
                 case "===":
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], scopes, context, userLineNumber));
-                    this.addSpan(varnode, " " + ast.type + " ");
+                    this.addSpan(varnode, " &nbsp;" + ast.type + "&nbsp; ", true);
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], scopes, context, userLineNumber));
                     break;
                 case "->":
@@ -268,8 +292,8 @@ export class TTGui {
                         this.addSpan(varnode, `U<sub>${sub.replaceAll(/@([0-9])/g, "$1")}</sub>`, true).classList.add("universe");
                         break;
                     }
-                    const br1 = !["apply", "var"].includes(ast.nodes[0].type);
-                    const br2 = !(["var"].includes(ast.nodes[1].type) || ast.nodes[1].nodes[0].name == "U");
+                    const br1 = !["apply", "var", ","].includes(ast.nodes[0].type);
+                    const br2 = !(["var", ","].includes(ast.nodes[1].type) || ast.nodes[1].nodes[0].name == "U");
                     if (br1)
                         this.addSpan(varnode, "(");
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], scopes, context, userLineNumber));
@@ -292,6 +316,9 @@ export class TTGui {
                     outterLayers.push(this.addSpan(varnode, "" + ast.type.replaceAll("S", "Σ").replaceAll("L", "λ").replaceAll("P", "Π")));
                     const varast = this.ast2HTML(idx, { type: "var", name: ast.name, checked: ast.nodes[0] }, [{ type: "quantvar", name: "quantvar" }, ...scopes], newcontext, userLineNumber);
                     varast.classList.add("boundedVar");
+                    if (debugBoundVarId && ast.bondVarId) {
+                        this.addSpan(varast, "<sup>" + ast.bondVarId + "</sup>", true);
+                    }
                     outterLayers.push(varnode.appendChild(varast));
                     outterLayers.push(this.addSpan(varnode, ":"));
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], scopes, context, userLineNumber));
@@ -347,7 +374,7 @@ export class TTGui {
                         scopes = scopes.slice(1);
                     }
                     try {
-                        floatTypeDiv.appendChild(this.ast2HTML("", ast.checked, scopes, localCtxt, userLineNumber));
+                        floatTypeDiv.appendChild(this.ast2HTML("Checked", ast.checked, scopes, localCtxt, userLineNumber));
                     }
                     catch (e) {
                         floatTypeDiv.innerText = e;
@@ -378,16 +405,20 @@ export class TTGui {
             list.removeChild(list.lastChild);
         }
         for (const rule of allrules) {
+            // register systype and sysdef in core
+            const vname = rule.ast.nodes?.[0]?.name;
+            if (rule.ast.type !== "===") {
+                reservedConsts.add(vname);
+            }
             if (!terms.has(rule.id))
                 continue;
-            // register in core
             if (rule.ast.type === ":") {
-                const vname = rule.ast.nodes[0].name;
-                this.core.state.sysTypes[vname] = Core.clone(rule.ast.nodes[1]);
+                this.core.state.sysTypes[vname] = this.core.desugar(Core.clone(rule.ast.nodes[1]), true);
             }
+            // ast.nodes[0].type==="var" -> skip a X b := @Prod _ _ ...
             if (rule.ast.type === ":=" && rule.ast.nodes[0].type === "var") {
-                const vname = rule.ast.nodes[0].name;
-                this.core.state.sysDefs[vname] = Core.clone(rule.ast.nodes[1]);
+                const val = rule.ast.nodes[1].type === ":" ? rule.ast.nodes[1].nodes[0] : rule.ast.nodes[1];
+                this.core.state.sysDefs[vname] = this.core.desugar(Core.clone(val), true);
             }
             // register in gui highlight, only ignore ====
             if (rule.ast.type === "var" || rule.ast.type === ":" || (rule.ast.type === ":=" && rule.ast.nodes[0].type === "var")) {
@@ -414,44 +445,22 @@ export class TTGui {
             const itVal = document.createElement("div");
             list.appendChild(itVal);
             itVal.classList.add("val");
-            if (rule.ast.type === ":=") {
-                try {
-                    this.core.checkType(rule.ast.nodes[1]);
-                }
-                catch (e) {
-                    console.log(e);
-                }
-                rule.ast.checked = rule.ast.nodes[0].checked = rule.ast.nodes[1].checked;
+            const ast = Core.clone(rule.ast);
+            // avoid check const for redefined const error
+            // const def = this.core.state.sysDefs[vname];
+            // delete this.core.state.sysDefs[vname];
+            try {
+                this.core.checkType(ast, [], false);
             }
-            else if (rule.ast.type === "===") {
-                try {
-                    this.core.checkType(rule.ast.nodes[0]);
-                    this.core.checkType(rule.ast.nodes[1], {}, null, this.core.state.inferValues);
-                    rule.ast.checked = rule.ast.nodes[0].checked;
-                }
-                catch (e) {
-                    // console.log(e);
-                }
+            catch (e) {
+                console.log(e);
+            }
+            // this.core.state.sysDefs[vname] = def;
+            if (ast.type === "var") {
+                itVal.appendChild(this.ast2HTML("", { type: ":", nodes: [ast, ast.checked], name: "" }));
             }
             else {
-                try {
-                    this.core.checkType(rule.ast);
-                }
-                catch (e) {
-                    // console.log(e);
-                }
-            }
-            if (rule.ast.type === "var") {
-                try {
-                    this.core.checkType(rule.ast.checked, {}, null, this.core.state.inferValues);
-                }
-                catch (e) {
-                    console.log(e);
-                }
-                itVal.appendChild(this.ast2HTML("", { type: ":", nodes: [rule.ast, rule.ast.checked], name: "" }));
-            }
-            else {
-                itVal.appendChild(this.ast2HTML("", rule.ast));
+                itVal.appendChild(this.ast2HTML("", ast));
             }
             const infoArr = [];
             for (let i = 0; i < 6; i++) {
@@ -462,10 +471,6 @@ export class TTGui {
                 if (!i)
                     itInfo.innerText = rule.prefix;
             }
-            itVal.addEventListener("click", () => {
-                // const inserted = this.cmd.astparser.stringify(p.value);
-                // this.cmd.onClickSubAst(pname, inserted);
-            });
         }
     }
     getHottDefCtxt(input) {
@@ -551,44 +556,50 @@ export class TTGui {
             while (div.firstChild) {
                 div.removeChild(div.firstChild);
             }
-            let type;
-            // todo
             const checkInfer = (ast) => {
-                const currentInferred = Object.assign({}, this.core.state.inferValues);
-                const currentInferId = this.core.state.inferId;
-                const allvars = Core.getFreeVars(ast);
-                if (ast.checked)
-                    Core.getFreeVars(ast.checked, allvars);
-                for (const v of allvars) {
-                    if (v.startsWith("?") || v === "_") {
+                const _checkInfer = (ast, context, expandConsts) => {
+                    if (ast.type === "var") {
+                        if (ast.name[0] === "?" || ast.name === "_") {
+                            if (ast.checked?.type === ":") {
+                                return _checkInfer(ast.checked.nodes[0], context, expandConsts);
+                            }
+                            return false;
+                        }
+                        if (!context.find(e => e[0] === ast.name)) {
+                            // if this is a constant, check its value recursively
+                            const pos = this.userDefinedConsts.findIndex(e => e && e[0] === ast.name);
+                            if (pos >= 0 && inputsarr[pos].parentElement.classList.contains("infering")) {
+                                expandConsts.add(ast.name);
+                            }
+                        }
+                    }
+                    if (ast.nodes) {
+                        if (!_checkInfer(ast.nodes[0], context, expandConsts))
+                            return false;
+                        if (ast.type === "P" || ast.type === "L" || ast.type === "S") {
+                            context = assignContext([ast.name, ast.nodes[0], 0], context);
+                        }
+                        if (!_checkInfer(ast.nodes[1], context, expandConsts))
+                            return false;
+                    }
+                    return true;
+                };
+                let nast = ast;
+                let expandConsts = new Set;
+                while (true) {
+                    if (!_checkInfer(nast, [], expandConsts)) {
                         wrapper.classList.add("infering");
-                        return true;
+                        return;
                     }
-                    if (this.core.state.userDefs[v]) {
-                        const pos = this.userDefinedConsts.findIndex(e => e && e[0] === v);
-                        if (!inputsarr[pos].parentElement.classList.contains("infering"))
-                            continue;
-                        const expcheck = Core.clone(ast, true);
-                        this.core.expandDef(expcheck, new Set([v]));
-                        this.core.check(expcheck, {}, false);
-                        this.core.afterCheckType(expcheck, expcheck);
-                        const res = checkInfer(expcheck);
-                        this.core.state.inferValues = currentInferred;
-                        this.core.state.inferId = currentInferId;
-                        return res;
+                    if (!expandConsts.size)
+                        return;
+                    if (nast === ast) {
+                        nast = Core.clone(ast);
                     }
+                    this.core.expandDef(nast, [], expandConsts);
+                    this.core.checkType(nast, [], false);
+                    expandConsts = new Set;
                 }
-                return false;
-                // for (const v of Object.values(this.core.state.inferValues)) {
-                //     const allvars = Core.getFreeVars(v);
-                //     for (const v of allvars) {
-                //         if (v.startsWith("?") || v === "_") {
-                //             wrapper.classList.add("infering");
-                //             return true;
-                //         }
-                //     }
-                // }
-                // return false;
             };
             if (ast) {
                 try {
@@ -597,51 +608,37 @@ export class TTGui {
                             throw TR(":=符号左侧仅允许出现自定义常量");
                         }
                         const defname = ast.nodes[0].name;
-                        if (this.core.checkConst(defname))
+                        if (this.core.checkConst(defname, []))
                             throw defname + TR("的定义重复");
-                        const inferedAst = {};
-                        this.core.checkType(ast.nodes[1], {}, inferedAst);
-                        checkInfer(inferedAst);
-                        macro.add(defname);
+                        if (reservedConsts.has(defname))
+                            throw defname + TR("由系统保留");
                         const defContent = ast.nodes[1];
                         if (defContent.type === ":") {
-                            const type = defContent.nodes[1];
-                            inferedAst.nodes[0].checked = type;
-                            ast.nodes[0].checked = type;
-                            this.userDefinedConsts[currentIdx] = [ast.nodes[0].name, inferedAst.nodes[0]];
+                            this.userDefinedConsts[currentIdx] = [defname, this.core.desugar(Core.clone(defContent.nodes[0]), true)];
                         }
                         else {
-                            ast.nodes[0].checked = ast.nodes[1].checked;
-                            this.userDefinedConsts[currentIdx] = [ast.nodes[0].name, ast.nodes[1]];
+                            this.userDefinedConsts[currentIdx] = [defname, this.core.desugar(Core.clone(ast.nodes[1]), true)];
                         }
+                        // todo: if has error, do not add it
+                        macro.add(defname);
                     }
-                    else {
-                        const outast = {};
-                        type = this.core.checkType(ast, {}, outast);
-                        checkInfer(outast);
-                    }
+                    this.core.checkType(ast, [], false);
+                    checkInfer(ast);
                 }
                 catch (e) {
                     error += e;
                     wrapper.classList.add("error");
                 }
             }
-            const newDom = parseError ? this.addSpan(div, input.value + " - " + parseError) : this.ast2HTML("", ast, [], {}, currentIdx);
+            const newDom = parseError ? this.addSpan(div, input.value + " - " + parseError) : this.ast2HTML("", ast, [], [], currentIdx);
             div.appendChild(newDom);
             if (ast && error) {
                 this.addSpan(div, " - " + error);
             }
             if (ast && !error) {
-                if (ast.type[0] != ":")
+                if (ast.type[0] != ":") {
                     this.addSpan(div, " &nbsp; : &nbsp; ", true);
-                if (type) {
-                    try {
-                        this.core.checkType(type, {}, null, this.core.state.inferValues);
-                        checkInfer();
-                    }
-                    catch (e) {
-                    }
-                    div.appendChild(this.ast2HTML("", type, [], {}, currentIdx));
+                    div.appendChild(this.ast2HTML("", ast.checked, [], [], currentIdx));
                 }
             }
             if (nextInput) {
@@ -702,19 +699,19 @@ export class TTGui {
                 if (ast.type === ":") {
                     if (this.core.checkType({
                         name: "", type: "===", nodes: [ast.nodes[1], ref]
-                    }))
+                    }, [], true))
                         return true;
                 }
                 else if (ast.type === ":=") {
                     if (this.core.checkType({
-                        name: "", type: "===", nodes: [this.core.checkType(ast.nodes[0]), ref]
-                    }))
+                        name: "", type: ":", nodes: [ast.nodes[0], ref]
+                    }, [], true))
                         return true;
                 }
                 else {
                     if (this.core.checkType({
-                        name: "", type: "===", nodes: [this.core.checkType(ast), ref]
-                    }))
+                        name: "", type: ":", nodes: [ast.nodes[0], ref]
+                    }, [], true))
                         return true;
                 }
             }
@@ -724,57 +721,10 @@ export class TTGui {
         }
         return false;
     }
-    updateGuiList(prefix, logicArray, list, filter, setInfo, refresh, customIdx) {
-        if (refresh) {
-            while (list.lastChild) {
-                list.removeChild(list.lastChild);
-            }
-            list.setAttribute("total", "0");
-        }
-        let listLength = Number(list.getAttribute("total")) || 0;
-        const values = Object.values(logicArray);
-        const keys = Object.keys(logicArray);
-        const targetLength = values.length;
-        list.setAttribute("total", String(targetLength));
-        for (; listLength > targetLength; listLength--) {
-            const p = values[listLength];
-            if (!filter(p, keys[listLength]))
-                continue;
-            for (let i = 0; i < 8; i++)
-                list.removeChild(list.lastChild);
-        }
-        for (; listLength < targetLength; listLength++) {
-            const p = values[listLength];
-            const pname = customIdx ? customIdx[listLength] : prefix + listLength;
-            if (!filter(p, keys[listLength]))
-                continue;
-            const itIdx = document.createElement("div");
-            list.appendChild(itIdx);
-            itIdx.classList.add("idx");
-            itIdx.innerText = pname;
-            const itVal = document.createElement("div");
-            list.appendChild(itVal);
-            itVal.classList.add("val");
-            itVal.appendChild(this.ast2HTML(pname, p));
-            const infoArr = [];
-            for (let i = 0; i < 6; i++) {
-                const itInfo = document.createElement("div");
-                list.appendChild(itInfo);
-                itInfo.className = "info";
-                infoArr.push(itInfo);
-            }
-            setInfo(p, infoArr, itVal);
-            itVal.addEventListener("click", () => {
-                // const inserted = this.cmd.astparser.stringify(p.value);
-                // this.cmd.onClickSubAst(pname, inserted);
-            });
-        }
-        list.scroll({ top: list.scrollHeight });
-    }
     executeTactic(value) {
         try {
             this.getHottDefCtxt(this.getInhabitatArray().length);
-            const ast = parser.parse(value);
+            const ast = typeof value === "string" ? parser.parse(value) : value;
             if (!ast)
                 throw TR("空表达式");
             if (ast.type === "===")
@@ -783,7 +733,7 @@ export class TTGui {
                 throw TR("不是命题类型");
             if (ast.type === ":")
                 throw TR("已断言该类型有值");
-            const type = this.core.checkType(ast);
+            const type = this.core.checkType(ast, [], false);
             if (type.type !== "apply" || type.nodes[0].name !== "U")
                 throw TR("不是命题类型");
             const assist = new Assist(this.core, value);
@@ -791,7 +741,9 @@ export class TTGui {
             this.autofillTactics(assist);
             document.getElementById("tactic-remove").classList.remove("hide");
             document.getElementById("tactic-hint").innerText = "";
-            document.getElementById("tactic-hint").appendChild(this.ast2HTML("", { type: ":", name: "", nodes: [assist.elem, ast] }, [], Object.fromEntries(assist.goal.map(g => [g.ast.name, g.type])), this.getInhabitatArray().length));
+            const theorem = Core.clone(assist.theorem);
+            this.core.checkType(theorem, [], false);
+            document.getElementById("tactic-hint").appendChild(this.ast2HTML("", { type: ":", name: "", nodes: [assist.elem, theorem] }, [], assist.goal.map(g => [g.ast.name, g.type, 0]), this.getInhabitatArray().length));
             document.getElementById("tactic-input").classList.remove("hide");
             document.getElementById("tactic-input").focus();
             this.updateTacticStateDisplay(assist, document.getElementById("tactic-state"));
@@ -842,7 +794,7 @@ export class TTGui {
                 else {
                     throw TR("未知的证明策略");
                 }
-                assist.markTargets();
+                // assist.markTargets();
                 hint.innerText = "";
                 this.mode.push(input.value);
                 input.value = "";
@@ -866,14 +818,15 @@ export class TTGui {
             }
             let astShow;
             try {
-                astShow = { type: ":", name: "", nodes: [assist.elem, assist.theorem] };
-                this.core.checkType(astShow);
+                astShow = { type: ":", name: "", nodes: [assist.elem, Core.clone(assist.theorem, true)] };
+                this.core.checkType(astShow.nodes[1], [], false);
+                // this.core.checkType(astShow, [], false);
             }
             catch (e) {
-                // document.getElementById("tactic-errmsg").innerText = e;
+                document.getElementById("tactic-errmsg").innerText = e;
             }
             assist.markTargets();
-            hint.appendChild(this.ast2HTML("", astShow, [], Object.fromEntries(assist.goal.map(g => [g.ast.name, g.type])), this.getInhabitatArray().length));
+            hint.appendChild(this.ast2HTML("", astShow, [], assist.goal.map(g => [g.ast.name, g.type, 0]), this.getInhabitatArray().length));
             window.scrollTo(0, document.body.clientHeight);
             const wrapperDiv = document.getElementById("tactic-list").parentElement;
             wrapperDiv.scrollTo(0, wrapperDiv.clientHeight);

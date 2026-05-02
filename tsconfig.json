@@ -6,6 +6,8 @@
         ],
         "target": "ES2022",
         "sourceMap": true,
+        "strict": false,
+        "rootDir": "./src",
         "outDir": "js/"
     },
     "include": [
