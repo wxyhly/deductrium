@@ -144,12 +144,12 @@ export function initTypeSystem() {
     addRule("构造", "base:S1");
     addRule("@构造", "loop:@eq @0 S1 base base");
     addRule("_构造", "loop");
-    addRule("@解构", "@ind_S1: Pu:U@,PC:S1->Uu,Pcb:(C base),Pcl: @eq u (C base) cb cb,Pm:S1,C m");
+    addRule("@解构", "@ind_S1: Pu:U@,PC:S1->Uu,Pcb:(C base),Pcl: @eq u (C base) (trans C loop cb) cb,Pm:S1,C m");
     addRule("@解构", "ind_S1:=@ind_S1 _");
     addRule("_解构", "ind_S1");
     addRule("计算", "ind_S1 ?C ?cb ?cl base === ?cb");
     addRule("@计算", "@ind_S1 _ _ ?cb _ base === ?cb");
-    addRule("@解构", "@loopcomp : Pu:U@,PC:S1->Uu,Pcb:(C base),Pcl: @eq u (C base) cb cb, Pm:@eq @0 S1 base base.eq (@apd S1 base base C (@ind_S1 u C cb cl) m) cl");
+    addRule("@解构", "@loopcomp : Pu:U@,PC:S1->Uu,Pcb:(C base),Pcl: @eq u (C base) (trans C loop cb) cb,eq (@apd S1 base base C (@ind_S1 u C cb cl) loop) cl");
     addRule("@解构", "loopcomp := @loopcomp _ _ _ _");
     // addRule("_计算", "loopcomp ?p : eq apd ?C (ind_S1 ?C ?cb ?cl) ?p  ?cl");
     // addRule("计算", "apd ?C (ind_S1 ?C ?cb ?cl) ?p === ?cl");
@@ -162,8 +162,12 @@ export function initTypeSystem() {
     addRule("@解构", "ind_Ord:=@ind_Ord _");
     addRule("_解构", "ind_Ord");
     addRule("计算", "ind_Ord ?C ?c0 ?cs ?clim 0O === ?c0");
+    addRule("@计算", "ind_Ord _ ?c0 _ _ 0O === ?c0");
+    addRule("@计算", "@ind_Ord _ _ ?c0 _ _ 0O === ?c0");
     addRule("计算", "ind_Ord ?C ?c0 ?cs ?clim (succO ?o) === ?cs ?o (ind_Ord ?C ?c0 ?cs ?clim ?o)");
     addRule("计算", "ind_Ord ?C ?c0 ?cs ?clim (limO ?f) === ?clim ?f (Ln:nat.ind_Ord ?C ?c0 ?cs ?clim (?f n))");
+    addRule("@计算", "@ind_Ord ?u ?C ?c0 ?cs ?clim (succO ?o) === ?cs ?o (@ind_Ord ?u ?C ?c0 ?cs ?clim ?o)");
+    addRule("@计算", "@ind_Ord ?u ?C ?c0 ?cs ?clim (limO ?f) === ?clim ?f (Ln:nat.@ind_Ord ?u ?C ?c0 ?cs ?clim (?f n))");
     typeName = "(Ord)";
     addRule("定义", "natO:=ind_nat (λx:nat.Ord) 0O λx:nat.λh:Ord.(succO h)");
     addRule("定义", "omega:=limO natO");

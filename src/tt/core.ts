@@ -37,7 +37,7 @@ export class InferTable {
         const name = String(n - 1);
         this.list.set(name, ctxt);
         if (name === "10") {
-            console.log("hqho");
+            // console.log("hqho");
         }
         return name;
     }
@@ -522,7 +522,7 @@ export class Core {
     }
     private check(ast: AST, context: Context, ignoreErr: boolean): AST {
         // pick cache
-        // if (ast.checked) return ast.checked;
+        if (ast.checked) delete ast.checked;
         if (ast.type === "var") {
             if (ast.name === "_") {
                 const n = this.state.inferTable.addNewName(0, context);
@@ -572,6 +572,7 @@ export class Core {
             // U(n) : U(@succ n)
             if (ast.nodes[0].name === "U") {
                 this.check(ast.nodes[1], assignContext(["U@", null, Infinity], context), true);
+                if (context.find(e => e[0] === "U@") || (ast.nodes[1].checked.name !== "U@" && ast.nodes[1].checked.name[0] !== "?")) { this.error(ast, TR(`函数返回类型不合法`), false); return; }
                 ast.checked = UniverseLevel.succ(ast);
                 return ast.checked;
             }
@@ -746,8 +747,8 @@ export class Core {
             if (list[2].nodes?.[0]?.name === "succ") {
                 // add a succ(b) -> succ(add a b)
                 if (fn === "add") { Core.assign(ast, wrapApply(wrapVar("succ"), wrapApply(list[0], list[1], list[2].nodes[1]))); return true; }
-                // mul a succ(b) -> mul(a b)
-                if (fn === "mul") { Core.assign(ast, wrapApply(wrapVar("succ"), wrapApply(list[0], list[1], list[2].nodes[1]))); return true; }
+                // mul a succ(b) -> add(mul(a b) a)
+                if (fn === "mul") { Core.assign(ast, wrapApply(wrapVar("add"), wrapApply(list[0], list[1], list[2].nodes[1]), Core.clone(list[1],true))); return true; }
             }
             if (!NatLiteral.is(list[1]) || !NatLiteral.is(list[2])) return false;
             try {

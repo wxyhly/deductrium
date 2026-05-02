@@ -521,7 +521,14 @@ export class TTGui {
                 input.blur();
             }
         });
+        // updateDefs: true means update all inputs after it,
+        // otherwise, update all inputs iff ast is xx := xxxx
+        // todo: when remove a ":=", must be updated, so input must record value before edited
+        // todo: left btn is to drag order(click: add new line after it), if trim ast str is empty, then remove it aotomatically
         input.onblur = ev => {
+            if (!ev["updateDefs"])
+                ev["updateDefs"] = input["needUpdate"];
+            delete input["needUpdate"];
             this.onStateChange();
             const currentIdx = this.getHottDefCtxt(input);
             const inputsarr = this.getInhabitatArray();
@@ -530,8 +537,8 @@ export class TTGui {
             wrapper.classList.remove("error");
             wrapper.classList.remove("infering");
             if (!input.value.trim()) {
-                if (nextInput) {
-                    nextInput.onblur({});
+                if (nextInput && ev["updateDefs"]) {
+                    nextInput.onblur({ updateDefs: true });
                 }
                 return;
             }
@@ -641,8 +648,8 @@ export class TTGui {
                     div.appendChild(this.ast2HTML("", ast.checked, [], [], currentIdx));
                 }
             }
-            if (nextInput) {
-                nextInput.onblur({});
+            if (nextInput && (ast.type === ":=" || ev["updateDefs"])) {
+                nextInput.onblur({ updateDefs: true });
             }
         };
         div.addEventListener("click", ev => {
@@ -651,6 +658,7 @@ export class TTGui {
             }
             else {
                 input.classList.remove("hide");
+                input["needUpdate"] = input.value.includes(":=");
                 input.focus();
                 div.classList.add("hide");
             }
@@ -670,8 +678,8 @@ export class TTGui {
             if (removed)
                 macro.delete(removed[0]);
             const next = this.getInhabitatArray()[current];
-            if (next)
-                next.onblur({});
+            if (next && removed)
+                next.onblur({ updateDefs: true });
             this.onStateChange();
         });
         input.focus();
@@ -697,21 +705,21 @@ export class TTGui {
                 continue;
             try {
                 if (ast.type === ":") {
-                    if (this.core.checkType({
+                    if (this.core.checkType(Core.clone({
                         name: "", type: "===", nodes: [ast.nodes[1], ref]
-                    }, [], true))
+                    }), [], true))
                         return true;
                 }
                 else if (ast.type === ":=") {
-                    if (this.core.checkType({
+                    if (this.core.checkType(Core.clone({
                         name: "", type: ":", nodes: [ast.nodes[0], ref]
-                    }, [], true))
+                    }), [], true))
                         return true;
                 }
                 else {
-                    if (this.core.checkType({
+                    if (this.core.checkType(Core.clone({
                         name: "", type: ":", nodes: [ast.nodes[0], ref]
-                    }, [], true))
+                    }), [], true))
                         return true;
                 }
             }
@@ -839,14 +847,14 @@ export class TTGui {
         this.unlockedTypes.add(str);
         if (update && !this.skipRendering) {
             this.updateTypeList(this.unlockedTypes);
-            this.getInhabitatArray()[0]?.onblur({});
+            this.getInhabitatArray()[0]?.onblur({ updateDefs: true });
         }
     }
     updateAfterUnlock() {
         if (this.skipRendering)
             return;
         this.updateTypeList(this.unlockedTypes);
-        this.getInhabitatArray()[0]?.onblur({});
+        this.getInhabitatArray()[0]?.onblur({ updateDefs: true });
     }
 }
 //# sourceMappingURL=gui.js.map

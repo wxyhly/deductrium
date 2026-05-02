@@ -670,13 +670,16 @@ export class Assist {
         const goal = this.goal.shift();
         if (!goal)
             throw TR("无证明目标，请使用qed命令结束证明");
-        if (!core.expandDef(goal.type, goal.context, n)) {
-            this.goal.unshift(goal);
-            throw TR("未找到任何指定展开的项");
+        try {
+            if (!core.expandDef(goal.type, goal.context, n)) {
+                this.goal.unshift(goal);
+                throw TR("未找到任何指定展开的项");
+            }
+            ;
+            this.whnf(goal.type, goal.context);
+            core.checkType(goal.type, goal.context, false);
         }
-        ;
-        this.whnf(goal.type, goal.context);
-        core.checkType(goal.type, goal.context, false);
+        catch (e) { }
         this.goal.unshift(goal);
         return this;
     }
