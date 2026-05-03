@@ -457,6 +457,8 @@ export class Core {
                     this.state.errormsg.pop();
                 }
                 this.markAndCheckInferedValue(infered, context);
+                if (infered.checked)
+                    this.markAndCheckInferedValue(infered.checked, context);
                 ast.checked = { type: ":", nodes: [infered, infered.checked ?? wrapVar("_")], name: "" };
             }
             else {
@@ -726,10 +728,10 @@ export class Core {
             if (fn === "@Prod" && args === 5) {
                 const l = ali[4];
                 const t = ast.checked;
-                if (l.type === "var" || this.hasBondVar(l.nodes[1], l.bondVarId)) {
-                    if (l.type === "var") {
+                if (l.type !== "L" || this.hasBondVar(l.nodes[1], l.bondVarId)) {
+                    if (l.type !== "L") {
                         const nname = l.name === "x" ? "x'" : "x";
-                        Core.assign(ast, wrapLambda("S", nname, l.checked ?? wrapVar("_"), wrapApply(l, wrapVar(nname))), true);
+                        Core.assign(ast, wrapLambda("S", nname, ali[3], wrapApply(l, wrapVar(nname))), true);
                         this.getBondVarId(ast);
                         ast.nodes[1].nodes[1].bondVarId = ast.bondVarId;
                     }
