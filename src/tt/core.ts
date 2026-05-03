@@ -582,8 +582,6 @@ export class Core {
             }
             const tfn = this.check(ast.nodes[0], context, ignoreErr);
             const tap = this.check(ast.nodes[1], context, ignoreErr);
-            // tfn.origin = Core.clone(tfn, true);
-            // tap.origin = Core.clone(tap, true);
             if (!tfn || !tap) {
                 this.error(ast, TR("非函数尝试作用"), ignoreErr);
             }
@@ -618,31 +616,31 @@ export class Core {
             nast.nodes[0].nodes[1] = ast.nodes[0];
             nast.nodes[1].nodes[0] = ast.nodes[0];
             nast.nodes[1].nodes[1] = ast.nodes[1];
-            ast["desugared"] = true;
+            ast["desugared"] = Core.clone(ast);
             Core.assign(ast, nast);
         } else if (ast.type === "+") {
             const nast = parser.parse("@Sum _ _ ?A ?B");
             nast.nodes[0].nodes[1] = ast.nodes[0];
             nast.nodes[1] = ast.nodes[1];
-            ast["desugared"] = true;
+            ast["desugared"] = Core.clone(ast);
             Core.assign(ast, nast);
         } else if (ast.type === ",") {
             const nast = parser.parse("@pair _ _ _ (L_:_._) ?a ?b");
             nast.nodes[0].nodes[1] = ast.nodes[0];
             nast.nodes[1] = ast.nodes[1];
-            ast["desugared"] = true;
+            ast["desugared"] = Core.clone(ast);
             Core.assign(ast, nast);
         } else if (ast.type === "S") {
             const nast = parser.parse("@Prod _ _ ?a ?fn");
             nast.nodes[1] = Core.clone(ast);
             nast.nodes[1].type = "L";
             Core.assign(ast, nast);
-            ast["desugared"] = true;
+            ast["desugared"] = Core.clone(ast);
             ast.nodes[0].nodes[1] = ast.nodes[1].nodes[0];
         }
         if (ast.type === "->") {
             ast.type = "P"; ast.name = "_";
-            ast["desugared"] = true;
+            ast["desugared"] = Core.clone(ast);
         }
         if (ast.nodes) {
             for (const n of ast.nodes) this.desugar(n, allowModify);
@@ -673,9 +671,16 @@ export class Core {
             if (fn === "@Prod" && args === 5) {
                 const l = ali[4];
                 const t = ast.checked;
-                if (this.hasBondVar(l.nodes[1], l.bondVarId)) {
-                    Core.assign(ast, wrapLambda("S", l.name, l.nodes[0], l.nodes[1]), true);
-                    ast.bondVarId = l.bondVarId;
+                if (l.type === "var" || this.hasBondVar(l.nodes[1], l.bondVarId)) {
+                    if (l.type === "var") {
+                        const nname = l.name === "x" ? "x'" : "x";
+                        Core.assign(ast, wrapLambda("S", nname, l.checked ?? wrapVar("_"), wrapApply(l, wrapVar(nname))), true);
+                        this.getBondVarId(ast);
+                        ast.nodes[1].nodes[1].bondVarId = ast.bondVarId;
+                    } else {
+                        Core.assign(ast, wrapLambda("S", l.name, l.nodes[0], l.nodes[1]), true);
+                        ast.bondVarId = l.bondVarId;
+                    }
                 } else {
                     Core.assign(ast, { type: "X", nodes: l.nodes, name: "" }, true);
                 }
@@ -696,13 +701,13 @@ export class Core {
                     continue;
                 }
             }
-            if (fn === "@pair" && args === 7 && ali[4].type === "L" && !this.hasBondVar(ali[4].nodes[1], ali[4].bondVarId)) {
+            if (fn === "@pair" && args === 7 && ali[4].type === "L" && (ast["desugared"]?.type === "," || !this.hasBondVar(ali[4].nodes[1], ali[4].bondVarId))) {
                 const t = ast.checked;
                 Core.assign(ast, { type: ",", nodes: [ali[5], ali[6]], name: "" }, true);
                 ast.checked = t;
                 return;
             }
-            if (fn === "pair" && args === 4 && ali[1].type === "L" && !this.hasBondVar(ali[1].nodes[1], ali[1].bondVarId)) {
+            if (fn === "pair" && args === 4 && ali[1].type === "L" && (ast["desugared"]?.type === "," || !this.hasBondVar(ali[1].nodes[1], ali[1].bondVarId))) {
                 const t = ast.checked;
                 Core.assign(ast, { type: ",", nodes: [ali[2], ali[3]], name: "" }, true);
                 ast.checked = t;
@@ -753,6 +758,8 @@ export class Core {
                 if (fn === "add") { Core.assign(ast, wrapApply(wrapVar("succ"), wrapApply(list[0], list[1], list[2].nodes[1]))); return true; }
                 // mul a succ(b) -> add(mul(a b) a)
                 if (fn === "mul") { Core.assign(ast, wrapApply(wrapVar("add"), wrapApply(list[0], list[1], list[2].nodes[1]), Core.clone(list[1], true))); return true; }
+                // pow a succ(b) -> mul(pow(a b) a)
+                if (fn === "pow") { Core.assign(ast, wrapApply(wrapVar("mul"), wrapApply(list[0], list[1], list[2].nodes[1]), Core.clone(list[1], true))); return true; }
             }
             if (list[2].nodes?.[0]?.name === "0") {
                 // add a 0 -> a
@@ -794,6 +801,12 @@ export class Core {
     }
     whnf(ast: AST, context: Context, skipExpand: boolean) {
         while (true) {
+            // eta-reduction
+            while (ast.type === "L" && ast.nodes[1].type === "apply" && ast.nodes[1].nodes[1].type === "var") {
+                if (this.state.bondVarRel.eq(ast.bondVarId, ast.nodes[1].nodes[1].bondVarId) && !this.hasBondVar(ast.nodes[1].nodes[0], ast.bondVarId)) {
+                    Core.assign(ast, ast.nodes[1].nodes[0], true);
+                } else break;
+            }
             if (ast.type === "apply") {
                 if (this.tryDirectCompute(ast, context, skipExpand)) continue;
                 this.whnf(ast.nodes[0], context, skipExpand);
@@ -970,6 +983,9 @@ export class Core {
     }
 
     addInferRel(name: string, ast: AST, context: Context) {
+        if (name === "?43") {
+            console.log("fg");
+        }
         const ctxt = this.state.inferTable.list.get(name.slice(1).replaceAll(":", "")) ?? [];
         let a = ctxt.length - 1, b = context.length - 1;
         const rel = this.state.bondVarRel;
@@ -1129,7 +1145,9 @@ export class Core {
             }
             // fn eta conversion: Lx:a.b = f  ->  Lx:a.b = Lx:a.f x
             if (b.type === "L") {
-                Core.assign(a, wrapLambda("L", b.name, b.nodes[0], wrapApply(wrapVar(a.name), wrapVar(b.name))));
+                Core.assign(a, wrapLambda("L", b.name, b.nodes[0], wrapApply(a, wrapVar(b.name))));
+                a.bondVarId = b.bondVarId;
+                a.nodes[1].nodes[1].bondVarId = a.bondVarId;
                 return this.equal(a.nodes[1], b.nodes[1], context);
             }
             // number === succ (n:nat)
@@ -1149,7 +1167,9 @@ export class Core {
             }
             // fn eta conversion: Lx:a.b = f  ->  Lx:a.b = Lx:a.f x
             if (a.type === "L") {
-                Core.assign(b, wrapLambda("L", a.name, a.nodes[0], wrapApply(wrapVar(b.name), wrapVar(a.name))));
+                Core.assign(b, wrapLambda("L", a.name, a.nodes[0], wrapApply(b, wrapVar(a.name))));
+                b.bondVarId = a.bondVarId;
+                b.nodes[1].nodes[1].bondVarId = b.bondVarId;
                 return this.equal(a.nodes[1], b.nodes[1], context);
             }
             // number eta-like conversion: n = succ x -> succ (n-1) = succ x
