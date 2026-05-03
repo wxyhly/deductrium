@@ -1,5 +1,5 @@
 import { TR } from "../lang.js";
-export const debugBoundVarId = true;
+export const debugBoundVarId = false;
 export class ASTParser {
     keywords = [":=", "->", "~=", "===", "@ind_Sum", "ind_Sum", "@Sum", "Sum", "@ind_S1", "ind_S1", "S1", "@ind_Prod", "ind_Prod", "@Prod", "Prod"];
     symChar = ".:,()PSLX~*+";

@@ -747,13 +747,10 @@ export class Core {
             }
         }
     }
-    tryDirectCompute(ast: AST, context: Context, skipExpand: boolean) {
-        const list = this.flattenApplyList(ast);
-        if (list[0].bondVarId) return false; // this implies that "add" is local var, cannot reduce
-        const fn = list[0].name;
+    tryDirectCompute(ast: AST, list: AST[], fn: string, context: Context) {
         if ((fn === "add" || fn === "mul" || fn === "pow") && list.length === 3) {
-            this.whnf(list[1], context, skipExpand);
-            this.whnf(list[2], context, skipExpand);
+            this.whnf(list[1], context, true);
+            this.whnf(list[2], context, true);
             if (list[2].nodes?.[0]?.name === "succ") {
                 // add a succ(b) -> succ(add a b)
                 if (fn === "add") { Core.assign(ast, wrapApply(wrapVar("succ"), wrapApply(list[0], list[1], list[2].nodes[1]))); return true; }
@@ -784,7 +781,7 @@ export class Core {
             }
         }
         if ((fn === "pred" || fn === "succ") && list.length === 2) {
-            this.whnf(list[1], context, skipExpand);
+            this.whnf(list[1], context, true);
             if (!NatLiteral.is(list[1])) return false;
             try {
                 // || NaN is for preventing "" -> 0n
@@ -800,7 +797,10 @@ export class Core {
         }
         return false;
     }
+    alwaysSkip = new Set(["add", "mul", "pow"]);
+    // here we always skip def of add/mul/pow, expansion is triggered when cmp fn === ind_nat xxx
     whnf(ast: AST, context: Context, skipExpand: boolean) {
+
         while (true) {
             // eta-reduction
             while (ast.type === "L" && ast.nodes[1].type === "apply" && ast.nodes[1].nodes[1].type === "var") {
@@ -809,22 +809,19 @@ export class Core {
                 } else break;
             }
             if (ast.type === "apply") {
-                if (this.tryDirectCompute(ast, context, skipExpand)) continue;
                 this.whnf(ast.nodes[0], context, skipExpand);
                 const [fn, ap] = ast.nodes;
                 if (fn.type === "L") {
                     const id = this.getBondVarId(fn);
                     // try to fill infered values before beta-reduction, to avoid some bad things
-                    // this.solveInferRel();
-                    this.fillInfered(ast);
-                    // this.replaceVarInInfer(fn.name, id, ap);
+                    // this.fillInfered(ast);
                     const nt1 = Core.clone(fn.nodes[1], true);
                     this.replaceVar(nt1, fn.name, id, ap, context);
                     Core.assign(ast, nt1, true);
                 } else if (fn.type === "var" && !fn.bondVarId && !skipExpand) {
                     let expand: AST;
                     // f a => (....) a
-                    if (expand = this.state.sysDefs[fn.name] || this.state.userDefs[fn.name]) {
+                    if (!this.alwaysSkip.has(fn.name) && (expand = this.state.sysDefs[fn.name]) || this.state.userDefs[fn.name]) {
                         Core.assign(fn, this.markBondVars(Core.clone(expand), context));
                     }
                     // if compute rule modified, then go on loop
@@ -832,7 +829,7 @@ export class Core {
                 } else {
                     if (!this.iotaHead(ast, context)) return true;
                 }
-            } else if (ast.type === "var" && !ast.bondVarId && !skipExpand) {
+            } else if (ast.type === "var" && !this.alwaysSkip.has(ast.name) && !ast.bondVarId && !skipExpand) {
                 let expand: AST;
                 // f a => (....) a
                 if (expand = this.state.sysDefs[ast.name] || this.state.userDefs[ast.name]) {
@@ -879,6 +876,8 @@ export class Core {
         const applyList = this.flattenApplyList(ast);
         if (applyList[0].bondVarId) return false;
         const fn = applyList[0].name;
+        if (this.tryDirectCompute(ast, applyList, fn, context)) return true;
+
         // @succ @n => @n+1
         if (fn === "@succ" && applyList.length === 2) {
             this.whnf(ast.nodes[1], context, false);
@@ -1155,6 +1154,11 @@ export class Core {
             if (a.name !== "0" && NatLiteral.is(a) && b.type === "apply" && b.nodes[0].name === "succ") {
                 return this.equal(wrapVar(String(BigInt(a.name) - 1n)), b.nodes[1], context);
             }
+
+            if (this.alwaysSkip.has(a.name) && b.type === "apply") {
+                const n = this.flattenApplyList(b)[0].name;
+                if (n === "ind_nat" || n === "@ind_nat") return this.equal(b, this.markBondVars(Core.clone(this.state.sysDefs[a.name]), context), context);
+            }
         }
         if (b.type === "var") {
             if (b.name === "_") {
@@ -1176,6 +1180,10 @@ export class Core {
             // number eta-like conversion: n = succ x -> succ (n-1) = succ x
             if (b.name !== "0" && NatLiteral.is(b) && a.type === "apply" && a.nodes[0].name === "succ") {
                 return this.equal(wrapVar(String(BigInt(b.name) - 1n)), a.nodes[1], context);
+            }
+            if (this.alwaysSkip.has(b.name) && a.type === "apply") {
+                const n = this.flattenApplyList(a)[0].name;
+                if (n === "ind_nat" || n === "@ind_nat") return this.equal(a, this.markBondVars(Core.clone(this.state.sysDefs[b.name]), context), context);
             }
         }
         if (a.type === b.type && a.type === "var" && a.bondVarId && b.bondVarId) {
