@@ -414,10 +414,11 @@ export class Assist {
         } else if (nType.nodes?.[0]?.nodes?.[0]?.name === "eq") {
             const x = nType.nodes?.[0]?.nodes?.[1];
             const y = nType.nodes?.[1];
-            matched["$x"] = Core.clone(x);
-            matched["$y"] = Core.clone(y);
+            matched["$x"] = Core.clone(x, true);
+            matched["$y"] = Core.clone(y, true);
             matched["$typex"] = core.checkType(x, goal.context, false);
             const excludedSet = new Set(goal.context.map(e => e[0]));
+            Core.getFreeVars(x, excludedSet);
             const ny = Core.getNewName(y.type === "var" ? y.name : "y", excludedSet);
             // m: eq f(x) f(y)
             // ind_eq f(x) Ly':T.Lm:eq f(x) y'.goal[f(y)/y']??.
@@ -429,6 +430,12 @@ export class Assist {
             const replaced = this.genReplaceFn(goal.type, y, ny, excludedSet);
             Core.replaceByMatch(replaced, { [ny]: x }, /./);
             Core.assign(goal.type, replaced);
+            goal.ast.checked = goal.type;
+            goal.ast.nodes[1].checked = nType;
+            goal.ast.nodes[0].nodes[1].checked = nType.nodes[1].checked;
+            const t = core.checkType(goal.ast.nodes[0].nodes[0].nodes[0], goal.context, false);
+            goal.ast.nodes[0].nodes[0].checked = t.nodes[1];
+            goal.ast.nodes[0].checked = wrapLambda("->","",nType,t.nodes[1].nodes[1].nodes[1]);
             goal.ast = goal.ast.nodes[0].nodes[0].nodes[1];
             this.goal.unshift(goal);
             // delete goal.context[n];

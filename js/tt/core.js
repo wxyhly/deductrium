@@ -421,6 +421,8 @@ export class Core {
         catch (e) {
             errmsg = e;
         }
+        console.log("^", parser.stringify(ast));
+        console.log("$", Array.from(this.state.inferTable.list.keys()).filter(e => !this.state.inferTable.solved.has("?" + e)).join(","));
         // reduce final result, fill infer
         try {
             this.markAndCheckInferedValue(ast, context);

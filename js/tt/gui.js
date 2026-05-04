@@ -715,7 +715,7 @@ export class TTGui {
                 }
                 else {
                     if (this.core.checkType(Core.clone({
-                        name: "", type: ":", nodes: [ast.nodes[0], ref]
+                        name: "", type: ":", nodes: [ast, ref]
                     }), [], true))
                         return true;
                 }
