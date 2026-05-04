@@ -62,11 +62,25 @@ export class InferTable {
             this.list.set(ast.name.replace(/^\?([^\:]+)\:*$/, "$1"), context);
         }
         if (ast.type === "P" || ast.type === "S" || ast.type === "L") {
+            this.findInferVal(ast.nodes[0], context);
             return this.findInferVal(ast.nodes[1], assignContext([ast.name, ast.nodes[0], ast.bondVarId], context));
         }
         if (ast.nodes) {
             for (const n of ast.nodes) {
                 this.findInferVal(n, context);
+            }
+        }
+    }
+    static mapInferVal(ast: AST, table: Map<string, string>) {
+        if (ast.type === "var") {
+            const inf = ast.name.match(/^\?([^\:]+):*$/)?.[1];
+            if (!inf) return;
+            const ninf = table.get(inf);
+            if (ninf) ast.name = ast.name.replace(/^\?[^\:]+(:*)$/, "?" + ninf + "$1");
+        }
+        if (ast.nodes) {
+            for (const n of ast.nodes) {
+                this.mapInferVal(n, table);
             }
         }
     }
@@ -126,6 +140,25 @@ class DisjointSet {
     eq(x: number, y: number): boolean {
         return this.find(x) === this.find(y);
     }
+    merge(ds: DisjointSet, increment: number) {
+        const rootMap = new Map<number, number>();
+
+        for (const oldId of ds.parent.keys()) {
+            const newId = oldId + increment;
+            // 将新 id 添加到当前实例（若已存在则跳过，但因为偏移保证不冲突，这里实际会新增）
+            // this.add(newId);
+
+            const oldRoot = ds.find(oldId);
+            if (rootMap.has(oldRoot)) {
+                // 将该新 id 合并到已记录的该等价类代表元素
+                this.union(newId, rootMap.get(oldRoot)!);
+            } else {
+                // 第一个遇到的该等价类元素，记为代表
+                rootMap.set(oldRoot, newId);
+                // 此时 newId 已经是根，无需额外操作
+            }
+        }
+    }
 }
 
 type State = {
@@ -135,6 +168,8 @@ type State = {
     sysDefs: Varlist;
     /** user defined constants and their values */
     userDefs: Varlist;
+    /** cache table for check const */
+    defTypes: { [name: string]: [AST, InferTable, DisjointSet] };
     /** all compute rules here, e.g. { "indnat": {pattern:["_","#C","#0","#succ","succ #n"],result:"#succ #n (indnat #C #0 #succ #n)"} } */
     computeRules: { [ctor: string]: { pattern: AST[], result: AST }[] };
     /**  */
@@ -208,7 +243,7 @@ export class Core {
         }
     }
     static cloneContext(c: Context): Context {
-        return c.map(e => [e[0], this.clone(e[1]), e[2]]);
+        return c.map(e => [e[0], e[1] ? this.clone(e[1]) : null, e[2]]);
     }
     hasBondVar(ast: AST, id: number) {
         if (ast.type === "var") {
@@ -306,9 +341,10 @@ export class Core {
         bondVarRel: null,
         sysDefs: {},
         userDefs: {},
+        defTypes: {},
         computeRules: {},
         inferTable: null,
-        errormsg: []
+        errormsg: [],
     };
     cloneState(): State {
         return {
@@ -317,6 +353,7 @@ export class Core {
             bondVarRel: this.state.bondVarRel?.clone(),
             sysDefs: this.state.sysDefs,
             userDefs: this.state.userDefs,
+            defTypes: this.state.defTypes,
             computeRules: this.state.computeRules,
             inferTable: this.state.inferTable?.clone(),
             errormsg: this.state.errormsg
@@ -729,6 +766,10 @@ export class Core {
         // sys/user Defs
         res = this.state.sysDefs[n] || this.state.userDefs[n];
         if (res) {
+            const cache = this.state.defTypes[n];
+            if (cache) {
+                return this.loadConstTypeCache(context, ...cache);
+            }
             return this.check(this.markBondVars(Core.clone(res), context), context, false);
         }
 
@@ -753,7 +794,7 @@ export class Core {
         if ((fn === "add" || fn === "mul" || fn === "pow") && list.length === 3) {
             this.whnf(list[1], context, true);
             this.whnf(list[2], context, true);
-            if (list[2].nodes?.[0]?.name === "succ") {
+            if (list[2].nodes?.[0]?.name === "succ" && !list[2].nodes?.[0]?.bondVarId) {
                 // add a succ(b) -> succ(add a b)
                 if (fn === "add") { Core.assign(ast, wrapApply(wrapVar("succ"), wrapApply(list[0], list[1], list[2].nodes[1]))); return true; }
                 // mul a succ(b) -> add(mul(a b) a)
@@ -761,7 +802,7 @@ export class Core {
                 // pow a succ(b) -> mul(pow(a b) a)
                 if (fn === "pow") { Core.assign(ast, wrapApply(wrapVar("mul"), wrapApply(list[0], list[1], list[2].nodes[1]), Core.clone(list[1], true))); return true; }
             }
-            if (list[2].nodes?.[0]?.name === "0") {
+            if (list[2].name === "0") {
                 // add a 0 -> a
                 if (fn === "add") { Core.assign(ast, list[1]); return true; }
                 // mul a 0 -> 0
@@ -1241,6 +1282,74 @@ export class Core {
             found = this.expandDef(ast.nodes[1], context, n) || found;
         }
         return found;
+    }
+    registConstType(name: string, ast: AST) {
+        this.state.errormsg = [];
+        this.state.inferTable = new InferTable(ast);
+        this.state.bondVarId = 1;
+        this.state.bondVarRel = new DisjointSet();
+        ast = this.markBondVars(this.desugar(Core.clone(ast), false), []);
+        this.check(ast, [], false);
+        this.markAndCheckInferedValue(ast, []);
+        // const alphaConversionIds = new Set<number>;
+        // this.reduce(ast, [], alphaConversionIds);
+        // this.doAlphaConversionByIds(ast, alphaConversionIds);
+        this.state.defTypes[name] ??= [ast.checked, this.state.inferTable.clone(), this.state.bondVarRel.clone()];
+    }
+    private loadConstTypeCache(context: Context, ast: AST, inferTable: InferTable, bondVarRel: DisjointSet) {
+        ast = Core.clone(ast);
+        // we remark all bondvar ids to make it different from current state
+        // const bondvarIdBase = this.state.bondVarId - 1;
+        // this.increaseBondVarIdsBy(ast, bondvarIdBase);
+        // find all non-resolved infer ids
+        // const newInfered = Array.from(inferTable.list.keys()).filter(e => !inferTable.solved.has("?" + e));
+        // const map = new Map<string, string>();
+        // const mapInv = new Map<string, string>();
+        // for (const inf of newInfered) {
+        //     const ctxt = Core.cloneContext(inferTable.list.get(inf));
+        //     // first we remark bondvar id in the context of infer vars
+        //     for (let i = 0; i < ctxt.length; i++) {
+        //         if (ctxt[i][1]) this.increaseBondVarIdsBy(ctxt[i][1], bondvarIdBase);
+        //         ctxt[i][2] += bondvarIdBase;
+        //         this.state.bondVarId = Math.max(this.state.bondVarId, ctxt[i][2] + 1);
+        //     }
+        //     // add it (list map) to current state
+        //     const ninf = this.state.inferTable.addNewName(0, ctxt);
+        //     map.set(inf, ninf);
+        //     mapInv.set(ninf, inf);
+        // }
+        // // map infervalues in list map, then merge environment context
+        // for (const [inf, ninf] of map.entries()) {
+        //     let ct = this.state.inferTable.list.get(ninf);
+        //     for (const [n, t, i] of ct) {
+        //         if (t) InferTable.mapInferVal(t, map);
+        //     }
+        //     // merge outter context
+        //     ct.push(...context);
+        // }
+        // // then we remark bondvar id in rel, and add it to current state
+        // for (const [k, v] of Object.entries(inferTable.rel)) {
+        //     const inf = k.replaceAll(":", "").slice(0);
+        //     const ninf = map.get(inf);
+        //     if (!ninf) continue;
+        //     const nv = Core.clone(v);
+        //     this.increaseBondVarIdsBy(nv, bondvarIdBase);
+        //     InferTable.mapInferVal(nv, map);
+        //     this.state.inferTable.rel[k.replace(/^\?[^\:]+(:*)$/, "?" + ninf + "$1")] = nv;
+        // }
+        // // then we merge bondVarRel
+        // this.state.bondVarRel.merge(bondVarRel, bondvarIdBase);
+        // InferTable.mapInferVal(ast, map);
+        return ast;
+    }
+    private increaseBondVarIdsBy(ast: AST, increment: number) {
+        if (ast.bondVarId) {
+            ast.bondVarId += increment;
+            this.state.bondVarId = Math.max(this.state.bondVarId, ast.bondVarId + 1);
+        }
+        if (ast.nodes?.length) {
+            for (const n of ast.nodes) this.increaseBondVarIdsBy(n, increment);
+        }
     }
 }
 class NatLiteral {

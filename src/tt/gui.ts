@@ -391,6 +391,7 @@ export class TTGui {
             if (rule.ast.type === ":=" && rule.ast.nodes[0].type === "var") {
                 const val = rule.ast.nodes[1].type === ":" ? rule.ast.nodes[1].nodes[0] : rule.ast.nodes[1];
                 this.core.state.sysDefs[vname] = this.core.desugar(Core.clone(val), true);
+                // this.core.registConstType(vname, val);
             }
 
             // register in gui highlight, only ignore ====
@@ -596,7 +597,7 @@ export class TTGui {
                 }
             }
 
-            if (nextInput && (ast.type === ":=" || ev["updateDefs"])) {
+            if (nextInput && (ast?.type === ":=" || ev["updateDefs"])) {
                 nextInput.onblur({ updateDefs: true } as any);
             }
         };
