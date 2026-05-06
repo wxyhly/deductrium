@@ -36,7 +36,7 @@ export class InferTable {
         while (this.list.has(String(n++)));
         const name = String(n - 1);
         this.list.set(name, ctxt);
-        if (name === "10") {
+        if (name === "1") {
             // console.log("hqho");
         }
         return name;
@@ -93,6 +93,15 @@ class DisjointSet {
     constructor() {
         this.parent = new Map<number, number>();
         this.size = new Map<number, number>();
+    }
+    dbg() {
+        const bucket: Set<number>[] = [];
+        for (const c of this.parent.keys()) {
+            const r = this.find(c);
+            bucket[r] ??= new Set;
+            bucket[r].add(c);
+        }
+        return bucket.filter(e => e.size > 1).map(e => Array.from(e).join("=")).join("  ");
     }
     clone() {
         const n = new DisjointSet;
@@ -169,7 +178,7 @@ type State = {
     /** user defined constants and their values */
     userDefs: Varlist;
     /** cache table for check const */
-    defTypes: { [name: string]: [AST, InferTable, DisjointSet] };
+    defTypes: { [name: string]: [AST, InferTable, DisjointSet, number] };
     /** all compute rules here, e.g. { "indnat": {pattern:["_","#C","#0","#succ","succ #n"],result:"#succ #n (indnat #C #0 #succ #n)"} } */
     computeRules: { [ctor: string]: { pattern: AST[], result: AST }[] };
     /**  */
@@ -555,17 +564,18 @@ export class Core {
         delete ast.bondVarId;
         if (ast.checked) this.doAlphaConversionByIds(ast.checked, ids);
     }
-    showInfered() {
-        let ast = this.state;
+    showInfered(it?: InferTable) {
+        it ??= this.state.inferTable;
         let str = "";
-        if (ast?.inferTable?.list)
-            str += JSON.stringify(Array.from(ast.inferTable.list.keys()).filter(e => !ast.inferTable.solved.has("?" + e))) + "\n";
-        if (ast?.inferTable?.rel)
-            str += JSON.stringify(Object.entries(ast.inferTable.rel).map(([k, v]) => [k, parser.stringify(v)]));
-        return str;
+        if (it?.list)
+            str += JSON.stringify(Array.from(it.list.keys()).filter(e => !it.solved.has("?" + e))) + "\n";
+        str += JSON.stringify(Array.from(it.list.entries()).filter(([e, v]) => !it.solved.has("?" + e)).map(r => r[1].map(v => [v[0], v[1] ? parser.stringify(v[1]) : null, v[2]]))) + "\n";
+        if (it?.rel)
+            str += JSON.stringify(Object.entries(it.rel).map(([k, v]) => [k, parser.stringify(v)]));
+        console.log(str);
     }
     private check(ast: AST, context: Context, ignoreErr: boolean): AST {
-        // pick cache
+        // no pick cache
         if (ast.checked) delete ast.checked;
         if (ast.type === "var") {
             if (ast.name === "_") {
@@ -624,6 +634,7 @@ export class Core {
             const tap = this.check(ast.nodes[1], context, ignoreErr);
             if (!tfn || !tap) {
                 this.error(ast, TR("非函数尝试作用"), ignoreErr);
+                return;
             }
             if (tfn.type === "->") {
                 if (this.equal(tfn.nodes[0], tap, context)) {
@@ -640,7 +651,7 @@ export class Core {
                 this.solveInferRel();
                 ast.checked = Core.clone(ap);
                 this.fillInfered(ast.checked);
-                this.replaceVarInInfer(fnType.name, bondVarId, ast.nodes[1]);
+                // this.replaceVarInInfer(fnType.name, bondVarId, ast.nodes[1]);
                 this.replaceVar(ast.checked, fnType.name, bondVarId, ast.nodes[1], context);
                 return ast.checked;
             } else {
@@ -690,7 +701,8 @@ export class Core {
     opaque = [
         ["pair", 4], ["eq", 3], ["inl", 5], ["inr", 5], ["refl", 3], ["ind_Prod", 5], ["ind_eq", 4], ["ind_Sum", 6],
         ["ind_Bool", 2], ["ind_nat", 2], ["ap", 5], ["trans", 4], ["apd", 4], ["inveq", 4], ["compeq", 5],
-        ["pr0", 3], ["prd1", 2], ["pr1", 3], ["id2eqv", 4], ["eqv", 2]
+        ["pr0", 3], ["prd1", 2], ["pr1", 3], ["id2eqv", 4], ["eqv", 2], ["LiftU", 2], ["liftU", 3], ["lowerU", 3],
+        ["transconst", 5], ["ap_apd", 5], ["apd_ap", 5], ["apd_loop", 5], ["Sus", 2], ["North", 2], ["South", 2], ["merid", 2]
     ] as [string, number][];
     ensugar(ast: AST) {
         // no recursive, outter fn will do that
@@ -711,7 +723,7 @@ export class Core {
             if (fn === "@Prod" && args === 5) {
                 const l = ali[4];
                 const t = ast.checked;
-                if (l.type !== "L" || this.hasBondVar(l.nodes[1], l.bondVarId)) {
+                if ((ast["desugared"] && ast["desugared"]?.type !== "X") || l.type !== "L" || this.hasBondVar(l.nodes[1], l.bondVarId)) {
                     if (l.type !== "L") {
                         const nname = l.name === "x" ? "x'" : "x";
                         Core.assign(ast, wrapLambda("S", nname, ali[3], wrapApply(l, wrapVar(nname))), true);
@@ -808,6 +820,14 @@ export class Core {
                 // mul a 0 -> 0
                 if (fn === "mul") { Core.assign(ast, wrapVar("0")); return true; }
                 if (fn === "pow") { Core.assign(ast, wrapVar("1")); return true; }
+            }
+            if (list[2].name === "1") {
+                // add a 1 -> succ a
+                if (fn === "add") { Core.assign(ast, wrapApply(wrapVar("succ"), list[1])); return true; }
+                // mul a 1 -> a
+                if (fn === "mul") { Core.assign(ast, list[1]); return true; }
+                // pow a 1 -> a
+                if (fn === "pow") { Core.assign(ast, list[1]); return true; }
             }
             if (!NatLiteral.is(list[1]) || !NatLiteral.is(list[2])) return false;
             try {
@@ -1005,7 +1025,7 @@ export class Core {
             let tail = applyList.length - pattern.length;
             if (tail < 0) continue;
 
-            const res = Core.clone(result);
+            const res = this.markBondVars(Core.clone(result), []);
             const matchTable: Varlist = {};
             let matchFail = false;
             for (let i = 0; i < pattern.length; i++) {
@@ -1026,7 +1046,7 @@ export class Core {
     }
 
     addInferRel(name: string, ast: AST, context: Context) {
-        if (name === "?43") {
+        if (name === "?21") {
             console.log("fg");
         }
         const ctxt = this.state.inferTable.list.get(name.slice(1).replaceAll(":", "")) ?? [];
@@ -1132,6 +1152,8 @@ export class Core {
 
         // type "U@" and "U@:" are equal
         if (a.name?.startsWith("U@") && b.name?.startsWith("U@")) return true;
+        // ?f x = U  => f = Lx.U  
+        // ?f (c x) = ?g (c x)  => f = Lx.?g x  
         if (a.origin === true) a = Core.clone(a);
         if (b.origin === true) b = Core.clone(b);
         // infered value matched. add this rel
@@ -1143,6 +1165,10 @@ export class Core {
         // whnf: fn apply beta reduction, iota computation and delta expansion
         this.whnf(a, context, false);
         this.whnf(b, context, false);
+
+        // lazy expand add/mul/pow
+        this.lazyExpand(a, b, context);
+        this.lazyExpand(b, a, context);
 
         if (a.name?.startsWith("?")) {
             return this.addInferRel(a.name, b, context);
@@ -1165,6 +1191,11 @@ export class Core {
         // recurse
         if (a.type === b.type && a.name == b.name && a.nodes?.length && a.nodes?.length === b.nodes?.length) {
             let breaked = false;
+            if (!Core.exactEqual(a.nodes[0], b.nodes[0]) && (a.nodes[0].name.startsWith("?") || b.nodes[0].name.startsWith("?"))) {
+                // no, here is not failed, we just don't know. but here
+                console.log("sooor");
+                return true;
+            }
             // if recursive eq failed, we need to undo inferring during recursive eq.
             for (let i = 0; i < a.nodes?.length; i++) {
                 if (!this.equal(a.nodes[i], b.nodes[i], context)) { breaked = true; break; }
@@ -1172,6 +1203,7 @@ export class Core {
             if (!breaked) return true;
             // recursive eq failed
             return false;
+
         }
         if (a.type === b.type && a.type === "var" && ((!a.bondVarId && !b.bondVarId && a.name === b.name) || this.isBondVarIdEqual(a.bondVarId, b.bondVarId))) return true;
 
@@ -1248,7 +1280,32 @@ export class Core {
         console.log(`? ${parser.stringify(a)} != ${parser.stringify(b)}`);
         return false;
     }
-
+    lazyExpand(a: AST, b: AST, context: Context) {
+        if (a.type === "apply" && a.nodes[0].type === "apply" && a.nodes[0].nodes[0].type === "var") {
+            if (a.nodes[0].nodes[0].bondVarId) return;
+            if (!(a.nodes[1].type === "var" && NatLiteral.is(a.nodes[1]))) return;
+            const fn = a.nodes[0].nodes[0].name;
+            let expand = false;
+            // add xx n  => succ (add xx n-1)
+            if (fn === "add" && b.type === "apply" && b.nodes[0].type === "var" && b.nodes[0].name === "succ") {
+                expand = true;
+            }
+            // mul xx n  => add (mul xx n-1) xx or succ (xxxxxxxx)
+            if (fn === "mul" && b.type === "apply" && (b.nodes[0].nodes[0].name === "add" || b.nodes[0].name === "succ")) {
+                expand = true;
+            }
+            // pow xx n  => mul (pow xx n-1) xx or add/succ (xxxxxxxx)
+            if (fn === "pow" && b.type === "apply" && (b.nodes[0].nodes[0].name === "mul" || b.nodes[0].nodes[0].name === "add" || b.nodes[0].name === "succ")) {
+                expand = true;
+            }
+            if (!expand || a.nodes[1].name === "0") return;
+            const name = String(BigInt(a.nodes[1].name) - 1n) + "X";
+            a.nodes[1].name = name;
+            Core.assign(a.nodes[1], wrapApply(wrapVar("succ"), a.nodes[1]));
+            this.whnf(a, context, true);
+            this.replaceVar(a, name, -1, wrapVar(name.slice(0, -1)));
+        }
+    }
     static exactEqual(ast1: AST, ast2: AST) {
         if (ast1 === ast2) return true;
         if (ast1.type !== ast2.type) return false;
@@ -1264,22 +1321,37 @@ export class Core {
         }
         return true;
     }
+    // count: [position to expand, current position]
+    expandDef(ast: AST, context: Context, n: string | Set<string>, count = [0, 1]): boolean {
 
-    expandDef(ast: AST, context: Context, n: string | Set<string>): boolean {
         let found = false;
         if (ast.type === "var" && !ast.bondVarId && (
             ast.name === n || (typeof n === "object" && n.has(ast.name))) && !context.find(e => e[0] === ast.name)
         ) {
             const expr = this.state.sysDefs[ast.name] || this.state.userDefs[ast.name];
-            Core.assign(ast, Core.clone(expr));
-            return true;
+            if (count[0] === 0 || Math.abs(count[0]) === count[1]) {
+                Core.assign(ast, Core.clone(expr));
+                count[1]++;
+                return true;
+            } else {
+                count[1]++;
+                return false;
+            }
         }
         if (ast.nodes?.length) {
-            found = this.expandDef(ast.nodes[0], context, n) || found;
-            if (ast.type === "P" || ast.type === "L" || ast.type === "S") {
-                context = assignContext([ast.name, ast.nodes[0], 0], context);
+            if (count[0] < 0) {
+                if (ast.type === "P" || ast.type === "L" || ast.type === "S") {
+                    context = assignContext([ast.name, ast.nodes[0], 0], context);
+                }
+                found = this.expandDef(ast.nodes[1], context, n, count) || found;
+                found = this.expandDef(ast.nodes[0], context, n, count) || found;
+            } else {
+                found = this.expandDef(ast.nodes[0], context, n, count) || found;
+                if (ast.type === "P" || ast.type === "L" || ast.type === "S") {
+                    context = assignContext([ast.name, ast.nodes[0], 0], context);
+                }
+                found = this.expandDef(ast.nodes[1], context, n, count) || found;
             }
-            found = this.expandDef(ast.nodes[1], context, n) || found;
         }
         return found;
     }
@@ -1294,58 +1366,57 @@ export class Core {
         // const alphaConversionIds = new Set<number>;
         // this.reduce(ast, [], alphaConversionIds);
         // this.doAlphaConversionByIds(ast, alphaConversionIds);
-        this.state.defTypes[name] ??= [ast.checked, this.state.inferTable.clone(), this.state.bondVarRel.clone()];
+        this.state.defTypes[name] = [ast.checked, this.state.inferTable.clone(), this.state.bondVarRel.clone(), this.state.bondVarId];
     }
-    private loadConstTypeCache(context: Context, ast: AST, inferTable: InferTable, bondVarRel: DisjointSet) {
+    private loadConstTypeCache(context: Context, ast: AST, inferTable: InferTable, bondVarRel: DisjointSet, bondVarId: number) {
         ast = Core.clone(ast);
         // we remark all bondvar ids to make it different from current state
-        // const bondvarIdBase = this.state.bondVarId - 1;
-        // this.increaseBondVarIdsBy(ast, bondvarIdBase);
+        const bondvarIdBase = this.state.bondVarId - 1;
+        this.state.bondVarId = bondVarId + bondvarIdBase;
+        this.increaseBondVarIdsBy(ast, bondvarIdBase);
         // find all non-resolved infer ids
-        // const newInfered = Array.from(inferTable.list.keys()).filter(e => !inferTable.solved.has("?" + e));
-        // const map = new Map<string, string>();
-        // const mapInv = new Map<string, string>();
-        // for (const inf of newInfered) {
-        //     const ctxt = Core.cloneContext(inferTable.list.get(inf));
-        //     // first we remark bondvar id in the context of infer vars
-        //     for (let i = 0; i < ctxt.length; i++) {
-        //         if (ctxt[i][1]) this.increaseBondVarIdsBy(ctxt[i][1], bondvarIdBase);
-        //         ctxt[i][2] += bondvarIdBase;
-        //         this.state.bondVarId = Math.max(this.state.bondVarId, ctxt[i][2] + 1);
-        //     }
-        //     // add it (list map) to current state
-        //     const ninf = this.state.inferTable.addNewName(0, ctxt);
-        //     map.set(inf, ninf);
-        //     mapInv.set(ninf, inf);
-        // }
-        // // map infervalues in list map, then merge environment context
-        // for (const [inf, ninf] of map.entries()) {
-        //     let ct = this.state.inferTable.list.get(ninf);
-        //     for (const [n, t, i] of ct) {
-        //         if (t) InferTable.mapInferVal(t, map);
-        //     }
-        //     // merge outter context
-        //     ct.push(...context);
-        // }
-        // // then we remark bondvar id in rel, and add it to current state
-        // for (const [k, v] of Object.entries(inferTable.rel)) {
-        //     const inf = k.replaceAll(":", "").slice(0);
-        //     const ninf = map.get(inf);
-        //     if (!ninf) continue;
-        //     const nv = Core.clone(v);
-        //     this.increaseBondVarIdsBy(nv, bondvarIdBase);
-        //     InferTable.mapInferVal(nv, map);
-        //     this.state.inferTable.rel[k.replace(/^\?[^\:]+(:*)$/, "?" + ninf + "$1")] = nv;
-        // }
-        // // then we merge bondVarRel
-        // this.state.bondVarRel.merge(bondVarRel, bondvarIdBase);
-        // InferTable.mapInferVal(ast, map);
+        const newInfered = Array.from(inferTable.list.keys()).filter(e => !inferTable.solved.has("?" + e));
+        const map = new Map<string, string>();
+        const mapInv = new Map<string, string>();
+        for (const inf of newInfered) {
+            const ctxt = Core.cloneContext(inferTable.list.get(inf));
+            // first we remark bondvar id in the context of infer vars
+            for (let i = 0; i < ctxt.length; i++) {
+                if (ctxt[i][1]) this.increaseBondVarIdsBy(ctxt[i][1], bondvarIdBase);
+                ctxt[i][2] += bondvarIdBase;
+            }
+            // add it (list map) to current state
+            const ninf = this.state.inferTable.addNewName(0, ctxt);
+            map.set(inf, ninf);
+            mapInv.set(ninf, inf);
+        }
+        // map infervalues in list map, then merge environment context
+        for (const [inf, ninf] of map.entries()) {
+            let ct = this.state.inferTable.list.get(ninf);
+            for (const [n, t, i] of ct) {
+                if (t) InferTable.mapInferVal(t, map);
+            }
+            // merge outter context
+            ct.push(...context);
+        }
+        // then we remark bondvar id in rel, and add it to current state
+        for (const [k, v] of Object.entries(inferTable.rel)) {
+            const inf = k.replaceAll(":", "").slice(1);
+            const ninf = map.get(inf);
+            if (!ninf) continue;
+            const nv = Core.clone(v);
+            this.increaseBondVarIdsBy(nv, bondvarIdBase);
+            InferTable.mapInferVal(nv, map);
+            this.state.inferTable.rel[k.replace(/^\?[^\:]+(:*)$/, "?" + ninf + "$1")] = nv;
+        }
+        // then we merge bondVarRel
+        this.state.bondVarRel.merge(bondVarRel, bondvarIdBase);
+        InferTable.mapInferVal(ast, map);
         return ast;
     }
     private increaseBondVarIdsBy(ast: AST, increment: number) {
-        if (ast.bondVarId) {
+        if (ast.bondVarId && isFinite(ast.bondVarId)) {
             ast.bondVarId += increment;
-            this.state.bondVarId = Math.max(this.state.bondVarId, ast.bondVarId + 1);
         }
         if (ast.nodes?.length) {
             for (const n of ast.nodes) this.increaseBondVarIdsBy(n, increment);

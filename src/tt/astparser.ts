@@ -5,7 +5,7 @@ export type AST = {
     checked?: AST, err?: any, bondVarId?: number, origin?: boolean | AST
 };
 export class ASTParser {
-    keywords = [":=", "->", "~=", "===", "@ind_Sum", "ind_Sum", "@Sum", "Sum", "@ind_S1", "ind_S1", "S1", "@ind_Prod", "ind_Prod", "@Prod", "Prod"];
+    keywords = [":=", "->", "~=", "===", "@ind_Sum", "ind_Sum", "@Sum", "Sum", "@ind_S1", "ind_S1", "S1", "@ind_Prod", "ind_Prod", "@Prod", "Prod","@ind_LiftU","ind_LiftU","@LiftU","LiftU","@South","@Sus","South","Sus"];
     symChar = ".:,()PSLX~*+";
     ast: AST;
     cursor: number = 0;

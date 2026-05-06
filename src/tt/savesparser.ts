@@ -15,7 +15,7 @@ export class SavesParser {
         gui.getInhabitatArray().forEach(
             (e, idx) => { e.value = arr[idx]; }
         );
-        gui.updateAfterUnlock();
-        gui.getInhabitatArray()[0]?.onblur({} as any);
+        // gui.updateAfterUnlock();
+        // gui.getInhabitatArray()[0]?.onblur({} as any);
     }
 }

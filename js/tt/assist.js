@@ -128,7 +128,7 @@ export class Assist {
         const defs1 = Object.keys(core.state.userDefs);
         const defs2 = Object.keys(core.state.sysDefs);
         const defs = new Set([...defs1, ...defs2]);
-        const ignore = new Set(["add", "mul", "addO", "mulO", "leqO", "pair", "natO", "eq"]);
+        const ignore = new Set(["add", "mul", "addO", "mulO", "leqO", "pair", "natO", "eq", "ua", "liftU", "LiftU", "lowerU", "rfl", "refl", "inl", "inr"]);
         for (const v of defs) {
             if (vars.has(v) && !g.context.find(e => e[0] === v)) {
                 if (ignore.has(v) || v.startsWith("ind_"))
@@ -541,6 +541,51 @@ export class Assist {
             // delete goal.context[n];
             this.goal.unshift(anotherGoal);
             this.goal.unshift(goal);
+            // } else if (nType.name === "Ord") {
+            //     const fromParam1 = param[1];
+            //     if (fromParam1 && excludedSet.has(fromParam1)) {
+            //         this.goal.unshift(goal);
+            //         throw TR("destruct引入了重复的变量名");
+            //     }
+            //     const destructed = fromParam1 || Core.getNewName(n, excludedSet);
+            //     excludedSet.add(fromParam1);
+            //     const fromParam2 = param[2];
+            //     if (fromParam2 && excludedSet.has(fromParam2)) {
+            //         this.goal.unshift(goal);
+            //         throw TR("destruct引入了重复的变量名");
+            //     }
+            //     const induced = fromParam2 || Core.getNewName("H" + n, excludedSet);
+            //     let newAst = parser.parse(`ind_Ord (L${n}:$typeN.$1) (?#0) (L${destructed}:nat.L${induced}:$indType.(?#0)) $nast`);
+            //     const type0 = Core.clone(goal.type);
+            //     const typen = Core.clone(goal.type);
+            //     const typeSn = Core.clone(goal.type);
+            //     this.replaceFreeVar(type0, n, { type: "var", name: "0" });
+            //     this.replaceFreeVar(typen, n, { type: "var", name: destructed });
+            //     this.replaceFreeVar(typeSn, n, { type: "apply", name: "", nodes: [{ type: "var", name: "succ" }, { type: "var", name: destructed }] });
+            //     matched["$indType"] = typen;
+            //     Core.replaceByMatch(newAst, matched, /^\$/);
+            //     Core.assign(goal.ast, newAst);
+            //     goal.ast.checked = goal.type;
+            //     goal.type = type0;
+            //     const t = core.checkType(goal.ast.nodes[0].nodes[0].nodes[0], goal.context, false);
+            //     goal.ast.nodes[0].nodes[0].checked = t.nodes[1];
+            //     goal.ast.nodes[0].checked = t.nodes[1].nodes[1];
+            //     core.checkType(goal.ast.nodes[0].nodes[1].nodes[0], goal.context, false);
+            //     goal.ast.nodes[0].nodes[1].nodes[1].checked = wrapLambda("->", "", typen, typeSn);
+            //     goal.ast.nodes[1].checked = wrapVar("nat");
+            //     const anotherGoal = {
+            //         ast: goal.ast.nodes[0].nodes[1].nodes[1].nodes[1],
+            //         context: goal.context.slice(0),
+            //         type: typeSn
+            //     };
+            //     anotherGoal.context.unshift([destructed, { type: "var", name: "nat", checked: wrapVar("nat") }, 0]);
+            //     anotherGoal.context.unshift([induced, typen, 0]);
+            //     core.checkType(goal.ast.nodes[0].nodes[1].nodes[1].nodes[0], anotherGoal.context, false);
+            //     // delete anotherGoal.context[n];
+            //     goal.ast = goal.ast.nodes[0].nodes[0].nodes[1];
+            //     // delete goal.context[n];
+            //     this.goal.unshift(anotherGoal);
+            //     this.goal.unshift(goal);
         }
         else if (nType.type === "+") {
             const fnl = Core.getNewName(n + "l", excludedSet);
@@ -613,14 +658,20 @@ export class Assist {
             throw TR("ex策略只能作用于依赖积类型");
         const dfn = Core.clone(goal.type);
         dfn.type = "L";
-        const val = parser.parse(n);
-        Core.assign(goal.ast, wrapApply(wrapVar("pair"), dfn, val, wrapVar("(?#0)")), true);
-        goal.ast.checked = goal.type;
-        core.checkType(goal.ast.nodes[0], goal.context, false);
-        goal.ast = goal.ast.nodes[1];
-        goal.type = Core.clone(dfn.nodes[1]);
-        this.replaceFreeVar(goal.type, dfn.name, val);
-        core.checkType(goal.type, goal.context, false);
+        try {
+            const val = parser.parse(n);
+            Core.assign(goal.ast, wrapApply(wrapVar("pair"), dfn, val, wrapVar("(?#0)")), true);
+            goal.ast.checked = goal.type;
+            core.checkType(goal.ast.nodes[0], goal.context, false);
+            goal.ast = goal.ast.nodes[1];
+            goal.type = Core.clone(dfn.nodes[1]);
+            this.replaceFreeVar(goal.type, dfn.name, val);
+            core.checkType(goal.type, goal.context, false);
+        }
+        catch (e) {
+            this.goal.unshift(goal);
+            throw e;
+        }
         this.goal.unshift(goal);
     }
     left() {
@@ -673,15 +724,27 @@ export class Assist {
     }
     expand(n) {
         n = n?.trim();
+        if (!n)
+            throw TR("意外的空表达式");
+        const k = n.split(" ");
+        if (k.length === 1)
+            k.unshift("0");
+        const pos = Number(k.shift());
+        n = k.join(" ");
+        if (Math.round(pos) !== pos)
+            throw TR("未找到任何指定展开的项");
         const goal = this.goal.shift();
         if (!goal)
             throw TR("无证明目标，请使用qed命令结束证明");
         try {
-            if (!core.expandDef(goal.type, goal.context, n)) {
+            if (!core.expandDef(goal.type, goal.context, n, [pos, 1])) {
                 this.goal.unshift(goal);
                 throw TR("未找到任何指定展开的项");
             }
             ;
+            if (core.opaque.find(e => e[0] === n) && core.state.sysDefs["@" + n]) {
+                core.expandDef(goal.type, goal.context, "@" + n, [0, 1]);
+            }
             this.whnf(goal.type, goal.context);
             core.checkType(goal.type, goal.context, false);
         }

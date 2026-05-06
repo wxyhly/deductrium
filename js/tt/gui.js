@@ -31,7 +31,7 @@ export class TTGui {
     sysDefinedConsts = [];
     initTypeList() {
         for (const rule of allrules) {
-            if (rule.postfix === "计算") {
+            if (rule.postfix === "计算" && rule.ast.type === "===") {
                 const applyList = [];
                 let sub = rule.ast.nodes[0];
                 while (sub.type === "apply") {
@@ -41,7 +41,7 @@ export class TTGui {
                 applyList.unshift(sub);
                 this.core.state.computeRules[sub.name] ??= [];
                 this.core.state.computeRules[sub.name].push({
-                    pattern: this.core.flattenApplyList(rule.ast.nodes[0]),
+                    pattern: applyList,
                     result: rule.ast.nodes[1]
                 });
             }
@@ -361,10 +361,20 @@ export class TTGui {
             const localCtxt = context;
             const localNumber = userLineNumber;
             node.addEventListener('mouseover', ev => {
+                if (this.mouseoutTimeout) {
+                    window.clearTimeout(this.mouseoutTimeout);
+                }
+                floatTypeDiv.innerHTML = "";
+                this.mouseoutTimeout = null;
                 varnode.classList.add("mediumlighted");
                 for (const node of spans) {
                     node.classList.add("highlighted");
                 }
+                floatTypeDiv.style.left = '';
+                floatTypeDiv.style.right = '';
+                floatTypeDiv.style.width = '';
+                floatTypeDiv.style.maxWidth = '';
+                floatTypeDiv.style.wordBreak = '';
                 floatTypeDiv.style.left = (ev.pageX - 4) + "px";
                 floatTypeDiv.style.top = (ev.pageY + 30) + "px";
                 this.getHottDefCtxt(localNumber);
@@ -385,6 +395,25 @@ export class TTGui {
                 }
                 else {
                     floatTypeDiv.style.display = "none";
+                    return;
+                }
+                // deal with hint position on screen
+                const pad = 10;
+                const rect = floatTypeDiv.getBoundingClientRect();
+                const viewWidth = window.innerWidth;
+                if (rect.right > viewWidth - pad) {
+                    floatTypeDiv.style.left = 'auto';
+                    floatTypeDiv.style.right = (pad) + 'px';
+                    const rect2 = floatTypeDiv.getBoundingClientRect();
+                    if (rect2.left < pad) {
+                        floatTypeDiv.style.left = pad + 'px';
+                        floatTypeDiv.style.right = pad + 'px';
+                        floatTypeDiv.style.width = 'auto';
+                        floatTypeDiv.style.wordBreak = 'break-all';
+                    }
+                }
+                else if (rect.left < pad) {
+                    floatTypeDiv.style.left = pad + 'px';
                 }
             });
             node.addEventListener('mouseout', ev => {
@@ -392,12 +421,18 @@ export class TTGui {
                 for (const node of spans) {
                     node.classList.remove("highlighted");
                 }
-                floatTypeDiv.style.display = "none";
-                floatTypeDiv.innerHTML = "";
+                if (!this.mouseoutTimeout) {
+                    this.mouseoutTimeout = window.setTimeout(() => {
+                        floatTypeDiv.style.display = "none";
+                        floatTypeDiv.innerHTML = "";
+                        this.mouseoutTimeout = null;
+                    }, 100);
+                }
             });
         }
         return varnode;
     }
+    mouseoutTimeout;
     updateTypeList(terms) {
         const list = this.typeList;
         consts.clear();
@@ -419,16 +454,15 @@ export class TTGui {
             if (rule.ast.type === ":=" && rule.ast.nodes[0].type === "var") {
                 const val = rule.ast.nodes[1].type === ":" ? rule.ast.nodes[1].nodes[0] : rule.ast.nodes[1];
                 this.core.state.sysDefs[vname] = this.core.desugar(Core.clone(val), true);
-                // this.core.registConstType(vname, val);
             }
             // register in gui highlight, only ignore ====
-            if (rule.ast.type === "var" || rule.ast.type === ":" || (rule.ast.type === ":=" && rule.ast.nodes[0].type === "var")) {
+            if (rule.ast.type === "var" || ((rule.ast.type === ":=" || rule.ast.type === ":") && rule.ast.nodes[0].type === "var")) {
                 const vname = rule.ast.type === "var" ? rule.ast.name : rule.ast.nodes[0].name;
                 if (rule.postfix === "类型")
                     consts.add(vname);
                 if (rule.postfix === "构造")
                     constructors.add(vname);
-                if (rule.postfix === "解构")
+                if (rule.postfix === "解构" || rule.postfix === "计算")
                     destructors.add(vname);
                 if (rule.postfix === "定义")
                     sysmacro.add(vname);
@@ -462,6 +496,10 @@ export class TTGui {
             }
             else {
                 itVal.appendChild(this.ast2HTML("", ast));
+            }
+            if (ast.type === ":=") {
+                const val = rule.ast.nodes[1].type === ":" ? rule.ast.nodes[1].nodes[0] : rule.ast.nodes[1];
+                this.core.registConstType(vname, val);
             }
             const infoArr = [];
             for (let i = 0; i < 6; i++) {
@@ -628,9 +666,11 @@ export class TTGui {
                         const defContent = ast.nodes[1];
                         if (defContent.type === ":") {
                             this.userDefinedConsts[currentIdx] = [defname, this.core.desugar(Core.clone(defContent.nodes[0]), true)];
+                            this.core.registConstType(defname, defContent.nodes[0]);
                         }
                         else {
                             this.userDefinedConsts[currentIdx] = [defname, this.core.desugar(Core.clone(ast.nodes[1]), true)];
+                            this.core.registConstType(defname, defContent);
                         }
                         // todo: if has error, do not add it
                         macro.add(defname);
