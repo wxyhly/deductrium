@@ -609,19 +609,20 @@ export class TTGui {
                         const defname = ast.nodes[0].name;
                         if (this.core.checkConst(defname, [])) throw defname + TR("的定义重复");
                         if (reservedConsts.has(defname)) throw defname + TR("由系统保留");
+                        this.core.checkType(ast, [], false);
+
                         const defContent = ast.nodes[1];
                         if (defContent.type === ":") {
                             this.userDefinedConsts[currentIdx] = [defname, this.core.desugar(Core.clone(defContent.nodes[0]), true)];
-                            this.core.registConstType(defname, defContent.nodes[0]);
-
                         } else {
                             this.userDefinedConsts[currentIdx] = [defname, this.core.desugar(Core.clone(ast.nodes[1]), true)];
-                            this.core.registConstType(defname, defContent);
                         }
+                        this.core.registConstType(defname, defContent);
                         // todo: if has error, do not add it
                         macro.add(defname);
+                    } else {
+                        this.core.checkType(ast, [], false);
                     }
-                    this.core.checkType(ast, [], false);
                     checkInfer(ast);
                 } catch (e) {
                     error += e;

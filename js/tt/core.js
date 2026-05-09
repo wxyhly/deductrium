@@ -352,6 +352,7 @@ export class Core {
             "@max": parser.parse("U@->U@->U@"),
             "@succ": parser.parse("U@->U@"),
         },
+        root: null,
         bondVarId: 1,
         bondVarRel: null,
         sysDefs: {},
@@ -371,7 +372,8 @@ export class Core {
             defTypes: this.state.defTypes,
             computeRules: this.state.computeRules,
             inferTable: this.state.inferTable?.clone(),
-            errormsg: this.state.errormsg
+            errormsg: this.state.errormsg,
+            root: this.state.root
         };
     }
     clearState() {
@@ -393,6 +395,7 @@ export class Core {
         this.state.inferTable = new InferTable(ast);
         this.state.bondVarId = 1;
         this.state.bondVarRel = new DisjointSet();
+        this.state.root = ast;
         // mark if context is not marked
         if (context.length)
             context = Core.cloneContext(context);
@@ -405,13 +408,13 @@ export class Core {
         ast = this.markBondVars(this.desugar(ast, allowModify), context);
         const checkTypeIs = (ast) => {
             const type = this.check(ast.nodes[0], context, true);
-            ast.nodes[1].checked = this.check(ast.nodes[1], context, true);
+            const checked = this.check(ast.nodes[1], context, true);
             const assertion = this.equal(type, ast.nodes[1], context);
             if (!assertion) {
                 this.error(ast, TR("类型断言失败"), true);
             }
             this.check(type, context, false);
-            const assertionType = this.equal(type.checked, ast.nodes[1].checked, context);
+            const assertionType = this.equal(type.checked, checked, context);
             if (!assertionType) {
                 this.error(ast, TR("类型断言失败"), true);
             }
@@ -654,6 +657,8 @@ export class Core {
                 this.error(domain, TR(`函数参数类型不合法`), ignoreErr);
             const subCtxt = assignContext([ast.name, domain, bondVarId], context);
             const codomain = this.check(ast.nodes[1], subCtxt, ignoreErr);
+            if (!codomain)
+                return;
             if (ast.type === "L") {
                 ast.checked = wrapLambda("P", ast.name, domain, codomain);
                 ast.checked.bondVarId = ast.bondVarId;
@@ -678,8 +683,8 @@ export class Core {
                 ast.checked = UniverseLevel.succ(ast);
                 return ast.checked;
             }
-            const tfn = this.check(ast.nodes[0], context, ignoreErr);
-            const tap = this.check(ast.nodes[1], context, ignoreErr);
+            const tfn = Core.clone(this.check(ast.nodes[0], context, ignoreErr));
+            const tap = Core.clone(this.check(ast.nodes[1], context, ignoreErr));
             if (!tfn || !tap) {
                 this.error(ast, TR("非函数尝试作用"), ignoreErr);
                 return;
@@ -860,10 +865,10 @@ export class Core {
             }
         }
     }
-    tryDirectCompute(ast, list, fn, context) {
+    tryDirectCompute(ast, list, fn, context, skipExpand) {
         if ((fn === "add" || fn === "mul" || fn === "pow") && list.length === 3) {
-            this.whnf(list[1], context, true);
-            this.whnf(list[2], context, true);
+            this.whnf(list[1], context, skipExpand);
+            this.whnf(list[2], context, skipExpand);
             if (list[2].nodes?.[0]?.name === "succ" && !list[2].nodes?.[0]?.bondVarId) {
                 // add a succ(b) -> succ(add a b)
                 if (fn === "add") {
@@ -930,7 +935,7 @@ export class Core {
             }
         }
         if ((fn === "pred" || fn === "succ") && list.length === 2) {
-            this.whnf(list[1], context, true);
+            this.whnf(list[1], context, skipExpand);
             if (!NatLiteral.is(list[1]))
                 return false;
             try {
@@ -974,14 +979,14 @@ export class Core {
                     let expand;
                     // f a => (....) a
                     if (!this.alwaysSkip.has(fn.name) && (expand = this.state.sysDefs[fn.name]) || this.state.userDefs[fn.name]) {
-                        Core.assign(fn, this.markBondVars(Core.clone(expand), context));
+                        Core.assign(fn, this.markBondVars(Core.clone(expand), context), true);
                     }
                     // if compute rule modified, then go on loop
-                    if (!this.iotaHead(ast, context))
+                    if (!this.iotaHead(ast, context, skipExpand))
                         return true;
                 }
                 else {
-                    if (!this.iotaHead(ast, context))
+                    if (!this.iotaHead(ast, context, skipExpand))
                         return true;
                 }
             }
@@ -989,7 +994,7 @@ export class Core {
                 let expand;
                 // f a => (....) a
                 if (expand = this.state.sysDefs[ast.name] || this.state.userDefs[ast.name]) {
-                    Core.assign(ast, this.markBondVars(Core.clone(expand), context));
+                    Core.assign(ast, this.markBondVars(Core.clone(expand), context), true);
                 }
                 else
                     return;
@@ -1016,6 +1021,9 @@ export class Core {
         if (ali[0].name === "@succ" && ali.length === 2) {
             const k = this.getUmaxItems(ali[1]);
             if (typeof k === "string") {
+                if (k[0] === "@" && NatLiteral.is(k.slice(1))) {
+                    return "@" + String(BigInt(k.slice(1)) + 1n);
+                }
                 return k + "+";
             }
             else {
@@ -1036,16 +1044,16 @@ export class Core {
         }
         return s;
     }
-    iotaHead(ast, context) {
+    iotaHead(ast, context, skipExpand) {
         const applyList = this.flattenApplyList(ast);
         if (applyList[0].bondVarId)
             return false;
         const fn = applyList[0].name;
-        if (this.tryDirectCompute(ast, applyList, fn, context))
+        if (this.tryDirectCompute(ast, applyList, fn, context, skipExpand))
             return true;
         // @succ @n => @n+1
         if (fn === "@succ" && applyList.length === 2) {
-            this.whnf(ast.nodes[1], context, false);
+            this.whnf(ast.nodes[1], context, skipExpand);
             const n = ast.nodes[1].name;
             if (n?.startsWith("@")) {
                 try {
@@ -1149,7 +1157,7 @@ export class Core {
                 const it = applyList[i];
                 // when do match, the term must be whnf to get head ctor
                 if (i && p.name[0] !== "?")
-                    this.whnf(it, context, false);
+                    this.whnf(it, context, skipExpand);
                 if (!Core.match(it, p, /^\?/, matchTable)) {
                     matchFail = true;
                     break;
@@ -1166,7 +1174,7 @@ export class Core {
         }
     }
     addInferRel(name, ast, context) {
-        if (name === "?21") {
+        if (name === "?9") {
             console.log("fg");
         }
         const ctxt = this.state.inferTable.list.get(name.slice(1).replaceAll(":", "")) ?? [];
@@ -1190,24 +1198,8 @@ export class Core {
             a--;
             b--;
         }
-        if (ast.name === name)
+        if (ast.name === name && ast.type === "var")
             return true;
-        if (this.hasInferVar(ast, name)) { // exclude contain self
-            // maybe there is fake loop, e.g. ?1 == ((Lx:_.Bool) ?1) -> ?1 == Bool, no loop
-            if (!whnfed) {
-                if (ast.origin === true)
-                    ast = Core.clone(ast, true);
-                this.whnf(ast, context, false);
-                whnfed = true;
-            }
-            if (ast.name === name)
-                return true;
-            if (this.hasInferVar(ast, name)) {
-                console.log("loop " + name + " !== " + parser.stringify(ast));
-                this.error(ast, TR("类型推断错误：发现循环引用"), false);
-                return false;
-            }
-        }
         const oldVal = this.state.inferTable.rel[name];
         // if here is already a value, conflict must be solved now!!
         if (oldVal) {
@@ -1220,8 +1212,34 @@ export class Core {
             if (dst)
                 ast = dst;
         }
-        if (ast.name === name)
+        if (ast.name === name && ast.type === "var")
             return true;
+        if (this.hasInferVar(ast, name)) { // exclude contain self
+            // maybe there is fake loop, e.g. ?1 == ((Lx:_.Bool) ?1) -> ?1 == Bool, no loop
+            if (!whnfed) {
+                if (ast.origin === true)
+                    ast = Core.clone(ast, true);
+                this.whnf(ast, context, false);
+                whnfed = true;
+                // cancel loop
+                let dst = ast;
+                while (dst?.name?.[0] === "?") {
+                    dst = this.state.inferTable.rel[dst.name];
+                    if (dst)
+                        ast = dst;
+                }
+            }
+            if (ast.name === name)
+                return true;
+            if (this.hasInferVar(ast, name)) {
+                // ?1 === @max(?1,?2)
+                if (ast.type === "apply" && this.flattenApplyList(ast)[0]?.name === "@max")
+                    return true;
+                console.log("loop " + name + " !== " + parser.stringify(ast));
+                this.error(ast, TR("类型推断错误：发现循环引用"), false);
+                return false;
+            }
+        }
         this.state.inferTable.rel[name] = ast;
         return true;
     }
@@ -1254,15 +1272,22 @@ export class Core {
             }
             if (replaceKey) {
                 let changed = false;
+                let canceledLoops = new Set;
                 for (const [k, v] of Object.entries(it.rel)) {
                     // replace all other occurences
                     if (solved.has(k))
                         continue;
                     const ch = this.replaceVar(v, replaceKey, -1, it.rel[replaceKey]);
                     changed ||= ch;
+                    if (v.name === k && v.type === "var")
+                        canceledLoops.add(k);
                 }
                 if (!changed) {
                     solved.add(replaceKey);
+                }
+                else {
+                    for (const k of canceledLoops)
+                        delete it.rel[k];
                 }
             }
             else {
@@ -1334,9 +1359,13 @@ export class Core {
         // recurse
         if (a.type === b.type && a.name == b.name && a.nodes?.length && a.nodes?.length === b.nodes?.length) {
             let breaked = false;
+            if (a.nodes[0].nodes?.[0]?.name === "@max" || b.nodes[0].nodes?.[0]?.name === "@max") {
+                console.log("can't determine @max(?,?) === xxx, ignore");
+                return true;
+            }
             if (!Core.exactEqual(a.nodes[0], b.nodes[0]) && (a.nodes[0].name.startsWith("?") || b.nodes[0].name.startsWith("?"))) {
                 // no, here is not failed, we just don't know. but here
-                console.log("sooor");
+                console.log("can't determine ?fn1 xxx === ?fn2 xxx, ignore");
                 return true;
             }
             // if recursive eq failed, we need to undo inferring during recursive eq.
@@ -1517,10 +1546,7 @@ export class Core {
         ast = this.markBondVars(this.desugar(Core.clone(ast), false), []);
         this.check(ast, [], false);
         this.markAndCheckInferedValue(ast, []);
-        // const alphaConversionIds = new Set<number>;
-        // this.reduce(ast, [], alphaConversionIds);
-        // this.doAlphaConversionByIds(ast, alphaConversionIds);
-        this.state.defTypes[name] = [ast.checked, this.state.inferTable.clone(), this.state.bondVarRel.clone(), this.state.bondVarId];
+        this.state.defTypes[name] = [ast.type === ":" ? ast.nodes[1] : ast.checked, this.state.inferTable.clone(), this.state.bondVarRel.clone(), this.state.bondVarId];
     }
     loadConstTypeCache(context, ast, inferTable, bondVarRel, bondVarId) {
         ast = Core.clone(ast);
@@ -1626,6 +1652,8 @@ class UniverseLevel {
     }
     /** check whether ast is universe, return its level number, if level is not given return true, if it is not universe, return false */
     static get(ast) {
+        if (!ast)
+            return false;
         if (ast.type === "var" && ast.name === "U") {
             return 0n;
         }

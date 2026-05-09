@@ -111,7 +111,7 @@ export class Assist {
         const defs1 = Object.keys(core.state.userDefs);
         const defs2 = Object.keys(core.state.sysDefs);
         const defs = new Set([...defs1, ...defs2]);
-        const ignore = new Set(["add", "mul", "addO", "mulO", "leqO", "pair", "natO", "eq","ua","liftU","LiftU","lowerU","rfl","refl","inl","inr"]);
+        const ignore = new Set(["add", "mul", "addO", "mulO", "leqO", "pair", "natO", "eq", "ua", "liftU", "LiftU", "lowerU", "rfl", "refl", "inl", "inr"]);
         for (const v of defs) {
             if (vars.has(v) && !g.context.find(e => e[0] === v)) {
                 if (ignore.has(v) || v.startsWith("ind_")) continue;
@@ -218,12 +218,20 @@ export class Assist {
             this.goal.unshift(goal);
             throw e;
         }
+        let isRfl = false;
+        try {
+            core.checkType(wrapLambda("===", "", eq, wrapVar("rfl")), goal.context, false);
+            isRfl = true;
+        } catch (e) {
+
+        }
+        matched["$eq"] = eq;
+
         if (!matched) {
             this.goal.unshift(goal);
             throw TR("使用rewrite策略必须提供一个相等类型");
         }
         const ctxtSet = new Set(goal.context.map(e => e[0]));
-
         const fnbody = this.genReplaceFn(goal.type, matched[back ? "$3" : "$2"], "(?#)", ctxtSet);
         const fnparam = Core.getNewName("x", ctxtSet);
         this.replaceFreeVar(fnbody, "(?#)", wrapVar(fnparam));
@@ -233,21 +241,26 @@ export class Assist {
         // newgoal: F(b/a)
         const fn = { type: "L", name: fnparam, nodes: [core.checkType(matched[back ? "$3" : "$2"], goal.context, false), fnbody] };
         matched["$fn"] = fn;
-        matched["$eq"] = eq;
-        matched["$type"] = matched[back ? "$3" : "$2"].checked;
-        const y = Core.getNewName("y", ctxtSet);
-        const m = Core.getNewName("m", ctxtSet);
-        matched["$fn_2"] = Core.clone(fnbody); this.replaceFreeVar(matched["$fn_2"], fnparam, matched["$2"]);
-        matched["$fn_y"] = Core.clone(fnbody); this.replaceFreeVar(matched["$fn_y"], fnparam, wrapVar(y));
-        // let newAst = parser.parse(false ?
-        let newAst = parser.parse(core.checkConst("trans", []) && (back || core.checkConst("inveq", [])) ?
-            `trans $fn ` + (back ? `$eq` : `(inveq $eq)`) : `ind_eq $2 (L${y}:$type.L${m}:eq $2 ${y}. P${m}:` + (back ? `$fn_2, $fn_y` : `$fn_y, $fn_2`) + `) (Lx:_.x) $3 $eq`);
-        Core.replaceByMatch(newAst, matched, /^\$/);
-        core.checkType(newAst, goal.context, false);
-        newAst = { type: "apply", name: "", nodes: [newAst, { type: "var", name: "(?#0)" }] };
-        Core.assign(goal.ast, newAst, true);
-        goal.ast.checked = goal.type;
-        goal.ast = goal.ast.nodes[1];
+        if (!isRfl) {
+            matched["$type"] = matched[back ? "$3" : "$2"].checked;
+            const y = Core.getNewName("y", ctxtSet);
+            const m = Core.getNewName("m", ctxtSet);
+            matched["$fn_2"] = Core.clone(fnbody); this.replaceFreeVar(matched["$fn_2"], fnparam, matched["$2"]);
+            matched["$fn_y"] = Core.clone(fnbody); this.replaceFreeVar(matched["$fn_y"], fnparam, wrapVar(y));
+
+            let newAst = parser.parse(core.checkConst("trans", []) && (back || core.checkConst("inveq", [])) ?
+                `trans $fn ` + (back ? `$eq` : `(inveq $eq)`) : `ind_eq $2 (L${y}:$type.L${m}:eq $2 ${y}. P${m}:` + (back ? `$fn_2, $fn_y` : `$fn_y, $fn_2`) + `) (Lx:_.x) $3 $eq`);
+            Core.replaceByMatch(newAst, matched, /^\$/);
+            // try {
+                core.checkType(newAst, goal.context, false);
+            // } catch (e) {
+            //     console.log("[rw] " + e);
+            // }
+            newAst = { type: "apply", name: "", nodes: [newAst, { type: "var", name: "(?#0)" }] };
+            Core.assign(goal.ast, newAst, true);
+            goal.ast.checked = goal.type;
+            goal.ast = goal.ast.nodes[1];
+        }
         goal.type = Core.clone(fn.nodes[1]);
         this.replaceFreeVar(goal.type, fnparam, matched[back ? "$2" : "$3"]);
         goal.ast.checked = goal.type;
