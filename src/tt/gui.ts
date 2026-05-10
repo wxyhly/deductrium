@@ -422,7 +422,7 @@ export class TTGui {
             }
             if (!terms.has(rule.id)) continue;
 
-            if (rule.ast.type === ":") {
+            if (rule.ast.type === ":" && rule.ast.nodes[0].type === "var") {
                 this.core.state.sysTypes[vname] = this.core.desugar(Core.clone(rule.ast.nodes[1]), true);
             }
             // ast.nodes[0].type==="var" -> skip a X b := @Prod _ _ ...

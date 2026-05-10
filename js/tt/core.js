@@ -31,8 +31,8 @@ export class InferTable {
             ;
         const name = String(n - 1);
         this.list.set(name, ctxt);
-        if (name === "1") {
-            // console.log("hqho");
+        if (name === window["dbg2"]) {
+            console.log("hqho");
         }
         return name;
     }
@@ -127,6 +127,9 @@ class DisjointSet {
         return x;
     }
     union(x, y) {
+        if (!x || !y) {
+            console.log("hqomaoma");
+        }
         const rootX = this.find(x);
         const rootY = this.find(y);
         if (rootX === rootY) {
@@ -392,7 +395,6 @@ export class Core {
     checkType(ast, context, allowModify) {
         let errmsg;
         this.state.errormsg = [];
-        this.state.inferTable = new InferTable(ast);
         this.state.bondVarId = 1;
         this.state.bondVarRel = new DisjointSet();
         this.state.root = ast;
@@ -406,6 +408,7 @@ export class Core {
             context[i][1] = this.markBondVars(this.desugar(t, false), context.slice(i));
         }
         ast = this.markBondVars(this.desugar(ast, allowModify), context);
+        this.state.inferTable = new InferTable(ast);
         const checkTypeIs = (ast) => {
             const type = this.check(ast.nodes[0], context, true);
             const checked = this.check(ast.nodes[1], context, true);
@@ -1174,7 +1177,9 @@ export class Core {
         }
     }
     addInferRel(name, ast, context) {
-        if (name === "?9") {
+        if (ast.name === "_" && ast.type === "var")
+            return true;
+        if (name === window["dbgid"]) {
             console.log("fg");
         }
         const ctxt = this.state.inferTable.list.get(name.slice(1).replaceAll(":", "")) ?? [];
@@ -1207,11 +1212,20 @@ export class Core {
         }
         // cancel loop
         let dst = ast;
+        // ?a->?b->?c->xxxx
+        let pathVars = [];
         while (dst?.name?.[0] === "?") {
+            pathVars.push(dst.name);
             dst = this.state.inferTable.rel[dst.name];
-            if (dst)
+            if (dst) {
                 ast = dst;
+            }
         }
+        pathVars.forEach(e => {
+            if (this.state.inferTable.rel[e]) {
+                this.state.inferTable.rel[e] = ast;
+            }
+        });
         if (ast.name === name && ast.type === "var")
             return true;
         if (this.hasInferVar(ast, name)) { // exclude contain self
@@ -1228,6 +1242,11 @@ export class Core {
                     if (dst)
                         ast = dst;
                 }
+                pathVars.forEach(e => {
+                    if (this.state.inferTable.rel[e]) {
+                        this.state.inferTable.rel[e] = ast;
+                    }
+                });
             }
             if (ast.name === name)
                 return true;
@@ -1453,6 +1472,10 @@ export class Core {
             this.getBondVarId(l);
             return this.addInferRel(a.nodes[0].name, l, context);
         }
+        if (a?.nodes?.[0]?.nodes?.[0]?.name === "@max" || b?.nodes?.[0]?.nodes?.[0]?.name === "@max") {
+            console.log("can't determine @max(?,?) === xxx, ignore");
+            return true;
+        }
         console.log(`? ${parser.stringify(a)} != ${parser.stringify(b)}`);
         return false;
     }
@@ -1540,10 +1563,10 @@ export class Core {
     }
     registConstType(name, ast) {
         this.state.errormsg = [];
-        this.state.inferTable = new InferTable(ast);
         this.state.bondVarId = 1;
         this.state.bondVarRel = new DisjointSet();
         ast = this.markBondVars(this.desugar(Core.clone(ast), false), []);
+        this.state.inferTable = new InferTable(ast);
         this.check(ast, [], false);
         this.markAndCheckInferedValue(ast, []);
         this.state.defTypes[name] = [ast.type === ":" ? ast.nodes[1] : ast.checked, this.state.inferTable.clone(), this.state.bondVarRel.clone(), this.state.bondVarId];

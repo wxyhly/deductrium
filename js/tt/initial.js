@@ -164,9 +164,9 @@ export function initTypeSystem() {
     addRule("@解构", "@ind_LiftU:=(λu:U@.(λv:U@.(λa:(Uu).(λC:((LiftU a)→(Uv)).(λh:(Πx:a,C (liftU x)).(λx:LiftU a.h (lowerU x))))))):(Πu:U@,(Πv:U@,(Πa:(Uu),(ΠC:((LiftU a)→(Uv)),((Πx:a,C (liftU x))→(Πx:LiftU a,C x))))))");
     addRule("@解构", "ind_LiftU:=@ind_LiftU _ _ _");
     addRule("_解构", "ind_LiftU");
-    addRule("@计算", "@lowerU _ _ (@liftU _ _ ?x) === ?x");
+    addRule("@计算", "@lowerU _ _ (@liftU ?1 ?2 ?x) === ?x");
     addRule("_计算", "lowerU (liftU ?x) === ?x");
-    addRule("@计算", "@liftU _ _ (@lowerU _ _ ?x) === ?x");
+    addRule("@计算", "@liftU _ _ (@lowerU ?1 ?2 ?x) === ?x");
     addRule("_计算", "liftU (lowerU ?x) === ?x");
     addRule("_计算", "ind_LiftU ?C ?clift (liftU ?x) === ?clift ?x");
     typeName = "S1";
