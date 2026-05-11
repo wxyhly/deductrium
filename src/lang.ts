@@ -204,7 +204,9 @@ class LangMgr {
         "我一直在督促你回家": "I've been urging you to go home",
         "空袭预警！\n空袭预警！": "Air raid warning!\nAir raid warning!",
         "恭喜你，步数破千！": "Congratulations, you've passed 1000 steps!",
-        "恭喜你，到达了\n第五个梅森素数": "Congratulations, you've reached\nthe fifth Mersenne prime"
+        "欢迎回到2027年！": "Wellcome back to\nthe year of 2027!",
+        "中华人民共和国\n成立啦！": " ",
+        "恭喜你，到达了\n第五个梅森素数": "Congratulations, you've reached\nthe fifth Mersenne prime number"
 
     };
     dataEn = {

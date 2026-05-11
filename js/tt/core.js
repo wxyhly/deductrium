@@ -50,9 +50,15 @@ export class InferTable {
         n.solved = new Set(this.solved);
         return n;
     }
-    constructor(ast) {
-        if (ast)
+    constructor(ast, context) {
+        if (ast) {
             this.findInferVal(ast);
+            if (context) {
+                for (const v of this.list.values()) {
+                    v.push(...context);
+                }
+            }
+        }
     }
     findInferVal(ast, context = []) {
         if (ast.name?.[0] === "?") {
@@ -408,7 +414,7 @@ export class Core {
             context[i][1] = this.markBondVars(this.desugar(t, false), context.slice(i));
         }
         ast = this.markBondVars(this.desugar(ast, allowModify), context);
-        this.state.inferTable = new InferTable(ast);
+        this.state.inferTable = new InferTable(ast, context);
         const checkTypeIs = (ast) => {
             const type = this.check(ast.nodes[0], context, true);
             const checked = this.check(ast.nodes[1], context, true);
@@ -911,14 +917,14 @@ export class Core {
                     Core.assign(ast, wrapApply(wrapVar("succ"), list[1]));
                     return true;
                 }
-                // mul a 1 -> a
+                // mul a 1 -> add 0 a
                 if (fn === "mul") {
-                    Core.assign(ast, list[1]);
+                    Core.assign(ast, wrapApply(wrapApply(wrapVar("add"), wrapVar("0")), list[1]));
                     return true;
                 }
-                // pow a 1 -> a
+                // pow a 1 -> mul 1 a
                 if (fn === "pow") {
-                    Core.assign(ast, list[1]);
+                    Core.assign(ast, wrapApply(wrapApply(wrapVar("add"), wrapVar("1")), list[1]));
                     return true;
                 }
             }
@@ -1492,11 +1498,11 @@ export class Core {
                 expand = true;
             }
             // mul xx n  => add (mul xx n-1) xx or succ (xxxxxxxx)
-            if (fn === "mul" && b.type === "apply" && (b.nodes[0].nodes[0].name === "add" || b.nodes[0].name === "succ")) {
+            if (fn === "mul" && b.type === "apply" && (b.nodes[0].nodes?.[0]?.name === "add" || b.nodes[0].name === "succ")) {
                 expand = true;
             }
             // pow xx n  => mul (pow xx n-1) xx or add/succ (xxxxxxxx)
-            if (fn === "pow" && b.type === "apply" && (b.nodes[0].nodes[0].name === "mul" || b.nodes[0].nodes[0].name === "add" || b.nodes[0].name === "succ")) {
+            if (fn === "pow" && b.type === "apply" && (b.nodes[0].nodes?.[0]?.name === "mul" || b.nodes[0].nodes?.[0]?.name === "add" || b.nodes[0].name === "succ")) {
                 expand = true;
             }
             if (!expand || a.nodes[1].name === "0")
@@ -1566,7 +1572,7 @@ export class Core {
         this.state.bondVarId = 1;
         this.state.bondVarRel = new DisjointSet();
         ast = this.markBondVars(this.desugar(Core.clone(ast), false), []);
-        this.state.inferTable = new InferTable(ast);
+        this.state.inferTable = new InferTable(ast); // it must add environment ctxt in infertable
         this.check(ast, [], false);
         this.markAndCheckInferedValue(ast, []);
         this.state.defTypes[name] = [ast.type === ":" ? ast.nodes[1] : ast.checked, this.state.inferTable.clone(), this.state.bondVarRel.clone(), this.state.bondVarId];

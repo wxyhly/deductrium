@@ -67,8 +67,8 @@ export class TTGui {
                 document.getElementById("tactic-begin").click();
             }
         });
-        document.getElementById("tactic-remove").addEventListener("click", () => {
-            if (this.mode.length === 1) {
+        const remove = (all) => {
+            if (this.mode.length === 1 || all) {
                 this.mode = null;
             }
             document.getElementById("tactic-autofill").innerHTML = "";
@@ -76,6 +76,7 @@ export class TTGui {
             document.getElementById("tactic-errmsg").innerText = "";
             document.getElementById("tactic-state").innerHTML = "";
             document.getElementById("tactic-remove").classList.add("hide");
+            document.getElementById("tactic-clear").classList.add("hide");
             input.value = "";
             document.getElementById("tactic-input").classList.add("hide");
             if (this.mode?.length > 1) {
@@ -89,7 +90,9 @@ export class TTGui {
                 }
                 input.value = "";
             }
-        });
+        };
+        document.getElementById("tactic-remove").addEventListener("click", () => remove());
+        document.getElementById("tactic-clear").addEventListener("click", () => remove(true));
         document.getElementById("tactic-begin").addEventListener("click", () => {
             this.addTactic(false);
         });
@@ -484,11 +487,13 @@ export class TTGui {
             // avoid check const for redefined const error
             // const def = this.core.state.sysDefs[vname];
             // delete this.core.state.sysDefs[vname];
+            let error = false;
             try {
                 this.core.checkType(ast, [], false);
             }
             catch (e) {
                 console.log(e);
+                error = true;
             }
             // this.core.state.sysDefs[vname] = def;
             if (ast.type === "var") {
@@ -499,7 +504,8 @@ export class TTGui {
             }
             if (ast.type === ":=") {
                 const val = rule.ast.nodes[1].type === ":" ? rule.ast.nodes[1].nodes[0] : rule.ast.nodes[1];
-                this.core.registConstType(vname, val);
+                if (!error)
+                    this.core.registConstType(vname, val);
             }
             const infoArr = [];
             for (let i = 0; i < 6; i++) {
@@ -788,6 +794,7 @@ export class TTGui {
             this.mode = [assist];
             this.autofillTactics(assist);
             document.getElementById("tactic-remove").classList.remove("hide");
+            document.getElementById("tactic-clear").classList.remove("hide");
             document.getElementById("tactic-hint").innerText = "";
             const theorem = Core.clone(assist.theorem);
             this.core.checkType(theorem, [], false);
@@ -808,6 +815,7 @@ export class TTGui {
         if (!this.mode) {
             hint.innerText = TR("请在定理列表中点选待证命题");
             this.mode = "tactic-begin";
+            document.getElementById("tactic-clear").classList.add("hide");
         }
         if (this.mode instanceof Array) {
             const statediv = document.getElementById("tactic-state");
@@ -830,6 +838,7 @@ export class TTGui {
                     output.blur();
                     input.classList.add("hide");
                     document.getElementById("tactic-remove").classList.add("hide");
+                    document.getElementById("tactic-clear").classList.add("hide");
                     this.mode = null;
                     hint.innerHTML = "";
                     input.value = "";
@@ -875,6 +884,7 @@ export class TTGui {
             }
             assist.markTargets();
             hint.appendChild(this.ast2HTML("", astShow, [], assist.goal.map(g => [g.ast.name, g.type, 0]), this.getInhabitatArray().length));
+            document.getElementById("tactic-clear").classList.remove("hide");
             window.scrollTo(0, document.body.clientHeight);
             const wrapperDiv = document.getElementById("tactic-list").parentElement;
             wrapperDiv.scrollTo(0, wrapperDiv.clientHeight);

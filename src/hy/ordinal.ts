@@ -262,6 +262,8 @@ export function genOrdTiles(blockMap: Map<string, TileBlock>, nameMap: Map<strin
                             "577": "我一直在督促你回家",
                             "911": "空袭预警！\n空袭预警！",
                             "1009": "恭喜你，步数破千！",
+                            "1949": "中华人民共和国\n成立啦！",
+                            "2027": "欢迎回到2027年！",
                             "8191": "恭喜你，到达了\n第五个梅森素数",
                         }[n] ?? ""), name: undefined
                     });
