@@ -769,7 +769,7 @@ export class Core {
     opaque = [
         ["pair", 4], ["eq", 3], ["inl", 5], ["inr", 5], ["refl", 3], ["ind_Prod", 5], ["ind_eq", 4], ["ind_Sum", 6],
         ["ind_Bool", 2], ["ind_nat", 2], ["ap", 5], ["trans", 4], ["apd", 4], ["inveq", 4], ["compeq", 5],
-        ["pr0", 3], ["prd1", 2], ["pr1", 3], ["id2eqv", 4], ["eqv", 2], ["LiftU", 2], ["liftU", 3], ["lowerU", 3],
+        ["pr0", 3], ["prd1", 2], ["pr1", 3], ["id2eqv", 4], ["eqv", 2], ["LiftU", 2], ["liftU", 3], ["lowerU", 3], ["ua", 4], ["eqvrefl", 3],
         ["transconst", 5], ["ap_apd", 5], ["apd_ap", 5], ["apd_loop", 5], ["Sus", 2], ["North", 2], ["South", 2], ["merid", 2]
     ];
     ensugar(ast) {
@@ -988,7 +988,9 @@ export class Core {
                     let expand;
                     // f a => (....) a
                     if (!this.alwaysSkip.has(fn.name) && (expand = this.state.sysDefs[fn.name]) || this.state.userDefs[fn.name]) {
+                        // let origin = Core.clone(fn);
                         Core.assign(fn, this.markBondVars(Core.clone(expand), context), true);
+                        // ast.origin = origin;
                     }
                     // if compute rule modified, then go on loop
                     if (!this.iotaHead(ast, context, skipExpand))
@@ -1003,7 +1005,9 @@ export class Core {
                 let expand;
                 // f a => (....) a
                 if (expand = this.state.sysDefs[ast.name] || this.state.userDefs[ast.name]) {
+                    // let origin = Core.clone(ast);
                     Core.assign(ast, this.markBondVars(Core.clone(expand), context), true);
+                    // ast.origin = origin;
                 }
                 else
                     return;
@@ -1191,7 +1195,8 @@ export class Core {
         const ctxt = this.state.inferTable.list.get(name.slice(1).replaceAll(":", "")) ?? [];
         let a = ctxt.length - 1, b = context.length - 1;
         const rel = this.state.bondVarRel;
-        let whnfed = false;
+        this.whnf(ast, context, true);
+        let whnfed = true;
         while (a >= 0 && b >= 0) {
             const ida = ctxt[a][2], idb = context[b][2];
             // L1.L2.?0   ->  L1.L3 ({1} {3})  ->   2=3
@@ -1348,6 +1353,16 @@ export class Core {
             a = Core.clone(a);
         if (b.origin === true)
             b = Core.clone(b);
+        if (a.name === "_" && a.type === "var") {
+            Core.assign(a, b);
+            this.whnf(a, context, true);
+            return true;
+        }
+        if (b.name === "_" && b.type === "var") {
+            Core.assign(b, a);
+            this.whnf(b, context, true);
+            return true;
+        }
         // infered value matched. add this rel
         if (a.name?.startsWith("?")) {
             return this.addInferRel(a.name, b, context);
@@ -1409,10 +1424,6 @@ export class Core {
             return true;
         // def delta expand
         if (a.type === "var") {
-            if (a.name === "_") {
-                Core.assign(a, b);
-                return true;
-            }
             let expand;
             if (!a.bondVarId && (expand = this.state.sysDefs[a.name] || this.state.userDefs[a.name])) {
                 Core.assign(a, this.markBondVars(Core.clone(expand), context));
