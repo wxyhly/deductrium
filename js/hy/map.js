@@ -995,7 +995,7 @@ export const mapData = `
 :%*,5,2@1.ap是x=y推出[n]f(x)=f(y)的证据[n]2.trans是若x=y，则命题对x成立[n]就能推出对y成立的证据[n]3.apd是ap的依赖类型函数版本[n]由于x与y可以不定义相等[n]故若f(x)与f(y)类型不同[n]无法直接用eq比较相等[n]需要通过trans函数转换到[n]同一类型后才能用eq比较
 :%*,2$获取5.2mg推理素
 :%,0#Pm:base=base,Pn:base=base,[n]((loop*m)=(loop*n))->(m=n)[n]#t
-:%*,3#Pa:U,Px:a,Py:a,Pz:a,Pw:a,[n]Pm:x=y,Pn:y=z,Po:z=w,[n]((m*n)*o)=(m*(n*o))[n]#t
+:%*,3#[[ttmno]]Pa:U,Px:a,Py:a,Pz:a,Pw:a,[n]Pm:x=y,Pn:y=z,Po:z=w,[n]((m*n)*o)=(m*(n*o))[n]#t
 :%*,3,1#not (loop*loop = loop)[n]#t
 :%*,3,1,2#[[loop2]]not (loop*loop = (refl base))[n]#t
 :%*,3,1,2,1#I[n]#t
@@ -1048,6 +1048,13 @@ export const mapData = `
 :loop2,2@
 :%,1;1;1;1@......
 :%,1$[[ttI]]解锁区间类型I
+:ttindS1,4@ind_S1的意思是，[n]要构造从圆周S1[n]到其它类型的映射[n]除了要给定base映射的值[n]还要给出把路径loop[n]映射到哪里
+:%,0,3@依赖类型的相等[n]apd需要用到trans[n]所以看起来规则很复杂[n]要是有非依赖版的ind_S1[n](即rec_S1)就好了[n]直接ap，不会有trans
+:ttmno,4#(rec_S1 U Bool (refl Bool)[n] base) = Bool[n]#t
+    :%*,5#通过此门需消耗推理素29.9mg
+    :%,4#Pcl:Bool=Bool,[n](ap (rec_S1 U Bool (refl Bool))[n] loop) = cl[n]#t
+    :%,5$获取10mg推理素
+    :%,2$[[ttaploop]]解锁计算规则ap_loop
 :eqvid,1#(not True)~= False[n]#t
 :%*,3#Pa:U,Pb:U,(a~=b)->(b~=a)[n]#t
 :%*,3,4$[[ttua]]解锁同伦类型论[n]泛等公理[n]ua[n](等价即相等)

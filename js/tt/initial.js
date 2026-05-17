@@ -226,6 +226,11 @@ export function initTypeSystem() {
     addRule("@计算", "@apd_loop : Pu:U@,PC:S1->Uu,Pcb:(C base),Pcl: @eq u (C base) (trans C loop cb) cb,eq (apd C (@ind_S1 u C cb cl) loop) cl");
     addRule("@计算", "apd_loop := @apd_loop _ _ _ _");
     addRule("_计算", "apd_loop : (apd ?C (ind_S1 ?C ?cb ?cl) loop) = ?cl");
+    addRule("@解构", "@rec_S1:=Lu:U@.La:Uu.Lcb:a.Lcl:eq cb cb.@ind_S1 u (Lx:S1.a) cb (transconst loop cb)*cl");
+    addRule("@解构", "rec_S1:=@rec_S1 _");
+    addRule("_解构", "rec_S1");
+    addRule("计算", "rec_S1 ?C ?cb ?cl base === ?cb");
+    addRule("@计算", "@rec_S1 _ _ ?cb _ base === ?cb");
     typeName = "I";
     addRule("类型", "I:U");
     addRule("构造", "0I:I");
