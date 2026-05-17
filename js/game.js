@@ -770,10 +770,11 @@ export class Game {
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttindS1":
-                    for (let i = 0; i < 11; i++)
+                    for (let i = 0; i <= 11; i++)
                         this.ttGui.unlock("S1" + i);
                     this.ttGui.updateAfterUnlock();
                     return;
+                // case "ttrecS1": for (let i = 0; i <= 11; i++)this.ttGui.unlock("S1" + i); this.ttGui.updateAfterUnlock(); return;
                 case "tteqv":
                     for (let i = 0; i < 3; i++)
                         this.ttGui.unlock("eqv" + i);

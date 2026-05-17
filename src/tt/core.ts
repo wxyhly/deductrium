@@ -1332,17 +1332,14 @@ export class Core {
 
         // def delta expand
         if (a.type === "var") {
+            if (a.name === "_") {
+                Core.assign(a, b);
+                return true;
+            }
             let expand: AST;
             if (!a.bondVarId && (expand = this.state.sysDefs[a.name] || this.state.userDefs[a.name])) {
                 Core.assign(a, this.markBondVars(Core.clone(expand), context));
                 return this.equal(a, b, context);
-            }
-            // fn eta conversion: Lx:a.b = f  ->  Lx:a.b = Lx:a.f x
-            if (b.type === "L") {
-                Core.assign(a, wrapLambda("L", b.name, b.nodes[0], wrapApply(a, wrapVar(b.name))));
-                a.bondVarId = b.bondVarId;
-                a.nodes[1].nodes[1].bondVarId = a.bondVarId;
-                return this.equal(a.nodes[1], b.nodes[1], context);
             }
             // number === succ (n:nat)
             if (a.name !== "0" && NatLiteral.is(a) && b.type === "apply" && b.nodes[0].name === "succ") {
@@ -1364,13 +1361,6 @@ export class Core {
                 Core.assign(b, this.markBondVars(Core.clone(expand), context));
                 return this.equal(a, b, context);
             }
-            // fn eta conversion: Lx:a.b = f  ->  Lx:a.b = Lx:a.f x
-            if (a.type === "L") {
-                Core.assign(b, wrapLambda("L", a.name, a.nodes[0], wrapApply(b, wrapVar(a.name))));
-                b.bondVarId = a.bondVarId;
-                b.nodes[1].nodes[1].bondVarId = b.bondVarId;
-                return this.equal(a.nodes[1], b.nodes[1], context);
-            }
             // number eta-like conversion: n = succ x -> succ (n-1) = succ x
             if (b.name !== "0" && NatLiteral.is(b) && a.type === "apply" && a.nodes[0].name === "succ") {
                 return this.equal(wrapVar(String(BigInt(b.name) - 1n)), a.nodes[1], context);
@@ -1379,6 +1369,19 @@ export class Core {
                 const n = this.flattenApplyList(a)[0].name;
                 if (n === "ind_nat" || n === "@ind_nat") return this.equal(a, this.markBondVars(Core.clone(this.state.sysDefs[b.name]), context), context);
             }
+        }
+        // fn eta conversion: Lx:a.b = f  ->  Lx:a.b = Lx:a.f x
+        if (a.type === "L") {
+            Core.assign(b, wrapLambda("L", a.name, a.nodes[0], wrapApply(b, wrapVar(a.name))));
+            b.bondVarId = a.bondVarId;
+            b.nodes[1].nodes[1].bondVarId = b.bondVarId;
+            return this.equal(a.nodes[1], b.nodes[1], context);
+        }
+        if (b.type === "L") {
+            Core.assign(a, wrapLambda("L", b.name, b.nodes[0], wrapApply(a, wrapVar(b.name))));
+            a.bondVarId = b.bondVarId;
+            a.nodes[1].nodes[1].bondVarId = a.bondVarId;
+            return this.equal(a.nodes[1], b.nodes[1], context);
         }
         if (a.type === b.type && a.type === "var" && a.bondVarId && b.bondVarId) {
             // they are both bond vars, test whether they are equal by alpha/beta conversion

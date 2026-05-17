@@ -5,7 +5,7 @@ import { genOrdTiles } from "./ordinal.js";
 import { Polygon } from "./tiling.js";
 export class HWorld {
     debugDraw = false;
-    navigateDraw = true;
+    navigateDraw = false;
     localDraw;
     localCamMat = new Rotor;
     currentTile = [];
@@ -109,6 +109,8 @@ export class HWorld {
         }
     }
     hitReward(b, hash, isLoading) {
+        if (!b)
+            return;
         this.onGetReward(b.name ?? hash, b, isLoading);
         if (b.type !== TileBlockType.Gate) {
             b.text = "已" + b.text;

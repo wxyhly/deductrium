@@ -464,7 +464,8 @@ export class Game {
                 case "ttap": for (let i = 0; i < 2; i++)this.ttGui.unlock("(eq)" + i); this.ttGui.updateAfterUnlock(); return;
                 case "ttap2": for (let i = 0; i < 6; i++)this.ttGui.unlock("(eq)" + i); this.ttGui.updateAfterUnlock(); return;
                 case "ttS1": for (let i = 0; i < 4; i++)this.ttGui.unlock("S1" + i); this.ttGui.updateAfterUnlock(); return;
-                case "ttindS1": for (let i = 0; i < 11; i++)this.ttGui.unlock("S1" + i); this.ttGui.updateAfterUnlock(); return;
+                case "ttindS1": for (let i = 0; i <= 11; i++)this.ttGui.unlock("S1" + i); this.ttGui.updateAfterUnlock(); return;
+                // case "ttrecS1": for (let i = 0; i <= 11; i++)this.ttGui.unlock("S1" + i); this.ttGui.updateAfterUnlock(); return;
                 case "tteqv": for (let i = 0; i < 3; i++)this.ttGui.unlock("eqv" + i); this.ttGui.updateAfterUnlock(); return;
                 case "ttua": for (let i = 0; i < 16; i++)this.ttGui.unlock("eqv" + i); this.ttGui.updateAfterUnlock(); return;
                 case "ttfnext": for (let i = 0; i <= 10; i++)this.ttGui.unlock("fnext" + i); this.ttGui.updateAfterUnlock(); return;

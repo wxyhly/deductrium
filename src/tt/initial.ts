@@ -14,7 +14,7 @@ export function initTypeSystem() {
         }
         localId[typeName] ??= 0;
         const id = typeName + (localId[typeName]++);
-        ruleList.push({ prefix: id, ast, id: id, postfix, inferMode });
+        ruleList.push({ prefix: typeName, ast, id: id, postfix, inferMode });
     }
 
     typeName = "True";

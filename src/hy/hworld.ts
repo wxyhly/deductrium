@@ -6,7 +6,7 @@ import { Polygon, TileHash } from "./tiling.js";
 
 export class HWorld {
     debugDraw = false;
-    navigateDraw = true;
+    navigateDraw = false;
     localDraw: LocalDraw;
     localCamMat = new Rotor;
     currentTile: TileHash = [];
@@ -103,6 +103,7 @@ export class HWorld {
         }
     }
     hitReward(b: TileBlock, hash: string, isLoading?: boolean) {
+        if(!b) return;
         this.onGetReward(b.name ?? hash, b, isLoading);
         if (b.type !== TileBlockType.Gate) {
             b.text = "已" + b.text;

@@ -996,6 +996,9 @@ export const mapData = `
 :%*,2$获取5.2mg推理素
 :%,0#Pm:base=base,Pn:base=base,[n]((loop*m)=(loop*n))->(m=n)[n]#t
 :%*,3#Pa:U,Px:a,Py:a,Pz:a,Pw:a,[n]Pm:x=y,Pn:y=z,Po:z=w,[n]((m*n)*o)=(m*(n*o))[n]#t
+:%*,3,1#not (loop*loop = loop)[n]#t
+:%*,3,1,2#[[loop2]]not (loop*loop = (refl base))[n]#t
+:%*,3,1,2,1#I[n]#t
 :%,0,4#[[S1S1]](refl base) = [n](loop * (inveq loop))[n]#t
 :%,3$[[tteqv]]解锁“等价”关系[n]eqv: U->U->U[n]与简写：x ~= y[n](~=显示为≃)
 :%,1@如果两个类型a与b之间[n]存在可逆的[n]一到一的双射f:a->b[n]则它们等价，记作[n]eqv A B
@@ -1010,32 +1013,64 @@ export const mapData = `
     :%,1#(TrueXTrue) ~= True[n]#t
     :%,1#(not Bool) ~= False[n]#t
     :%,1#((not Bool) + Bool) ~= Bool[n]#t
-    :%,1#(not(not Bool)) ~= True[n]#t
+    :%,1#Pa:U,Pb:U,Px:a,Py:b,[n]not (inl x) = (inr y)[n]#t
     :%,1$获取9.99mg推理素
     :%*,1#通过此门需消耗推理素29.9mg
     :%*,1,1$[[ttfnext]]解锁函数外延公理[n]fnext
-    :%,2#(True->True) ~= True[n]#t
+    :%,2@
+    :%,1#Pa:U,Pb:U,Px:a,Py:b,[n]False ~= ((inl x) = (inr y))[n]#t
+    :%*,3$获取3mg推理素
+    :%,1@
+    :%,1#(True->True) ~= True[n]#t
+    :%*,3$获取3mg推理素
+    :%,1@
     :%,1#(False->True) ~= True[n]#t
+    :%*,3$获取3mg推理素
+    :%,1@
+    :ttfnext,2#(not(not Bool)) ~= True[n]#t
+    :%,1$[[ttacticFnext]]解锁证明策略fnext[n]遇到函数相等目标[n]自动使用fnext公理
+    :%,1#Pa:U,Pb:U,Pc:U,[n](aXb->c)~=(a->b->c)[n]#t
+    :%,1@不知你是否疑惑过[n]eqv的定义方式[n]为何要左右逆[n]分开给证据
+    :%,1@正常来说我该定义成[n]Sf:a->b,Sg:b->a,[n](Px:a,x=(g(f x)))X(Px:b,x=(f(g x)))
+    :%,1$[[ttpseudoeqv]]解锁这个定义，记作pseudo_eqv[n]它其实跟eqv逻辑等价。
+    :%,1#Pa:U,Pb:U,(a~=b)->(pseudo_eqv a b)
+    :%,2#Pa:U,Pb:U,(pseudo_eqv a b)->(a~=b)
+    :%,1@它跟eqv的区别在于[n]它的证据太多了[n]eqv中判断函数是[n]双射的证据是唯一的
+    :%,1@如果想让(a~=b)~=(a=b)成立[n]则相同的等价就该[n]没有多余的结构[n]两边才能等价
+    :%,1@多余的结构是什么呢？[n]高阶同伦类型如S1中[n]base=base的证据不唯一
+    :%,2@这正是Px:a,x=(g(f x))[n]这部分的证据数量
+    :%,1@感觉eqv的信息比[n]pseudo_eqv还多[n]为何它能把不同的[n]证据的差异抹去？
+    :%,2@这源于以下事实：[n]证明两个证据相等，[n]我们也可以提供[n]不同于rfl的其它证据
+    :%,1@把左右逆分开，[n]允许我们能精准[n]两次选择非平凡的[n]相等证据，通过trans[n]机制抵消掉多余自由度
+    :%,1@如果你听晕了，[n]请尝试证明下面的命题
+    :%,1#under construction...
+
+:loop2,2@
+:%,1;1;1;1@......
+:%,1$[[ttI]]解锁区间类型I
 :eqvid,1#(not True)~= False[n]#t
-:%*,3#Pa:U.Pb:U.(a~=b)->(b~=a)[n]#t
+:%*,3#Pa:U,Pb:U,(a~=b)->(b~=a)[n]#t
 :%*,3,4$[[ttua]]解锁同伦类型论[n]泛等公理[n]ua[n](等价即相等)
 :%*,2#[[looprfl]]not (eq (refl base) loop)[n]#t
 :%*,2,1@loop不等于rfl的证明思路：[n]通过ind_S1构造映射f:S1->U[n]其中让f(base)=Bool，[n]f(loop)=ua(e)[n]若loop与rfl相等，则[n]ua(e)与rfl相等[n]后者能推出e(x)=x矛盾[n](e在双重否定消去思路中定义)
-:%*,2,4$获取999mg推理素
-:%,1#Px:True,Py:True,eqv (eq x y) True[n]#t
+:%*,2,4$[[ttrecS1]]解锁ind_S1的简化版rec_S1
+:%*,2,3$获取299mg推理素
+:%,1#Px:True,Py:True,(x=y)~=True[n]#t
 :%,1@双重否定消去错误[n]的证明思路：[n]设映射e:Bool->Bool[n]且e(0b)=1b，e(1b)=0b[n]可证e是Bool自身到自身的双射[n]即能构造eqv Bool Bool的证据
 :%*,2#eqv (eqv Bool Bool) Bool[n]#t
 :%*,2,1@则ua(e):eq Bool Bool[n]通过ua(e)使用ind_eq[n]可证明若存在f:Pa:U,~~a->a[n]则能推出e(f Bool x)=f Bool x[n]从而可推出矛盾
 :%,1#not Pa:U,(not(not a))->a[n]#t
-:%,1$获取999mg推理素
+:%,1$获取499mg推理素
 :ttua,0,5@泛等公理不仅说ua是命题[n]“(eqv a b)->(eq a b)”的证据[n]它还说ua映射与id2eqv[n]映射互为逆映射
+:%*,4#Pa:U,Pb:U,(a~=b)~=(a=b)[n]#t
+:%*,4,5$你永远别想拿到这个奖励！
 :%,0@映射id2eqv为命题[n]“(eq a b)->(eqv a b)”的证据[n]该证据可通过ind_eq得到[n]不需要添加新公理
-:ttua,0,1#(ind_S1 (Lx:S1.U) Bool ?? base)=Bool[n]#t
-:%*,5$[[ttrecS1]]解锁ind_S1的简化版rec_S1
-:ttua,5#Pa:U.Pb:U.(a~=b)~=(a=b)[n]#t
-:%*,2$获取9.8mg推理素
+:ttua,0,1#(ind_S1 (Lx:S1.U) Bool [n](transconst loop Bool) base)=Bool[n]#t
+:%*,2#通过此门需消耗推理素29.9mg
+:ttua,5#Pa:U,Pb:U,Pc:U,[n](a~=b)->(b~=c)->(a~=c)[n]#t
+:%*,2$获取2.8mg推理素
 :%,0,3$[[ttLiftU]]解锁全类（宇宙）层级[n]提升操作LiftU[n]（提示：某个门的题目[n]不提升会有作用类型[n]不匹配错误，无法通过）
-:ttua,5,5#Pa:U.Pb:U.(LiftU(a~=b))~=(a=b)[n]#t
+:ttua,5,5#Pa:U,Pb:U,(LiftU(a~=b))~=(a=b)[n]#t
 :%*,5$获取9.8mg推理素
 
 :ttindTrue,4#Px:nat,Py:nat,eq (add x y) (add y x)[n]#t
