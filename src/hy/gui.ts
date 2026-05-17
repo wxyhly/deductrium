@@ -74,19 +74,19 @@ export class HyperGui {
                 this.touchDy = 0;
                 this.needUpdate = true;
             }
-            if (this.keyDowns.has("KeyW")) {
+            if (this.keyDowns.has("KeyW")||this.keyDowns.has("ArrowUp")) {
                 this.world.moveCam(0, this.moveSpeed * deltaTime);
                 this.needUpdate = true;
             }
-            if (this.keyDowns.has("KeyS")) {
+            if (this.keyDowns.has("KeyS")||this.keyDowns.has("ArrowDown")) {
                 this.world.moveCam(0, -this.moveSpeed * deltaTime);
                 this.needUpdate = true;
             }
-            if (this.keyDowns.has("KeyA")) {
+            if (this.keyDowns.has("KeyA")||this.keyDowns.has("ArrowLeft")) {
                 this.world.moveCam(-this.moveSpeed * deltaTime, 0);
                 this.needUpdate = true;
             }
-            if (this.keyDowns.has("KeyD")) {
+            if (this.keyDowns.has("KeyD")||this.keyDowns.has("ArrowRight")) {
                 this.world.moveCam(this.moveSpeed * deltaTime, 0);
                 this.needUpdate = true;
             }

@@ -5,7 +5,7 @@ import { genOrdTiles } from "./ordinal.js";
 import { Polygon } from "./tiling.js";
 export class HWorld {
     debugDraw = false;
-    navigateDraw = false;
+    navigateDraw = true;
     localDraw;
     localCamMat = new Rotor;
     currentTile = [];
@@ -78,8 +78,8 @@ export class HWorld {
                         .replaceAll("N", "ℕ").replaceAll("Z", "ℤ").replaceAll("Q", "ℚ").replaceAll("R", "ℝ").replaceAll("ℝel", "Rel");
                 }
                 else if (text.endsWith("#t")) {
-                    text = text.replaceAll("->", " → ").replaceAll("L", "λ").replaceAll("S", "Σ").replaceAll("P", "Π")
-                        .replaceAll("X", "×");
+                    text = text.replaceAll("~=", "≃").replaceAll("->", " → ").replaceAll("*", "▪").replaceAll("L", "λ").replaceAll("S", "Σ").replaceAll("P", "Π")
+                        .replaceAll("X", "×").replaceAll("λiftU", "LiftU").replaceAll("Σ1", "S1");
                 }
             }
             else {

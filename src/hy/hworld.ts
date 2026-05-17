@@ -6,7 +6,7 @@ import { Polygon, TileHash } from "./tiling.js";
 
 export class HWorld {
     debugDraw = false;
-    navigateDraw = false;
+    navigateDraw = true;
     localDraw: LocalDraw;
     localCamMat = new Rotor;
     currentTile: TileHash = [];
@@ -76,8 +76,8 @@ export class HWorld {
                         .replaceAll("&", "∧").replaceAll("|", "∨").replaceAll("∨∨", "|").replaceAll("omega", "ω").replaceAll("X", "×").replaceAll("*", "×")
                         .replaceAll("N", "ℕ").replaceAll("Z", "ℤ").replaceAll("Q", "ℚ").replaceAll("R", "ℝ").replaceAll("ℝel", "Rel")
                 } else if (text.endsWith("#t")) {
-                    text = text.replaceAll("->", " → ").replaceAll("L", "λ").replaceAll("S", "Σ").replaceAll("P", "Π")
-                        .replaceAll("X", "×")
+                    text = text.replaceAll("~=", "≃").replaceAll("->", " → ").replaceAll("*", "▪").replaceAll("L", "λ").replaceAll("S", "Σ").replaceAll("P", "Π")
+                        .replaceAll("X", "×").replaceAll("λiftU", "LiftU").replaceAll("Σ1", "S1")
                 }
             } else {
                 if (text.endsWith("#p") || text.endsWith("#d")) {

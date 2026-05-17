@@ -60,6 +60,17 @@ export class InferTable {
             }
         }
     }
+    static findInferVals(ast, res = new Set) {
+        if (ast.name?.[0] === "?") {
+            res.add(ast.name);
+        }
+        if (ast.nodes) {
+            for (const n of ast.nodes) {
+                this.findInferVals(n, res);
+            }
+        }
+        return res;
+    }
     findInferVal(ast, context = []) {
         if (ast.name?.[0] === "?") {
             this.list.set(ast.name.replace(/^\?([^\:]+)\:*$/, "$1"), context);
@@ -418,11 +429,11 @@ export class Core {
         const checkTypeIs = (ast) => {
             const type = this.check(ast.nodes[0], context, true);
             const checked = this.check(ast.nodes[1], context, true);
+            this.check(type, context, false);
             const assertion = this.equal(type, ast.nodes[1], context);
             if (!assertion) {
                 this.error(ast, TR("类型断言失败"), true);
             }
-            this.check(type, context, false);
             const assertionType = this.equal(type.checked, checked, context);
             if (!assertionType) {
                 this.error(ast, TR("类型断言失败"), true);
@@ -478,8 +489,8 @@ export class Core {
         catch (e) {
             errmsg = e;
         }
-        console.log("^", parser.stringify(ast));
-        console.log("$", Array.from(this.state.inferTable.list.keys()).filter(e => !this.state.inferTable.solved.has("?" + e)).join(","));
+        // console.log("^", parser.stringify(ast));
+        // console.log("$", Array.from(this.state.inferTable.list.keys()).filter(e => !this.state.inferTable.solved.has("?" + e)).join(","));
         // reduce final result, fill infer
         try {
             this.markAndCheckInferedValue(ast, context);
@@ -488,7 +499,7 @@ export class Core {
             errmsg = e;
         }
         const alphaConversionIds = new Set;
-        this.reduce(ast, context, alphaConversionIds);
+        this.reduce(ast, context, false, alphaConversionIds);
         this.doAlphaConversionByIds(ast, alphaConversionIds);
         if (this.state.errormsg.length)
             throw this.state.errormsg[0].msg;
@@ -536,7 +547,7 @@ export class Core {
             }
         }
     }
-    reduce(ast, context, alphaConversionIds = new Set) {
+    reduce(ast, context, skipEnsugar, alphaConversionIds = new Set) {
         if (ast.origin !== true) {
             // if is origin, don't modify
             const t = ast.checked;
@@ -544,9 +555,9 @@ export class Core {
             ast.checked = t;
         }
         if (ast.nodes?.[0])
-            this.reduce(ast.nodes[0], context, alphaConversionIds);
+            this.reduce(ast.nodes[0], context, skipEnsugar, alphaConversionIds);
         if (ast.nodes?.[1]) {
-            this.reduce(ast.nodes[1], (ast.type === "L" || ast.type === "P" || ast.type === "S") ? assignContext([ast.name, ast.nodes[0], ast.bondVarId], context) : context, alphaConversionIds);
+            this.reduce(ast.nodes[1], (ast.type === "L" || ast.type === "P" || ast.type === "S") ? assignContext([ast.name, ast.nodes[0], ast.bondVarId], context) : context, skipEnsugar, alphaConversionIds);
         }
         if (ast.type === "var" && ast.bondVarId && ast.bondVarId !== Infinity) {
             // alpha conversion
@@ -565,8 +576,8 @@ export class Core {
             ast.name = context[idx][0];
         }
         if (ast.checked)
-            this.reduce(ast.checked, context, alphaConversionIds);
-        if (!ast.origin || ast["desugared"])
+            this.reduce(ast.checked, context, skipEnsugar, alphaConversionIds);
+        if ((!ast.origin || ast["desugared"]) && !skipEnsugar)
             this.ensugar(ast);
     }
     static getFreeVars(ast, res = new Set, scope = []) {
@@ -683,7 +694,7 @@ export class Core {
         }
         if (ast.type === "apply") {
             // U(n) : U(@succ n)
-            if (ast.nodes[0].name === "U") {
+            if (ast.nodes[0].name === "U" && ast.nodes[0].type === "var") {
                 this.check(ast.nodes[1], assignContext(["U@", null, Infinity], context), true);
                 if (context.find(e => e[0] === "U@") || (ast.nodes[1].checked.name !== "U@" && ast.nodes[1].checked.name[0] !== "?")) {
                     this.error(ast, TR(`函数返回类型不合法`), false);
@@ -710,8 +721,11 @@ export class Core {
             // a: Px:A.B(x)   b:A  -> a(b):B(b)
             if (this.equal(fnType, tfn, context)) {
                 // before beta-reduction, fill infered
-                this.solveInferRel();
                 ast.checked = Core.clone(ap);
+                if (Array.from(InferTable.findInferVals(ap)).filter(e => !this.state.inferTable.solved.has(e)).length) {
+                    if (!(ap.type === "var" && ap.name[0] === "?" && !this.state.inferTable.rel[ap.name]))
+                        this.solveInferRel();
+                }
                 this.fillInfered(ast.checked);
                 // this.replaceVarInInfer(fnType.name, bondVarId, ast.nodes[1]);
                 this.replaceVar(ast.checked, fnType.name, bondVarId, ast.nodes[1], context);
@@ -722,6 +736,7 @@ export class Core {
             }
             return ast.checked;
         }
+        this.error(ast, TR("未知的表达式"), ignoreErr);
     }
     desugar(ast, allowModify) {
         ast.origin = !allowModify;
@@ -755,10 +770,22 @@ export class Core {
             ast["desugared"] = Core.clone(ast);
             ast.nodes[0].nodes[1] = ast.nodes[1].nodes[0];
         }
-        if (ast.type === "->") {
+        if (ast.type === "->" && !this.state.disableSimpleFn) {
             ast.type = "P";
             ast.name = "_";
             ast["desugared"] = Core.clone(ast);
+        }
+        if (ast.type === "*") {
+            ast["desugared"] = Core.clone(ast);
+            Core.assign(ast, wrapApply(wrapVar("compeq"), ...ast.nodes));
+        }
+        if (ast.type === "=" && !this.state.disableSimpleEq) {
+            ast["desugared"] = Core.clone(ast);
+            Core.assign(ast, wrapApply(wrapVar("eq"), ...ast.nodes));
+        }
+        if (ast.type === "~=") {
+            ast["desugared"] = Core.clone(ast);
+            Core.assign(ast, wrapApply(wrapVar("eqv"), ...ast.nodes));
         }
         if (ast.nodes) {
             for (const n of ast.nodes)
@@ -774,11 +801,8 @@ export class Core {
     ];
     ensugar(ast) {
         // no recursive, outter fn will do that
-        if (ast.type === "P") {
+        if (ast.type === "P" && !this.state.disableSimpleFn) {
             if (ast.name === "_" || !this.hasBondVar(ast.nodes[1], ast.bondVarId)) {
-                if (ast.bondVarId === 4 && ast.name[0] === "y" && ast.nodes[0].name === "nat") {
-                    console.log("uu");
-                }
                 ast.type = "->";
                 ast.name = "";
             }
@@ -789,6 +813,30 @@ export class Core {
                 return ast;
             const args = ali.length;
             const fn = ali[0].name;
+            if (fn === "compeq" && args === 3) {
+                const t = ast.checked;
+                if (!(ast["desugared"] && ast["desugared"]?.type !== "*")) {
+                    Core.assign(ast, { type: "*", nodes: [ali[1], ali[2]], name: "" }, true);
+                }
+                ast.checked = t;
+                return;
+            }
+            if (fn === "eq" && args === 3 && !this.state.disableSimpleEq) {
+                const t = ast.checked;
+                if (!(ast["desugared"] && ast["desugared"]?.type !== "=")) {
+                    Core.assign(ast, { type: "=", nodes: [ali[1], ali[2]], name: "" }, true);
+                }
+                ast.checked = t;
+                return;
+            }
+            if (fn === "eqv" && args === 3) {
+                const t = ast.checked;
+                if (!(ast["desugared"] && ast["desugared"]?.type !== "~=")) {
+                    Core.assign(ast, { type: "~=", nodes: [ali[1], ali[2]], name: "" }, true);
+                }
+                ast.checked = t;
+                return;
+            }
             if (fn === "@Prod" && args === 5) {
                 const l = ali[4];
                 const t = ast.checked;
@@ -978,19 +1026,30 @@ export class Core {
                 const [fn, ap] = ast.nodes;
                 if (fn.type === "L") {
                     const id = this.getBondVarId(fn);
+                    // let bondedInfer = false;
+                    // for (const k of new InferTable(fn.nodes[1]).list.keys()) {
+                    //     const ctxt = this.state.inferTable.list.get(k);
+                    //     for (const [a, b, c] of ctxt) {
+                    //         if (this.isBondVarIdEqual(c, id)) {
+                    //             bondedInfer = true;
+                    //             break;
+                    //         }
+                    //     }
+                    //     if (bondedInfer) break;
+                    // }
+                    // if (bondedInfer) break;
                     // try to fill infered values before beta-reduction, to avoid some bad things
-                    // this.fillInfered(ast);
                     const nt1 = Core.clone(fn.nodes[1], true);
                     this.replaceVar(nt1, fn.name, id, ap, context);
+                    const t = ast.checked;
                     Core.assign(ast, nt1, true);
+                    ast.checked = t;
                 }
                 else if (fn.type === "var" && !fn.bondVarId && !skipExpand) {
                     let expand;
                     // f a => (....) a
                     if (!this.alwaysSkip.has(fn.name) && (expand = this.state.sysDefs[fn.name]) || this.state.userDefs[fn.name]) {
-                        // let origin = Core.clone(fn);
                         Core.assign(fn, this.markBondVars(Core.clone(expand), context), true);
-                        // ast.origin = origin;
                     }
                     // if compute rule modified, then go on loop
                     if (!this.iotaHead(ast, context, skipExpand))
@@ -1005,9 +1064,7 @@ export class Core {
                 let expand;
                 // f a => (....) a
                 if (expand = this.state.sysDefs[ast.name] || this.state.userDefs[ast.name]) {
-                    // let origin = Core.clone(ast);
                     Core.assign(ast, this.markBondVars(Core.clone(expand), context), true);
-                    // ast.origin = origin;
                 }
                 else
                     return;
@@ -1283,16 +1340,17 @@ export class Core {
                 if (!solved.has(k) && !k.endsWith(":") && !Array.from(new InferTable(v).list.keys()).filter(e => !solved.has("?" + e)).length) {
                     solved.add(k);
                     replaceKey = k;
-                    if (it.rel[k + ":"]) {
-                        const kt = k + ":";
+                    const kt = k + ":";
+                    const astT = it.rel[kt];
+                    if (astT) {
                         for (const [k, v] of Object.entries(it.rel)) {
                             if (!solved.has(k)) {
-                                this.replaceVar(v, kt, -1, it.rel[kt]);
+                                this.replaceVar(v, kt, -1, astT);
                             }
                         }
-                        const ctxt = it.list.get(k.slice(1).replaceAll(":", "")) ?? [];
-                        this.whnf(v, ctxt, false);
-                        if (!this.equal(this.check(v, ctxt, false), it.rel[kt], ctxt))
+                        const ctxt = it.list.get(k.slice(1)) ?? [];
+                        this.whnf(v, ctxt, true);
+                        if (!this.equal(this.check(v, ctxt, false), astT, ctxt))
                             return false;
                         it.rel[kt] = this.check(v, ctxt, false);
                         solved.add(kt);
@@ -1331,12 +1389,14 @@ export class Core {
             this.fillInfered(ast.checked);
         }
         if (ast.nodes) {
+            let modified = false;
             for (const n of ast.nodes) {
-                this.fillInfered(n);
+                modified = this.fillInfered(n) || modified;
             }
+            return modified;
         }
         else {
-            Core.replaceByMatch(ast, it.rel, /^\?/);
+            return Core.replaceByMatch(ast, it.rel, /^\?/);
         }
     }
     equal(a, b, context) {
@@ -1493,6 +1553,10 @@ export class Core {
             console.log("can't determine @max(?,?) === xxx, ignore");
             return true;
         }
+        const ma = this.fillInfered(a);
+        const mb = this.fillInfered(b);
+        if (ma || mb)
+            return this.equal(a, b, context);
         console.log(`? ${parser.stringify(a)} != ${parser.stringify(b)}`);
         return false;
     }
@@ -1548,6 +1612,22 @@ export class Core {
     // count: [position to expand, current position]
     expandDef(ast, context, n, count = [0, 1]) {
         let found = false;
+        if (ast.type === "~=" && (n === "eqv" || (typeof n === "object" && n.has("eqv")))) {
+            const expr = this.state.sysDefs["eqv"];
+            if (count[0] === 0 || Math.abs(count[0]) === count[1]) {
+                Core.assign(ast, wrapApply(Core.clone(expr), ...ast.nodes));
+                count[1]++;
+                this.expandDef(ast.nodes[0].nodes[1], context, n, count);
+                this.expandDef(ast.nodes[1], context, n, count);
+                return true;
+            }
+            else {
+                count[1]++;
+                found = this.expandDef(ast.nodes[0].nodes[1], context, n, count) || found;
+                found = this.expandDef(ast.nodes[1], context, n, count) || found;
+                return found;
+            }
+        }
         if (ast.type === "var" && !ast.bondVarId && (ast.name === n || (typeof n === "object" && n.has(ast.name))) && !context.find(e => e[0] === ast.name)) {
             const expr = this.state.sysDefs[ast.name] || this.state.userDefs[ast.name];
             if (count[0] === 0 || Math.abs(count[0]) === count[1]) {
@@ -1586,6 +1666,57 @@ export class Core {
         this.state.inferTable = new InferTable(ast); // it must add environment ctxt in infertable
         this.check(ast, [], false);
         this.markAndCheckInferedValue(ast, []);
+        if (ast.checked)
+            this.reduce(ast.checked, [], true);
+        // remained : appear in ast type, not solved
+        const remained = InferTable.findInferVals(ast.checked || ast.nodes[1]);
+        // unsolved : not appear in ast type, but appear in rel of remained
+        let unsolved = new Set;
+        let fail = false;
+        for (const k of remained) {
+            if (this.state.inferTable[k])
+                InferTable.findInferVals(this.state.inferTable[k], unsolved);
+            if (this.state.inferTable[k + ":"])
+                InferTable.findInferVals(this.state.inferTable[k + ":"], unsolved);
+        }
+        for (const k of unsolved) {
+            if (remained.has(k))
+                unsolved.delete(k);
+        }
+        for (const u of unsolved) {
+            let val = this.state.inferTable.rel[u];
+            if (!val)
+                continue; // useless unsolved, abandon it
+            let v = u;
+            let end = false;
+            while (val.type === "var" && val.name[0] === "?") {
+                v = val.name;
+                val = this.state.inferTable.rel[v];
+                if (!val && !remained.has(v)) {
+                    end = true;
+                    break;
+                }
+            }
+            if (end)
+                continue;
+            if (remained.has(v)) {
+                for (const k of remained) {
+                    if (this.state.inferTable[k])
+                        this.replaceVar(this.state.inferTable[k], u, -1, wrapVar(v));
+                    if (this.state.inferTable[k + ":"])
+                        this.replaceVar(this.state.inferTable[k + ":"], u, -1, wrapVar(v));
+                }
+            }
+            else {
+                fail = true;
+            }
+        }
+        console.log("[" + name + "]", fail);
+        if (!fail) {
+            let todel = Object.keys(this.state.inferTable.rel).filter(e => !remained.has(e.replace(":", "")));
+            for (const td of todel)
+                delete this.state.inferTable.rel[td];
+        }
         this.state.defTypes[name] = [ast.type === ":" ? ast.nodes[1] : ast.checked, this.state.inferTable.clone(), this.state.bondVarRel.clone(), this.state.bondVarId];
     }
     loadConstTypeCache(context, ast, inferTable, bondVarRel, bondVarId) {
@@ -1697,7 +1828,7 @@ class UniverseLevel {
         if (ast.type === "var" && ast.name === "U") {
             return 0n;
         }
-        if (ast.type === "var" && (ast.name === "_" || ast.name.endsWith(":"))) {
+        if (ast.type === "var" && (ast.name === "_" || ast.name.endsWith(":") || ast.name.startsWith("?"))) {
             // an unknown inffered type
             return true;
         }

@@ -1,11 +1,12 @@
 import { TR } from "../lang.js";
 import { Assist } from "./assist.js";
 import { ASTParser, debugBoundVarId } from "./astparser.js";
-import { Core, assignContext } from "./core.js";
+import { Core, assignContext, wrapApply, wrapVar, wrapLambda } from "./core.js";
 import { initTypeSystem } from "./initial.js";
 const parser = new ASTParser;
 const constructors = new Set();
 const destructors = new Set();
+const computeEqs = new Set();
 const macro = new Set();
 const sysmacro = new Set();
 let consts = new Set;
@@ -16,6 +17,8 @@ export class TTGui {
     onStateChange = () => { };
     core = new Core;
     disableSimpleFn = false;
+    disableSimpleEq = false;
+    displayPi = true;
     enablecopygate = false;
     lastGateTarget = "";
     // gamecore = new HoTTGame;
@@ -55,6 +58,11 @@ export class TTGui {
         if (!creative) {
             this.unlockedTactics = new Set(["qed"]);
             this.disableSimpleFn = true;
+            this.disableSimpleEq = true;
+        }
+        else {
+            document.getElementById("displayPi-label").classList.remove("hide");
+            document.getElementById("tactic-div").classList.remove("hide");
         }
         this.initTypeList();
         this.updateInhabitList();
@@ -77,6 +85,7 @@ export class TTGui {
             document.getElementById("tactic-state").innerHTML = "";
             document.getElementById("tactic-remove").classList.add("hide");
             document.getElementById("tactic-clear").classList.add("hide");
+            document.getElementById("copygate").classList.remove("hide");
             input.value = "";
             document.getElementById("tactic-input").classList.add("hide");
             if (this.mode?.length > 1) {
@@ -190,6 +199,13 @@ export class TTGui {
         return span;
     }
     ast2HTML(idx, ast, scopes = [], context = [], userLineNumber = 0) {
+        if (ast.type === "=" && this.disableSimpleEq) {
+            const eq = wrapVar("eq");
+            eq.checked = wrapLambda("->", "", ast.nodes[0].checked, wrapLambda("->", "", ast.nodes[0].checked, ast.checked));
+            const app = wrapApply(eq, ast.nodes[0], ast.nodes[1]);
+            app.checked = ast.checked;
+            return this.ast2HTML(idx, app, scopes, context, userLineNumber);
+        }
         const varnode = document.createElement("span");
         if (!ast) {
             varnode.innerText = TR("表达式因错误而丢失");
@@ -220,6 +236,8 @@ export class TTGui {
             const astname = ast.name.replace(/'+$/g, "");
             if (astname.match(/^[1-9][0-9]*$/))
                 el.classList.add("constructors");
+            else if (computeEqs.has(astname))
+                el.classList.add("compute_eqs");
             else if (destructors.has(astname))
                 el.classList.add("ind_fn");
             else if (constructors.has(astname))
@@ -259,13 +277,13 @@ export class TTGui {
                 case ":=":
                 case "===":
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], scopes, context, userLineNumber));
-                    this.addSpan(varnode, " &nbsp;" + ast.type + "&nbsp; ", true);
+                    this.addSpan(varnode, " &nbsp;" + (ast.type === "===" ? "≡" : ast.type) + "&nbsp; ", true);
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], scopes, context, userLineNumber));
                     break;
                 case "->":
                 case "X":
                 case "+":
-                    const b1 = !(((ast.type === "+" || ast.type === "->") && ast.nodes[0].type === "X") || ["var"].includes(ast.nodes[0].type) || ast.nodes[0].nodes[0].name == "U");
+                    const b1 = !(((ast.type === "+" || ast.type === "->") && ast.nodes[0].type === "X") || ["var", "=", "~=", "*"].includes(ast.nodes[0].type) || ast.nodes[0].nodes[0].name == "U");
                     const b2 = !(((ast.type === "+" || ast.type === "->") && ast.nodes[1].type === "X") || (["var", "->", "X"].includes(ast.nodes[1].type) && ast.type !== "X") || ["var"].includes(ast.nodes[1].type) || ast.nodes[1].nodes[0].name == "U");
                     if (b1)
                         this.addSpan(varnode, "(");
@@ -282,12 +300,25 @@ export class TTGui {
                 case ",":
                 case "~":
                 case "~=":
+                case "=":
                 case "*":
-                    this.addSpan(varnode, "(");
+                    const bra = !["var", ",", "*"].includes(ast.nodes[0].type) && ast.type !== ",";
+                    const brb = !["var", ","].includes(ast.nodes[1].type) && ast.type !== ",";
+                    if (!(bra && brb))
+                        this.addSpan(varnode, "(");
+                    if (bra)
+                        this.addSpan(varnode, "(");
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], scopes, context, userLineNumber));
-                    this.addSpan(varnode, ast.type === "," ? "," : ast.type === "~" ? "~" : ast.type === "~=" ? "≃" : ast.type === "*" ? "∘" : "→");
+                    if (bra)
+                        this.addSpan(varnode, ")");
+                    this.addSpan(varnode, ast.type === "," ? "," : ast.type === "~" ? " ~ " : ast.type === "~=" ? " ≃ " : ast.type === "*" ? "▪" : " = ");
+                    if (brb)
+                        this.addSpan(varnode, "(");
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], scopes, context, userLineNumber));
-                    this.addSpan(varnode, ")");
+                    if (brb)
+                        this.addSpan(varnode, ")");
+                    if (!(bra && brb))
+                        this.addSpan(varnode, ")");
                     break;
                 case "apply":
                     if (ast.nodes[0].name === "U") {
@@ -296,7 +327,7 @@ export class TTGui {
                         break;
                     }
                     const br1 = !["apply", "var", ","].includes(ast.nodes[0].type);
-                    const br2 = !(["var", ","].includes(ast.nodes[1].type) || ast.nodes[1].nodes[0].name == "U");
+                    const br2 = !(["var", ",", "*", "=", "~="].includes(ast.nodes[1].type) || ast.nodes[1].nodes[0].name == "U");
                     if (br1)
                         this.addSpan(varnode, "(");
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], scopes, context, userLineNumber));
@@ -316,7 +347,7 @@ export class TTGui {
                     const newcontext = Object.assign({}, context);
                     const newType = Core.clone(ast.nodes[0]); //this.hott.unbeautify(newType);
                     newcontext[ast.name] = newType;
-                    outterLayers.push(this.addSpan(varnode, "" + ast.type.replaceAll("S", "Σ").replaceAll("L", "λ").replaceAll("P", "Π")));
+                    outterLayers.push(this.addSpan(varnode, "" + ast.type.replace("S", "Σ").replace("L", "λ").replace("P", this.displayPi ? "Π" : "(")));
                     const varast = this.ast2HTML(idx, { type: "var", name: ast.name, checked: ast.nodes[0] }, [{ type: "quantvar", name: "quantvar" }, ...scopes], newcontext, userLineNumber);
                     varast.classList.add("boundedVar");
                     if (debugBoundVarId && ast.bondVarId) {
@@ -325,7 +356,7 @@ export class TTGui {
                     outterLayers.push(varnode.appendChild(varast));
                     outterLayers.push(this.addSpan(varnode, ":"));
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[0], scopes, context, userLineNumber));
-                    outterLayers.push(this.addSpan(varnode, ast.type === "L" ? "." : ","));
+                    outterLayers.push(this.addSpan(varnode, ast.type === "L" ? "." : ast.type === "P" && !this.displayPi ? ")→" : ","));
                     varnode.appendChild(this.ast2HTML(idx, ast.nodes[1], [ast, ...scopes], newcontext, userLineNumber));
                     // outterLayers.push(this.addSpan(varnode, ")"));
                     // hightlight constrained vars
@@ -442,6 +473,8 @@ export class TTGui {
         while (list.lastChild) {
             list.removeChild(list.lastChild);
         }
+        const disableSimpleEq = this.disableSimpleEq;
+        const disableSimpleFn = this.disableSimpleFn;
         for (const rule of allrules) {
             // register systype and sysdef in core
             const vname = rule.ast.nodes?.[0]?.name;
@@ -450,6 +483,8 @@ export class TTGui {
             }
             if (!terms.has(rule.id))
                 continue;
+            this.core.state.disableSimpleEq = false;
+            this.core.state.disableSimpleFn = false;
             if (rule.ast.type === ":" && rule.ast.nodes[0].type === "var") {
                 this.core.state.sysTypes[vname] = this.core.desugar(Core.clone(rule.ast.nodes[1]), true);
             }
@@ -465,8 +500,10 @@ export class TTGui {
                     consts.add(vname);
                 if (rule.postfix === "构造")
                     constructors.add(vname);
-                if (rule.postfix === "解构" || rule.postfix === "计算")
+                if (rule.postfix === "解构")
                     destructors.add(vname);
+                if (rule.postfix === "计算")
+                    computeEqs.add(vname);
                 if (rule.postfix === "定义")
                     sysmacro.add(vname);
             }
@@ -488,6 +525,8 @@ export class TTGui {
             // const def = this.core.state.sysDefs[vname];
             // delete this.core.state.sysDefs[vname];
             let error = false;
+            this.core.state.disableSimpleEq = disableSimpleEq;
+            this.core.state.disableSimpleFn = disableSimpleFn;
             try {
                 this.core.checkType(ast, [], false);
             }
@@ -579,6 +618,7 @@ export class TTGui {
             const inputsarr = this.getInhabitatArray();
             const nextInput = inputsarr[currentIdx + 1];
             this.core.state.disableSimpleFn = this.disableSimpleFn;
+            this.core.state.disableSimpleEq = this.disableSimpleEq;
             wrapper.classList.remove("error");
             wrapper.classList.remove("infering");
             if (!input.value.trim()) {
@@ -617,10 +657,16 @@ export class TTGui {
                 const _checkInfer = (ast, context, expandConsts) => {
                     if (ast.type === "var") {
                         if (ast.name[0] === "?" || ast.name === "_") {
-                            if (ast.checked?.type === ":") {
-                                return _checkInfer(ast.checked.nodes[0], context, expandConsts);
-                            }
-                            return false;
+                            if (!ast.checked)
+                                return false;
+                            // ast.checked can be ttt or xxx : ttt
+                            const t = ast.checked.type === ":" ? ast.checked.nodes[1] : ast.checked;
+                            if (t.name === "U@")
+                                return true;
+                            if (t.type === "apply" && t.nodes[0].name === "U")
+                                return true;
+                            // if ttt is not Universe or level number, we check xxx recursively
+                            return ast.checked.type === ":" ? _checkInfer(ast.checked.nodes[0], context, expandConsts) : false;
                         }
                         if (!context.find(e => e[0] === ast.name)) {
                             // if this is a constant, check its value recursively
@@ -631,6 +677,8 @@ export class TTGui {
                         }
                     }
                     if (ast.nodes) {
+                        if (ast.type === "apply" && ast.nodes[0].name === "U" && ast.nodes[0].type === "var")
+                            return true;
                         if (!_checkInfer(ast.nodes[0], context, expandConsts))
                             return false;
                         if (ast.type === "P" || ast.type === "L" || ast.type === "S") {
@@ -795,6 +843,7 @@ export class TTGui {
             this.autofillTactics(assist);
             document.getElementById("tactic-remove").classList.remove("hide");
             document.getElementById("tactic-clear").classList.remove("hide");
+            document.getElementById("copygate").classList.add("hide");
             document.getElementById("tactic-hint").innerText = "";
             const theorem = Core.clone(assist.theorem);
             this.core.checkType(theorem, [], false);
@@ -816,6 +865,7 @@ export class TTGui {
             hint.innerText = TR("请在定理列表中点选待证命题");
             this.mode = "tactic-begin";
             document.getElementById("tactic-clear").classList.add("hide");
+            document.getElementById("copygate").classList.remove("hide");
         }
         if (this.mode instanceof Array) {
             const statediv = document.getElementById("tactic-state");
@@ -839,6 +889,7 @@ export class TTGui {
                     input.classList.add("hide");
                     document.getElementById("tactic-remove").classList.add("hide");
                     document.getElementById("tactic-clear").classList.add("hide");
+                    document.getElementById("copygate").classList.remove("hide");
                     this.mode = null;
                     hint.innerHTML = "";
                     input.value = "";
@@ -846,7 +897,7 @@ export class TTGui {
                     document.getElementById("tactic-autofill").innerHTML = "";
                     return;
                 }
-                else if (assist[cmd])
+                else if ((!this.unlockedTactics || this.unlockedTactics.has(cmd)) && assist[cmd])
                     assist[cmd](param);
                 else {
                     throw TR("未知的证明策略");
@@ -885,6 +936,7 @@ export class TTGui {
             assist.markTargets();
             hint.appendChild(this.ast2HTML("", astShow, [], assist.goal.map(g => [g.ast.name, g.type, 0]), this.getInhabitatArray().length));
             document.getElementById("tactic-clear").classList.remove("hide");
+            document.getElementById("copygate").classList.add("hide");
             window.scrollTo(0, document.body.clientHeight);
             const wrapperDiv = document.getElementById("tactic-list").parentElement;
             wrapperDiv.scrollTo(0, wrapperDiv.clientHeight);

@@ -631,14 +631,20 @@ export class Game {
                 case "type": return document.getElementById("type-btn").classList.remove("hide");
                 case "ttsimplFn":
                     this.ttGui.disableSimpleFn = false;
-                    return this.ttGui.getInhabitatArray()[0]?.onblur({ updateDefs: true });
+                    document.getElementById("displayPi-label").classList.remove("hide");
+                    return this.ttGui.updateAfterUnlock();
+                case "ttsimplEq":
+                    this.ttGui.disableSimpleEq = false;
+                    this.ttGui.unlock("eq26");
+                    return this.ttGui.updateAfterUnlock();
                 case "ttnotFn": return this.ttGui.unlock("(False)0", true);
                 case "ttEq":
-                    for (let i = 0; i < 7; i++)
+                    for (let i = 0; i < 5; i++)
                         this.ttGui.unlock("eq" + i);
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttactic1":
+                    document.getElementById("tactic-div").classList.remove("hide");
                     this.ttGui.unlockedTactics.add("expand");
                     this.ttGui.unlockedTactics.add("intro");
                     this.ttGui.unlockedTactics.add("apply");
@@ -656,7 +662,9 @@ export class Game {
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttrfl":
+                    this.ttGui.unlock("eq6", true);
                     this.ttGui.unlock("eq7", true);
+                    document.getElementById("tactic-div").classList.remove("hide");
                     this.ttGui.unlockedTactics.add("rfl");
                     return;
                 case "ttindTrue":
@@ -717,6 +725,12 @@ export class Game {
                 case "ttcompeq":
                     this.ttGui.unlock("(eq)8");
                     this.ttGui.unlock("(eq)9");
+                    this.ttGui.unlock("(eq)10");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttransC":
+                    this.ttGui.unlock("(eq)11");
+                    this.ttGui.unlock("(eq)12");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttpred":
@@ -739,6 +753,11 @@ export class Game {
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttap":
+                    for (let i = 0; i < 2; i++)
+                        this.ttGui.unlock("(eq)" + i);
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttap2":
                     for (let i = 0; i < 6; i++)
                         this.ttGui.unlock("(eq)" + i);
                     this.ttGui.updateAfterUnlock();
@@ -749,7 +768,7 @@ export class Game {
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttindS1":
-                    for (let i = 0; i < 7; i++)
+                    for (let i = 0; i < 11; i++)
                         this.ttGui.unlock("S1" + i);
                     this.ttGui.updateAfterUnlock();
                     return;
@@ -759,8 +778,18 @@ export class Game {
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttua":
-                    for (let i = 0; i < 10; i++)
+                    for (let i = 0; i < 16; i++)
                         this.ttGui.unlock("eqv" + i);
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttfnext":
+                    for (let i = 0; i <= 10; i++)
+                        this.ttGui.unlock("fnext" + i);
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttLiftU":
+                    for (let i = 0; i <= 10; i++)
+                        this.ttGui.unlock("LiftU" + i);
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttlazy":
@@ -779,6 +808,9 @@ export class Game {
                 case "ttacticEx":
                     this.ttGui.unlockedTactics.add("case");
                     this.ttGui.unlockedTactics.add("ex");
+                    return;
+                case "tthyp":
+                    this.ttGui.unlockedTactics.add("hyp");
                     return;
                 case "ttacticLR":
                     this.ttGui.unlockedTactics.add("left");
@@ -830,6 +862,18 @@ export class Game {
         this.fsGui.skipRendering = false;
         this.ttGui.skipRendering = false;
         this.fsGui.onchangeOmitNF();
+        const displayPi = document.getElementById("displayPi");
+        displayPi.addEventListener("change", e => {
+            this.ttGui.displayPi = !displayPi.checked;
+            this.ttGui.updateAfterUnlock();
+            if (!this.ttGui.displayPi)
+                this.rewards.push("[set]NotDisplayPi");
+            if (this.ttGui.displayPi && this.rewards.includes("[set]NotDisplayPi")) {
+                this.rewards = this.rewards.filter(e => e !== "[set]NotDisplayPi");
+            }
+        });
+        this.ttGui.displayPi = !this.rewards.includes("[set]NotDisplayPi");
+        displayPi.checked = !this.ttGui.displayPi;
         this.ttGui.updateAfterUnlock();
         langMgr.setLang(langMgr.lang);
         this.hyperGui.needUpdate = true;

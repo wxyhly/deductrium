@@ -786,6 +786,7 @@ export const mapData = `
     :%*,4,5,5@例：λx:A→B.x[n]的类型为(A→B)→(A→B)
     :%*,4,5,5,0@α-转换规则：[n]若z不在y中自由出现[n]则λx:A.y等价于λz:A.y'[n]其中y'是将y中自由的x[n]替换为z的结果
     :%*,4,5,5,0,5@α-转换前后的两表达式[n]是“定义相等”的[n]由系统自动判定；[n]函数类型[n]简写前(Π)后(→)[n]也“定义相等”
+    :%*,4,5,5,0,5,5@有时也把依赖函数[n]Px:a.f(x)写成(x:a)->f(x)[n]它们定义相等[n]你可以切换显示方式
 :%,5#Pa:U,Pb:U,Pc:U,a->b->a[n]#t
     :%*,5@若a:A，f:A->B[n]则函数f可以作用于a[n]记作f a[n]且f a类型为B
     :%*,5,2@下面介绍函数作用[n]
@@ -830,7 +831,14 @@ export const mapData = `
 // tt ind_xxx
 
 :ttBool,5$[[ttindTrue]]解锁ind_True[n]提示：后方可解锁[n]ind_eq
-:%,0@类型True只有一个值true[n]要证对任意x:True成立[n]其实只需论证对true成立[n]引入ind_True作为[n]该事实的证据
+// :%,5@这些ind_xxx都是啥？[n]往前走详细提示
+// :%,5@我们先来看个rec_xxx函数[n]它是对应的ind_xxx的简化版
+// :%,5$[[ttrec]]解锁rec_True与rec_Bool
+//     :ttrec,0@rec_Bool是一个构造函数f:Bool->a的函数[n]它接受一个类型a[n]和一个值f(0b):a[n]及一个值f(1b):a[n]就输出一个函数Bool->a
+//     :%*,0@比如我们输入rec_Bool nat[n]系统提示它的类型是[n]nat->nat->Bool->nat[n]说明我们还要输入两个自然数
+//     :%*,0@我们接着输入rec_Bool nat 1 2[n]系统提示它的类型是[n]Bool->nat
+//     :%*,0@按照定义，rec_Bool nat 1 2 0b的值是1[n]rec_Bool nat 1 2 1b的值是2
+:ttindTrue,0@类型True只有一个值true[n]要证对任意x:True成立[n]其实只需论证对true成立[n]引入ind_True作为[n]该事实的证据
 :%*,4@ind_True接受一个[n]关于x:True的命题[n]（命题的类型都是U，[n]因此通过函数True->U定义）[n]和该命题对true成立的证据[n]从而输出该命题对[n]任意x:True成立的证据
 :%*,4,5@给些证旁边命题的提示：[n]看看表达式“ind_True [n](Lx:True.eq x true)”的类型
 :%*,4,5,5@除了理解为命题[n]ind_True也可用于构造函数：[n]要构造f:True->XXX[n]只需给定f(true)的值即可[n]公理类型列表中[n]ind_True的计算规则[n]表示这一事实
@@ -899,7 +907,7 @@ export const mapData = `
             :%*,3,5$[[ttinveq]]解锁相等逆路径运算[n]inveq
         :%,5@注意eq类型本身带参数[n]而不像nat\和\积类型[n]只是构造子带参数[n]因此ind_eq是在对[n]一簇类型使用“归纳法”
             :%*,3#Pa:U,Px:a,Py:a,Pz:a,(eq x y)->(eq y z)->(eq x z)[n]#t
-            :%*,3,1$[[ttcompeq]]解锁相等连接路径运算[n]compeq
+            :%*,3,1$[[ttcompeq]]解锁相等连接路径运算[n]compeq[n]与简写：x * y === [n] compeq x y
             
     :ttSum,0,4@然而对任意类型a:U[n]并不是非真即假[n]比如有无法证明的命题[n]还有其它复杂的非命题类型[n]其实排中律Pa:U,a+(not a)[n]在类型论中不可证
     :%,3@若把命题逻辑中a3公理[n](~$0>~$1)>($1>$0)[n]改成($1>$0)>(~$0>~$1)[n]则跟类型论一样[n]无法证明排中律[n]与双重否定消去律[n]还有皮尔士定律
@@ -965,27 +973,52 @@ export const mapData = `
 :%,2@若m: eq a b，则[n]执行策略“rwb m”[n]将通过ind_eq把证明目标[n]中的所有b改写成a
 
 :ttindTrue,2#[[x+x]]Px:nat,(eq x 1)->(eq (add x x) 2)[n]#t
-:%,2#Pf:nat->nat->nat,[n](eq f add)->(eq (f 1 1) 2)[n]#t
-:%,2#Pa:nat,Pb:nat,[n](eq a b)->[n](eq (succ a) (succ b))[n]#t
+:%*,3$[[ttsimplEq]]解锁将eq x y简写为x = y
+:%,2#Pf:nat->nat->nat,[n](f = add)->((f 1 1) = 2)[n]#t
+:%,2#Pa:nat,Pb:nat,[n](a = b)->[n]((succ a) = (succ b))[n]#t
+:%,2$[[ttap]]解锁函数作用[n]传递相等的证据ap[n]即x=y能推出f(x)=f(y)
 :%*,1@证succ m=succ n -> m=n 的提示：[n]直接用ind_nat归纳法[n]无法化简证明目标[n]需引入pred函数
-:%*,1,4#Pa:nat,eq a (pred (succ a))[n]#t
-:%*,1,4,4#Pa:nat,Pb:nat,[n](eq (succ a) (succ b))[n]->(eq (pred (succ a)) (pred (succ b)))[n]#t
-:%,2#Pa:nat,Pb:nat,[n](eq (succ a) (succ b))[n]->(eq a b)[n]#t
+:%*,1,4#Pa:nat,a = (pred (succ a))[n]#t
+:%*,1,4,4#Pa:nat,Pb:nat,[n]((succ a) = (succ b))[n]->((pred (succ a)) = (pred (succ b)))[n]#t
+:%*,1,4,4,1@怎么证明not(0=1)?[n]用ind_nat定义一个函数[n]f:U，f(0)=True，f(1)=False[n]然后就好办了
+:%,2#Pa:nat,Pb:nat,[n]((succ a) = (succ b))[n]->(a = b)[n]#t
 :%*,5$获取3mg推理素
-:%,2#not (eq 0 1)[n]#t
-:%,5#[[1neq2]]not (eq 1 2)[n]#t
-:%*,5$[[ttap]]解锁常见相等类型证据[n]ap/trans/apd
+:%,2#not (0 = 1)[n]#t
+:%*,2$[[ttS1]]解锁圆周类型[n]S1[n](高阶同伦归纳类型)
+:%,5#[[1neq2]]not (1 = 2)[n]#t
+:%*,5$[[ttap2]]解锁相等类型证据[n]trans与apd
+:%*,5,5#Pa:U,Pb:U,Px:a,Py:a,[n]Pk:b,Pm:x=y,[n](trans (Lx:a.b) m k) = k[n]#t
+:%*,5,5,0$[[ttransC]]解锁刚才命题的证据transconst[n](常函数的传输是恒同函数)
+:%*,5,5,0,5#Pa:U,Pb:U,Px:a,Py:a,[n]Pf:a->b,Pp:x=y,[n](apd (Lx:a.b) f p)=[n]((transconst p (f x))*(ap f p))[n]#t
+:%*,5,5,0,5,0#Pa:U,Pb:U,Px:a,Py:a,[n]Pf:a->b,Pp:x=y,[n]((inveq (transconst p (f x)))[n]*(apd (Lx:a.b) f p))=[n](ap f p)[n]#t
+:%*,5,5,0,5,0,5$[[ttindS1]]解锁ind_S1
 :%*,5,2@1.ap是x=y推出[n]f(x)=f(y)的证据[n]2.trans是若x=y，则命题对x成立[n]就能推出对y成立的证据[n]3.apd是ap的依赖类型函数版本[n]由于x与y可以不定义相等[n]故若f(x)与f(y)类型不同[n]无法直接用eq比较相等[n]需要通过trans函数转换到[n]同一类型后才能用eq比较
 :%*,2$获取5.2mg推理素
-:%,0$[[ttS1]]解锁圆周类型[n]S1[n](高阶同伦归纳类型)
-:%,0,4#[[S1S1]]eq (refl base)[n](compeq loop (inveq loop))[n]#t
-:%,3$[[tteqv]]解锁“等价”关系[n]eqv: U->U->U
+:%,0#Pm:base=base,Pn:base=base,[n]((loop*m)=(loop*n))->(m=n)[n]#t
+:%*,3#Pa:U,Px:a,Py:a,Pz:a,Pw:a,[n]Pm:x=y,Pn:y=z,Po:z=w,[n]((m*n)*o)=(m*(n*o))[n]#t
+:%,0,4#[[S1S1]](refl base) = [n](loop * (inveq loop))[n]#t
+:%,3$[[tteqv]]解锁“等价”关系[n]eqv: U->U->U[n]与简写：x ~= y[n](~=显示为≃)
 :%,1@如果两个类型a与b之间[n]存在可逆的[n]一到一的双射f:a->b[n]则它们等价，记作[n]eqv A B
 :%,1@“f是双射”即为[n]存在函数g与h[n]使得f(g x) = x[n]且h(f x) = x
-:%,1#eqv True True[n]#t
-:%,2#[[eqvid]]Pa:U,eqv a a[n]#t
-:%,1#eqv (not True) False[n]#t
-:%*,3$[[ttua]]解锁同伦类型论[n]泛等公理[n]ua[n](等价即相等)
+:%,1#True ~= True[n]#t
+:%,2#[[eqvid]]Pa:U,a ~= a[n]#t
+    :%,2#(True+True) ~= Bool[n]#t
+    :%,2#(True+False) ~= True[n]#t
+    :%,2#(False+False) ~= False[n]#t
+    :%,1#(FalseXFalse) ~= False[n]#t
+    :%,1#(TrueXFalse) ~= False[n]#t
+    :%,1#(TrueXTrue) ~= True[n]#t
+    :%,1#(not Bool) ~= False[n]#t
+    :%,1#((not Bool) + Bool) ~= Bool[n]#t
+    :%,1#(not(not Bool)) ~= True[n]#t
+    :%,1$获取9.99mg推理素
+    :%*,1#通过此门需消耗推理素29.9mg
+    :%*,1,1$[[ttfnext]]解锁函数外延公理[n]fnext
+    :%,2#(True->True) ~= True[n]#t
+    :%,1#(False->True) ~= True[n]#t
+:eqvid,1#(not True)~= False[n]#t
+:%*,3#Pa:U.Pb:U.(a~=b)->(b~=a)[n]#t
+:%*,3,4$[[ttua]]解锁同伦类型论[n]泛等公理[n]ua[n](等价即相等)
 :%*,2#[[looprfl]]not (eq (refl base) loop)[n]#t
 :%*,2,1@loop不等于rfl的证明思路：[n]通过ind_S1构造映射f:S1->U[n]其中让f(base)=Bool，[n]f(loop)=ua(e)[n]若loop与rfl相等，则[n]ua(e)与rfl相等[n]后者能推出e(x)=x矛盾[n](e在双重否定消去思路中定义)
 :%*,2,4$获取999mg推理素
@@ -995,9 +1028,15 @@ export const mapData = `
 :%*,2,1@则ua(e):eq Bool Bool[n]通过ua(e)使用ind_eq[n]可证明若存在f:Pa:U,~~a->a[n]则能推出e(f Bool x)=f Bool x[n]从而可推出矛盾
 :%,1#not Pa:U,(not(not a))->a[n]#t
 :%,1$获取999mg推理素
-:ttua,5@泛等公理不仅说ua是命题[n]“(eqv a b)->(eq a b)”的证据[n]它还说ua映射与id2eqv[n]映射互为逆映射
+:ttua,0,5@泛等公理不仅说ua是命题[n]“(eqv a b)->(eq a b)”的证据[n]它还说ua映射与id2eqv[n]映射互为逆映射
 :%,0@映射id2eqv为命题[n]“(eq a b)->(eqv a b)”的证据[n]该证据可通过ind_eq得到[n]不需要添加新公理
-:ttua,1$[[ttindS1]]解锁ind_S1
+:ttua,0,1#(ind_S1 (Lx:S1.U) Bool ?? base)=Bool[n]#t
+:%*,5$[[ttrecS1]]解锁ind_S1的简化版rec_S1
+:ttua,5#Pa:U.Pb:U.(a~=b)~=(a=b)[n]#t
+:%*,2$获取9.8mg推理素
+:%,0,3$[[ttLiftU]]解锁全类（宇宙）层级[n]提升操作LiftU[n]（提示：某个门的题目[n]不提升会有作用类型[n]不匹配错误，无法通过）
+:ttua,5,5#Pa:U.Pb:U.(LiftU(a~=b))~=(a=b)[n]#t
+:%*,5$获取9.8mg推理素
 
 :ttindTrue,4#Px:nat,Py:nat,eq (add x y) (add y x)[n]#t
 :%,1$[[ttmul]]解锁乘法函数[n]mul : nat->nat->nat

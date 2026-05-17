@@ -55,11 +55,12 @@ export class Assist {
         } else if (type.name === "Bool") {
             tactics.push("apply 0b");
             tactics.push("apply 1b");
-            return tactics;
+            // return tactics;
         } else if (type.type === "->") {
             tactics.push("intro " + introVar("h"));
         } else {
-            let matchEq = Core.match(type, parser.parse("eq $1 $2"), /^\$/);
+            let matchEq = Core.match(type, parser.parse("$1 = $2"), /^\$/);
+            if (!matchEq) matchEq = Core.match(type, parser.parse("eq $1 $2"), /^\$/);
             if (!matchEq) matchEq = Core.match(type, parser.parse("@eq $3 $4 $1 $2"), /^\$/);
             if (matchEq) {
                 try {
@@ -71,7 +72,7 @@ export class Assist {
         }
         const s = new Set<string>;
         for (const [val, typ] of g.context) {
-            const matchEq = Core.match(typ, parser.parse("eq $2 $3"), /^\$/) || Core.match(typ, parser.parse("@eq $0 $1 $2 $3"), /^\$/)
+            const matchEq = Core.match(typ, parser.parse("$2 = $3"), /^\$/) || Core.match(typ, parser.parse("eq $2 $3"), /^\$/) || Core.match(typ, parser.parse("@eq $0 $1 $2 $3"), /^\$/)
             if (matchEq) {
                 const fnparam = "*";
                 const fnbody2 = this.genReplaceFn(g.type, matchEq["$2"], fnparam, s);
@@ -118,11 +119,16 @@ export class Assist {
                 tactics.push("expand " + v);
             }
         }
+        const findEqv = (ast: AST) => {
+            if (ast.type === "~=") return true;
+            if (ast.nodes?.length) return findEqv(ast.nodes[0]) || findEqv(ast.nodes[1]);
+        }
+        if (findEqv(type)) tactics.push("expand eqv");
         return tactics;
     }
     isIndType(typ: AST) {
         return (typ.name === "nat" || typ.name === "Bool" || typ.name === "True" || typ.name === "False"
-            || typ.type === "+" || typ.type === "X" || typ.type === "S") || typ.nodes?.[0]?.nodes?.[0]?.name === "eq";
+            || typ.type === "+" || typ.type === "X" || typ.type === "S" || typ.type === "=") || typ.nodes?.[0]?.nodes?.[0]?.name === "eq";
     }
     intro(s: string) {
         if (!s) throw TR("意外的空表达式");
@@ -213,7 +219,7 @@ export class Assist {
         let matched: { [variable: string]: AST; };
         try {
             const t = core.checkType(eq, goal.context, false);
-            matched = Core.match(t, parser.parse("eq $2 $3"), /^\$/) || Core.match(t, parser.parse("@eq $0 $1 $2 $3"), /^\$/);
+            matched = Core.match(t, parser.parse("$2 = $3"), /^\$/) || Core.match(t, parser.parse("eq $2 $3"), /^\$/) || Core.match(t, parser.parse("@eq $0 $1 $2 $3"), /^\$/);
         } catch (e) {
             this.goal.unshift(goal);
             throw e;
@@ -225,12 +231,12 @@ export class Assist {
         } catch (e) {
 
         }
-        matched["$eq"] = eq;
 
         if (!matched) {
             this.goal.unshift(goal);
             throw TR("使用rewrite策略必须提供一个相等类型");
         }
+        matched["$eq"] = eq;
         const ctxtSet = new Set(goal.context.map(e => e[0]));
         const fnbody = this.genReplaceFn(goal.type, matched[back ? "$3" : "$2"], "(?#)", ctxtSet);
         const fnparam = Core.getNewName("x", ctxtSet);
@@ -249,10 +255,10 @@ export class Assist {
             matched["$fn_y"] = Core.clone(fnbody); this.replaceFreeVar(matched["$fn_y"], fnparam, wrapVar(y));
 
             let newAst = parser.parse(core.checkConst("trans", []) && (back || core.checkConst("inveq", [])) ?
-                `trans $fn ` + (back ? `$eq` : `(inveq $eq)`) : `ind_eq $2 (L${y}:$type.L${m}:eq $2 ${y}. P${m}:` + (back ? `$fn_2, $fn_y` : `$fn_y, $fn_2`) + `) (Lx:_.x) $3 $eq`);
+                `trans $fn ` + (back ? `$eq` : `(inveq $eq)`) : `ind_eq $2 (L${y}:$type.L${m}:$2=${y}. P${m}:` + (back ? `$fn_2, $fn_y` : `$fn_y, $fn_2`) + `) (Lx:_.x) $3 $eq`);
             Core.replaceByMatch(newAst, matched, /^\$/);
             // try {
-                core.checkType(newAst, goal.context, false);
+            core.checkType(newAst, goal.context, false);
             // } catch (e) {
             //     console.log("[rw] " + e);
             // }
@@ -302,7 +308,8 @@ export class Assist {
     rfl() {
         const goal = this.goal.shift();
         if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
-        let matched = Core.match(goal.type, parser.parse("eq $1 $2"), /^\$/);
+        let matched = Core.match(goal.type, parser.parse("$1 = $2"), /^\$/);
+        if (!matched) matched = Core.match(goal.type, parser.parse("eq $1 $2"), /^\$/);
         if (!matched) matched = Core.match(goal.type, parser.parse("@eq $3 $4 $1 $2"), /^\$/);
         if (!matched) {
             this.goal.unshift(goal);
@@ -424,8 +431,8 @@ export class Assist {
             core.checkType(goal.type, goal.context, false);
             goal.ast = goal.ast.nodes[0].nodes[1];
             this.goal.unshift(goal);
-        } else if (nType.nodes?.[0]?.nodes?.[0]?.name === "eq") {
-            const x = nType.nodes?.[0]?.nodes?.[1];
+        } else if (nType.nodes?.[0]?.nodes?.[0]?.name === "eq" || nType.type === "=") {
+            const x = nType.type === "=" ? nType.nodes[0] : nType.nodes?.[0]?.nodes?.[1];
             const y = nType.nodes?.[1];
             matched["$x"] = Core.clone(x, true);
             matched["$y"] = Core.clone(y, true);
@@ -435,7 +442,7 @@ export class Assist {
             const ny = Core.getNewName(y.type === "var" ? y.name : "y", excludedSet);
             // m: eq f(x) f(y)
             // ind_eq f(x) Ly':T.Lm:eq f(x) y'.goal[f(y)/y']??.
-            let newAst = parser.parse(`ind_eq $x (L${ny}:$typex.L${n}:eq $x ${ny}.$1) (?#0) $y $nast`);
+            let newAst = parser.parse(`ind_eq $x (L${ny}:$typex.L${n}:$x = ${ny}.$1) (?#0) $y $nast`);
             matched["$1"] = this.genReplaceFn(matched["$1"], y, ny, excludedSet);
             Core.replaceByMatch(newAst, matched, /^\$/);
             Core.assign(goal.ast, newAst);
@@ -446,10 +453,15 @@ export class Assist {
             goal.ast.checked = goal.type;
             goal.ast.nodes[1].checked = nType;
             goal.ast.nodes[0].nodes[1].checked = nType.nodes[1].checked;
-            const t = core.checkType(goal.ast.nodes[0].nodes[0].nodes[0], goal.context, false);
-            goal.ast.nodes[0].nodes[0].checked = t.nodes[1];
-            goal.ast.nodes[0].checked = wrapLambda("->", "", nType, t.nodes[1].nodes[1].nodes[1]);
-            goal.ast = goal.ast.nodes[0].nodes[0].nodes[1];
+            try {
+                const t = core.checkType(goal.ast.nodes[0].nodes[0].nodes[0], goal.context, false);
+                goal.ast.nodes[0].nodes[0].checked = t.nodes[1];
+                goal.ast.nodes[0].checked = wrapLambda("->", "", nType, t.nodes[1].nodes[1].nodes[1]);
+                goal.ast = goal.ast.nodes[0].nodes[0].nodes[1];
+            } catch (e) {
+                this.goal.unshift(goal);
+                throw e;
+            }
             this.goal.unshift(goal);
             // delete goal.context[n];
         } else if (nType.name === "False") {
@@ -704,23 +716,33 @@ export class Assist {
             }
             this.whnf(goal.type, goal.context);
             core.checkType(goal.type, goal.context, false);
-        } catch (e) { }
+        } catch (e) {
+            this.goal.unshift(goal);
+            throw e;
+        }
         this.goal.unshift(goal);
         return this;
     }
-    private replaceFreeVar(ast: AST, src: string, dst: AST) {
+    private replaceFreeVar(ast: AST, src: string, dst: AST, freevarInDst: Set<string> = Core.getFreeVars(dst)) {
         if (ast.type === "var") {
             if (ast.name === src) {
                 Core.assign(ast, dst);
             }
         } else if (ast.type === "L" || ast.type === "P" || ast.type === "S") {
-            this.replaceFreeVar(ast.nodes[0], src, dst);
+            if (freevarInDst.has(ast.name)) {
+                // alpha conversion
+                const exset = Core.getFreeVars(ast.nodes[1]);
+                const nn = Core.getNewName(Core.getNewName(ast.name, freevarInDst), exset);
+                this.replaceFreeVar(ast.nodes[1], ast.name, wrapVar(nn));
+                ast.name = nn;
+            }
+            this.replaceFreeVar(ast.nodes[0], src, dst, freevarInDst);
             if (ast.name !== src) {
-                this.replaceFreeVar(ast.nodes[1], src, dst);
+                this.replaceFreeVar(ast.nodes[1], src, dst, freevarInDst);
             }
         } else if (ast.nodes?.length === 2) {
-            this.replaceFreeVar(ast.nodes[0], src, dst);
-            this.replaceFreeVar(ast.nodes[1], src, dst);
+            this.replaceFreeVar(ast.nodes[0], src, dst, freevarInDst);
+            this.replaceFreeVar(ast.nodes[1], src, dst, freevarInDst);
         }
     }
     private whnf(ast: AST, context: Context) {

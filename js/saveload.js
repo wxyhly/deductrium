@@ -141,7 +141,10 @@ export class GameSaveLoad {
         game.fsGui.skipRendering = true;
         game.ttGui.skipRendering = true;
         for (const r of rewards) {
-            if (r.startsWith("[ach]")) {
+            if (r.startsWith("[set]")) {
+                game.rewards.push(r);
+            }
+            else if (r.startsWith("[ach]")) {
                 game.finishAchievement(r.slice(5), true);
             }
             else {
