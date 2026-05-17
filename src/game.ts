@@ -187,6 +187,7 @@ export class Game {
         }
         this.hyperGui.world.onGetReward = (hash: string, tile: TileBlock, isLoading?: boolean) => {
             let text: string;
+            if(!tile) return; // prevent crash progress
             if (tile.type === TileBlockType.Gate) {
                 tile.text += "\n （此门已拆除）";
                 if (tile.name && !this.rewards.includes(tile.name)) this.rewards.push(tile.name);
