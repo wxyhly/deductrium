@@ -1,6 +1,6 @@
 import { TR } from "../lang.js";
 import { AST, ASTParser } from "./astparser.js";
-import { assignContext, Context, Core, wrapApply, wrapLambda, wrapVar } from "./core.js";
+import { assignContext, Context, Core, Varlist, wrapApply, wrapLambda, wrapVar } from "./core.js";
 let core = new Core;
 let parser = new ASTParser;
 export class Assist {
@@ -66,6 +66,11 @@ export class Assist {
                 try {
                     if (core.checkType({ type: "===", name: "", nodes: [matchEq["$1"], matchEq["$2"]] }, g.context, false)) {
                         tactics.push("rfl");
+                    }
+                } catch (e) { }
+                try {
+                    if (core.checkType({ type: ":", name: "", nodes: [matchEq["$1"], wrapLambda("->", "", wrapVar("_"), wrapVar("_"))] }, g.context, false)) {
+                        tactics.push("fnext");
                     }
                 } catch (e) { }
             }
@@ -339,6 +344,24 @@ export class Assist {
         this.goal.unshift(goal);
         return this;
     }
+    fnext() {
+        const goal = this.goal.shift();
+        if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
+        let matched: Varlist;
+        try {
+            const t = goal.type;
+            matched = Core.match(t, parser.parse("$2 = $3"), /^\$/) || Core.match(t, parser.parse("eq $2 $3"), /^\$/) || Core.match(t, parser.parse("@eq $0 $1 $2 $3"), /^\$/);
+            if (!matched) throw "TODO";
+            if (!core.checkType({ type: ":", name: "", nodes: [matched["$2"], wrapLambda("->", "", wrapVar("_"), wrapVar("_"))] }, goal.context, false)) {
+                throw "TODO";
+            }
+            this.goal.unshift(goal);
+        } catch (e) {
+            this.goal.unshift(goal);
+            throw e;
+        }
+        this.apply(wrapApply(wrapVar("fnext"), matched["$2"], matched["$3"]));
+    }
     hyp(astr: string) {
         const goal = this.goal.shift();
         if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
@@ -359,9 +382,9 @@ export class Assist {
             const anotherGoal = {
                 ast: goal.ast.nodes[1],
                 context: goal.context,
-                type: ast
+                type: Core.clone(ast)
             };
-            anotherGoal.ast.checked = ast;
+            anotherGoal.ast.checked = anotherGoal.type;
             goal.ast = goal.ast.nodes[0].nodes[1];
             goal.ast.checked = goal.type;
             goal.context = goal.context.slice(0);

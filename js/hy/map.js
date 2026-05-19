@@ -1049,22 +1049,22 @@ export const mapData = `
 :%,1;1;1;1@......
 :%,1$[[ttI]]解锁区间类型I
 :ttindS1,4@ind_S1的意思是，[n]要构造从圆周S1[n]到其它类型的映射[n]除了要给定base映射的值[n]还要给出把路径loop[n]映射到哪里
-:%,0,3@依赖类型的相等[n]apd需要用到trans[n]所以看起来规则很复杂[n]要是有非依赖版的ind_S1[n](即rec_S1)就好了[n]直接ap，不会有trans
+:%,0,3@依赖类型的相等[n]apd需要用到trans[n]所以看起来规则很复杂[n]要是有非依赖版的ind_S1[n](即rec_S1)就好了[n]直接ap，不会有[n]讨厌的apd和trans
 :ttmno,4#(rec_S1 U Bool (refl Bool)[n] base) = Bool[n]#t
     :%*,5#通过此门需消耗推理素29.9mg
-    :%,4#Pcl:Bool=Bool,[n](ap (rec_S1 U Bool (refl Bool))[n] loop) = cl[n]#t
-    :%,5$获取10mg推理素
-    :%,2$[[ttaploop]]解锁计算规则ap_loop
+    :%,4#Pcl:Bool=Bool,[n](ap (rec_S1 U Bool cl)[n] loop) = cl[n]#t
+    :%,5$[[ttaploop]]解锁计算规则ap_loop
+    :%,2$获取10mg推理素
 :eqvid,1#(not True)~= False[n]#t
 :%*,3#Pa:U,Pb:U,(a~=b)->(b~=a)[n]#t
 :%*,3,4$[[ttua]]解锁同伦类型论[n]泛等公理[n]ua[n](等价即相等)
 :%*,2#[[looprfl]]not (eq (refl base) loop)[n]#t
 :%*,2,1@loop不等于rfl的证明思路：[n]通过ind_S1构造映射f:S1->U[n]其中让f(base)=Bool，[n]f(loop)=ua(e)[n]若loop与rfl相等，则[n]ua(e)与rfl相等[n]后者能推出e(x)=x矛盾[n](e在双重否定消去思路中定义)
 :%*,2,4$[[ttrecS1]]解锁ind_S1的简化版rec_S1
-:%*,2,3$获取299mg推理素
+:%*,2,3$获取199mg推理素
 :%,1#Px:True,Py:True,(x=y)~=True[n]#t
 :%,1@双重否定消去错误[n]的证明思路：[n]设映射e:Bool->Bool[n]且e(0b)=1b，e(1b)=0b[n]可证e是Bool自身到自身的双射[n]即能构造eqv Bool Bool的证据
-:%*,2#eqv (eqv Bool Bool) Bool[n]#t
+:%*,2#(Bool~=Bool)~=Bool[n]#t
 :%*,2,1@则ua(e):eq Bool Bool[n]通过ua(e)使用ind_eq[n]可证明若存在f:Pa:U,~~a->a[n]则能推出e(f Bool x)=f Bool x[n]从而可推出矛盾
 :%,1#not Pa:U,(not(not a))->a[n]#t
 :%,1$获取499mg推理素

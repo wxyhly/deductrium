@@ -187,7 +187,7 @@ export class Game {
         }
         this.hyperGui.world.onGetReward = (hash: string, tile: TileBlock, isLoading?: boolean) => {
             let text: string;
-            if(!tile) return; // prevent crash progress
+            if (!tile) return; // prevent crash progress
             if (tile.type === TileBlockType.Gate) {
                 tile.text += "\n （此门已拆除）";
                 if (tile.name && !this.rewards.includes(tile.name)) this.rewards.push(tile.name);
@@ -430,7 +430,7 @@ export class Game {
                 case "ttsimplFn": this.ttGui.disableSimpleFn = false; document.getElementById("displayPi-label").classList.remove("hide"); return this.ttGui.updateAfterUnlock();
                 case "ttsimplEq": this.ttGui.disableSimpleEq = false; this.ttGui.unlock("eq26"); return this.ttGui.updateAfterUnlock();
                 case "ttnotFn": return this.ttGui.unlock("(False)0", true);
-                case "ttEq": for (let i = 0; i < 5; i++)this.ttGui.unlock("eq" + i); this.ttGui.updateAfterUnlock(); return;
+                case "ttEq": [0, 1, 2, 4, 5, 6].forEach(i => this.ttGui.unlock("eq" + i)); this.ttGui.updateAfterUnlock(); return;
                 case "ttactic1":
                     document.getElementById("tactic-div").classList.remove("hide");
                     this.ttGui.unlockedTactics.add("expand");
@@ -439,8 +439,8 @@ export class Game {
                 case "ttNat": this.ttGui.unlock("nat0"); this.ttGui.unlock("nat1"); this.ttGui.unlock("nat2"); this.ttGui.updateAfterUnlock(); return;
                 case "ttBool": this.ttGui.unlock("Bool0"); this.ttGui.unlock("Bool1"); this.ttGui.unlock("Bool2"); this.ttGui.updateAfterUnlock(); return;
                 case "ttrfl":
-                    this.ttGui.unlock("eq6", true);
                     this.ttGui.unlock("eq7", true);
+                    this.ttGui.unlock("eq8", true);
                     document.getElementById("tactic-div").classList.remove("hide");
                     this.ttGui.unlockedTactics.add("rfl"); return;
                 case "ttindTrue": for (let i = 2; i < 6; i++)this.ttGui.unlock("True" + i); this.ttGui.updateAfterUnlock(); return;
@@ -451,25 +451,26 @@ export class Game {
                 case "ttSum": for (let i = 0; i < 9; i++)this.ttGui.unlock("Sum" + i); this.ttGui.updateAfterUnlock(); return;
                 case "ttindProd": for (let i = 9; i < 13; i++)this.ttGui.unlock("Prod" + i); this.ttGui.updateAfterUnlock(); return;
                 case "ttindSum": for (let i = 9; i < 14; i++)this.ttGui.unlock("Sum" + i); this.ttGui.updateAfterUnlock(); return;
-                case "ttindeq": for (let i = 7; i < 13; i++)this.ttGui.unlock("eq" + i); this.ttGui.updateAfterUnlock(); return;
+                case "ttindeq": for (let i = 9; i < 18; i++)this.ttGui.unlock("eq" + i); this.ttGui.updateAfterUnlock(); return;
                 case "ttpr": for (let i = 0; i < 6; i++)this.ttGui.unlock("(Prod)" + i); this.ttGui.updateAfterUnlock(); return;
-                case "ttinveq": this.ttGui.unlock("(eq)6"); this.ttGui.unlock("(eq)7"); this.ttGui.updateAfterUnlock(); return;
-                case "ttcompeq": this.ttGui.unlock("(eq)8"); this.ttGui.unlock("(eq)9"); this.ttGui.unlock("(eq)10"); this.ttGui.updateAfterUnlock(); return;
-                case "ttransC": this.ttGui.unlock("(eq)11"); this.ttGui.unlock("(eq)12"); this.ttGui.updateAfterUnlock(); return;
+                case "ttinveq": for (let i = 15; i < 20; i++)this.ttGui.unlock("(eq)" + i); this.ttGui.updateAfterUnlock(); return;
+                case "ttcompeq": for (let i = 20; i < 26; i++)this.ttGui.unlock("(eq)" + i); this.ttGui.updateAfterUnlock(); return;
+                case "ttransC": for (let i = 26; i < 31; i++)this.ttGui.unlock("(eq)" + i); this.ttGui.updateAfterUnlock(); return;
                 case "ttpred": this.ttGui.unlock("(nat)0", true); return;
                 case "ttdbl": this.ttGui.unlock("(nat)1", true); return;
                 case "ttadd": this.ttGui.unlock("(nat)2", true); return;
                 case "ttmul": this.ttGui.unlock("(nat)3", true); return;
                 case "ttord": for (let i = 0; i < 10; i++)this.ttGui.unlock("Ord" + i); for (let i = 0; i < 4; i++)this.ttGui.unlock("(Ord)" + i); this.ttGui.updateAfterUnlock(); return;
-                case "ttap": for (let i = 0; i < 2; i++)this.ttGui.unlock("(eq)" + i); this.ttGui.updateAfterUnlock(); return;
-                case "ttap2": for (let i = 0; i < 6; i++)this.ttGui.unlock("(eq)" + i); this.ttGui.updateAfterUnlock(); return;
+                case "ttap": for (let i = 0; i < 5; i++)this.ttGui.unlock("(eq)" + i); this.ttGui.updateAfterUnlock(); return;
+                case "ttap2": for (let i = 0; i < 15; i++)this.ttGui.unlock("(eq)" + i); this.ttGui.updateAfterUnlock(); return;
                 case "ttS1": for (let i = 0; i < 4; i++)this.ttGui.unlock("S1" + i); this.ttGui.updateAfterUnlock(); return;
                 case "ttindS1": for (let i = 0; i <= 11; i++)this.ttGui.unlock("S1" + i); this.ttGui.updateAfterUnlock(); return;
-                // case "ttrecS1": for (let i = 0; i <= 11; i++)this.ttGui.unlock("S1" + i); this.ttGui.updateAfterUnlock(); return;
+                case "ttrecS1": for (let i = 0; i <= 16; i++)this.ttGui.unlock("S1" + i); this.ttGui.updateAfterUnlock(); return;
+                case "ttaploop": for (let i = 0; i <= 19; i++)this.ttGui.unlock("S1" + i); this.ttGui.updateAfterUnlock(); return;
                 case "tteqv": for (let i = 0; i < 3; i++)this.ttGui.unlock("eqv" + i); this.ttGui.updateAfterUnlock(); return;
                 case "ttua": for (let i = 0; i < 16; i++)this.ttGui.unlock("eqv" + i); this.ttGui.updateAfterUnlock(); return;
                 case "ttfnext": for (let i = 0; i <= 10; i++)this.ttGui.unlock("fnext" + i); this.ttGui.updateAfterUnlock(); return;
-                case "ttLiftU": for (let i = 0; i <= 10; i++)this.ttGui.unlock("LiftU" + i); this.ttGui.updateAfterUnlock(); return;
+                case "ttLiftU": for (let i = 0; i <= 12; i++)this.ttGui.unlock("LiftU" + i); this.ttGui.updateAfterUnlock(); return;
                 case "ttlazy": this.ttGui.enablecopygate = true; return;
                 case "ttsimpl":
                     this.ttGui.unlockedTactics.add("simpl"); return;

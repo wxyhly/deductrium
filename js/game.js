@@ -641,8 +641,7 @@ export class Game {
                     return this.ttGui.updateAfterUnlock();
                 case "ttnotFn": return this.ttGui.unlock("(False)0", true);
                 case "ttEq":
-                    for (let i = 0; i < 5; i++)
-                        this.ttGui.unlock("eq" + i);
+                    [0, 1, 2, 4, 5, 6].forEach(i => this.ttGui.unlock("eq" + i));
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttactic1":
@@ -664,8 +663,8 @@ export class Game {
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttrfl":
-                    this.ttGui.unlock("eq6", true);
                     this.ttGui.unlock("eq7", true);
+                    this.ttGui.unlock("eq8", true);
                     document.getElementById("tactic-div").classList.remove("hide");
                     this.ttGui.unlockedTactics.add("rfl");
                     return;
@@ -710,7 +709,7 @@ export class Game {
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttindeq":
-                    for (let i = 7; i < 13; i++)
+                    for (let i = 9; i < 18; i++)
                         this.ttGui.unlock("eq" + i);
                     this.ttGui.updateAfterUnlock();
                     return;
@@ -720,19 +719,18 @@ export class Game {
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttinveq":
-                    this.ttGui.unlock("(eq)6");
-                    this.ttGui.unlock("(eq)7");
+                    for (let i = 15; i < 20; i++)
+                        this.ttGui.unlock("(eq)" + i);
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttcompeq":
-                    this.ttGui.unlock("(eq)8");
-                    this.ttGui.unlock("(eq)9");
-                    this.ttGui.unlock("(eq)10");
+                    for (let i = 20; i < 26; i++)
+                        this.ttGui.unlock("(eq)" + i);
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttransC":
-                    this.ttGui.unlock("(eq)11");
-                    this.ttGui.unlock("(eq)12");
+                    for (let i = 26; i < 31; i++)
+                        this.ttGui.unlock("(eq)" + i);
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttpred":
@@ -755,12 +753,12 @@ export class Game {
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttap":
-                    for (let i = 0; i < 2; i++)
+                    for (let i = 0; i < 5; i++)
                         this.ttGui.unlock("(eq)" + i);
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttap2":
-                    for (let i = 0; i < 6; i++)
+                    for (let i = 0; i < 15; i++)
                         this.ttGui.unlock("(eq)" + i);
                     this.ttGui.updateAfterUnlock();
                     return;
@@ -774,7 +772,16 @@ export class Game {
                         this.ttGui.unlock("S1" + i);
                     this.ttGui.updateAfterUnlock();
                     return;
-                // case "ttrecS1": for (let i = 0; i <= 11; i++)this.ttGui.unlock("S1" + i); this.ttGui.updateAfterUnlock(); return;
+                case "ttrecS1":
+                    for (let i = 0; i <= 16; i++)
+                        this.ttGui.unlock("S1" + i);
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttaploop":
+                    for (let i = 0; i <= 19; i++)
+                        this.ttGui.unlock("S1" + i);
+                    this.ttGui.updateAfterUnlock();
+                    return;
                 case "tteqv":
                     for (let i = 0; i < 3; i++)
                         this.ttGui.unlock("eqv" + i);
@@ -791,7 +798,7 @@ export class Game {
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttLiftU":
-                    for (let i = 0; i <= 10; i++)
+                    for (let i = 0; i <= 12; i++)
                         this.ttGui.unlock("LiftU" + i);
                     this.ttGui.updateAfterUnlock();
                     return;

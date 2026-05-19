@@ -199,7 +199,7 @@ export class TTGui {
         return span;
     }
     ast2HTML(idx, ast, scopes = [], context = [], userLineNumber = 0) {
-        if (ast.type === "=" && this.disableSimpleEq) {
+        if (ast.type === "=" && this.disableSimpleEq && ast.nodes[0].checked) {
             const eq = wrapVar("eq");
             eq.checked = wrapLambda("->", "", ast.nodes[0].checked, wrapLambda("->", "", ast.nodes[0].checked, ast.checked));
             const app = wrapApply(eq, ast.nodes[0], ast.nodes[1]);
