@@ -851,7 +851,7 @@ export class TTGui {
             document.getElementById("tactic-input").classList.remove("hide");
             document.getElementById("tactic-input").focus();
             this.updateTacticStateDisplay(assist, document.getElementById("tactic-state"));
-            window.scrollTo(0, document.body.clientHeight);
+            window.scrollTo(0, 1e9);
         }
         catch (e) {
             document.getElementById("tactic-hint").innerText = TR("命题格式有误：") + e;

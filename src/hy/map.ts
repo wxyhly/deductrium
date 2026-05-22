@@ -986,7 +986,7 @@ export const mapData = `
 :%,2#not (0 = 1)[n]#t
 :%*,2$[[ttS1]]解锁圆周类型[n]S1[n](高阶同伦归纳类型)
 :%,5#[[1neq2]]not (1 = 2)[n]#t
-:%*,5$[[ttap2]]解锁相等类型证据[n]trans与apd
+:%*,5$[[ttap2]]解锁相等类型证据[n]trans(传输)与[n]apd(依赖路径作用)
 :%*,5,5#Pa:U,Pb:U,Px:a,Py:a,[n]Pk:b,Pm:x=y,[n](trans (Lx:a.b) m k) = k[n]#t
 :%*,5,5,0$[[ttransC]]解锁刚才命题的证据transconst[n](常函数的传输是恒同函数)
 :%*,5,5,0,5#Pa:U,Pb:U,Px:a,Py:a,[n]Pf:a->b,Pp:x=y,[n](apd (Lx:a.b) f p)=[n]((transconst p (f x))*(ap f p))[n]#t
@@ -1000,6 +1000,8 @@ export const mapData = `
 :%*,3,1,2#[[loop2]]not (loop*loop = (refl base))[n]#t
 :%*,3,1,2,1#I[n]#t
 :%,0,4#[[S1S1]](refl base) = [n](loop * (inveq loop))[n]#t
+:%*,4#inveq(inveq loop) = loop[n]#t
+:%*,4,5$获取1mg推理素
 :%,3$[[tteqv]]解锁“等价”关系[n]eqv: U->U->U[n]与简写：x ~= y[n](~=显示为≃)
 :%,1@如果两个类型a与b之间[n]存在可逆的[n]一到一的双射f:a->b[n]则它们等价，记作[n]eqv A B
 :%,1@“f是双射”即为[n]存在函数g与h[n]使得f(g x) = x[n]且h(f x) = x
@@ -1013,10 +1015,12 @@ export const mapData = `
     :%,1#(TrueXTrue) ~= True[n]#t
     :%,1#(not Bool) ~= False[n]#t
     :%,1#((not Bool) + Bool) ~= Bool[n]#t
-    :%,1#Pa:U,Pb:U,Px:a,Py:b,[n]not (inl x) = (inr y)[n]#t
+    :%,1#Pa:U,Pb:U,Px:a,Py:b,[n]not (inl x = inr y)[n]#t
     :%,1$获取9.99mg推理素
+    :%*,0#Px:Bool=Bool,[n]pair (Lx:U.Bool=x) Bool x[n] = [n]pair (Lx:U.Bool=x) Bool rfl[n]#t
     :%*,1#通过此门需消耗推理素29.9mg
     :%*,1,1$[[ttfnext]]解锁函数外延公理[n]fnext
+    :%*,1,1,1#Pa:U,Pb:U,[n]Px1:a,Px2:a,Py1:b,Py2:b,[n](x1,y1)=(x2,y2) ~= [n]((x1=x2)X(y1=y2))[n]#t
     :%,2@
     :%,1#Pa:U,Pb:U,Px:a,Py:b,[n]False ~= ((inl x) = (inr y))[n]#t
     :%*,3$获取3mg推理素
@@ -1031,23 +1035,38 @@ export const mapData = `
     :%,1$[[ttacticFnext]]解锁证明策略fnext[n]遇到函数相等目标[n]自动使用fnext公理
     :%,1#Pa:U,Pb:U,Pc:U,[n](aXb->c)~=(a->b->c)[n]#t
     :%,1@不知你是否疑惑过[n]eqv的定义方式[n]为何要左右逆[n]分开给证据
-    :%,1@正常来说我该定义成[n]Sf:a->b,Sg:b->a,[n](Px:a,x=(g(f x)))X(Px:b,x=(f(g x)))
-    :%,1$[[ttpseudoeqv]]解锁这个定义，记作pseudo_eqv[n]它其实跟eqv逻辑等价。
-    :%,1#Pa:U,Pb:U,(a~=b)->(pseudo_eqv a b)
-    :%,2#Pa:U,Pb:U,(pseudo_eqv a b)->(a~=b)
-    :%,1@它跟eqv的区别在于[n]它的证据太多了[n]eqv中判断函数是[n]双射的证据是唯一的
-    :%,1@如果想让(a~=b)~=(a=b)成立[n]则相同的等价就该[n]没有多余的结构[n]两边才能等价
+    :%,1@按理说该定义成[n]Sf:a->b,Sg:b->a,[n](Px:a,x=(g(f x)))X(Px:b,x=(f(g x)))
+    :%,1$[[ttpseudoeqv]]解锁这个定义，记作naiveqv[n]它其实跟eqv逻辑等价。
+    :%,1#Pa:U,Pb:U,(naiveqv a b)->(a~=b)[n]#t
+    :%,2#Pa:U,Pb:U,(a ~= b)->(naiveqv a b)[n]#t
+    :%,1@它跟eqv的区别在于[n]它的证据太多了[n]eqv中函数是双射[n]的证据是唯一的
+    :%,1@如果想让(a~=b)~=(a=b)成立[n]则eqv就只该区分不同的双射[n]没有多余的结构[n]两边才能等价
     :%,1@多余的结构是什么呢？[n]高阶同伦类型如S1中[n]base=base的证据不唯一
     :%,2@这正是Px:a,x=(g(f x))[n]这部分的证据数量
     :%,1@感觉eqv的信息比[n]pseudo_eqv还多[n]为何它能把不同的[n]证据的差异抹去？
     :%,2@这源于以下事实：[n]证明两个证据相等，[n]我们也可以提供[n]不同于rfl的其它证据
     :%,1@把左右逆分开，[n]允许我们能精准[n]两次选择非平凡的[n]相等证据，通过trans[n]机制抵消掉多余自由度
-    :%,1@如果你听晕了，[n]请尝试证明下面的命题
-    :%,1#under construction...
+    :%,1@这源于让人迷惑的[n]依赖有序对相等结构：[n]直觉上两个分量都相等[n]能推出依赖有序对相等[n]但第二个分量类型可能不同[n]需要用trans运输后才能比较
+    :%,1#Pa:U,Pb:a->U,[n]Pm:Sx:a,b x,Pn:Sx:a,b x,[n]Pp:pr0 m=pr0 n,[n]trans b p (prd1 m) = (prd1 n)[n] -> m = n[n]#t
+    :%,1@没思路？其实你需要借助[n]刚才的推出依赖有序对[n]相等的运输条件，[n]构造旁边这个类型的值即可
+    :%*,2#trans (Lx:S1.base=x)[n] loop rfl = loop[n]#t
+    :%,1#pair (Lx:S1.base=x) base (refl base)[n] = [n]pair (Lx:S1.base=x) base loop[n]#t
+    :%*,4@还是没思路？[n]其实在刚解锁trans的不远处[n]就有命题能让你[n]构造旁边这个类型的值了
+    :%*,2$获取9.99mg推理素
 
+:ttfnext,4#Pa:U,Pb:U,Pf:a->b,[n]fnext (Lx:a.refl (f x))[n] = refl f[n]#t
+:%*,1$获取2.3mg推理素
+:%,5#Pa:U,Pb:U,[n]Pf:a->b,Pg:a->b,Pm:f=g,[n]fnext (λx:a.inveq (happly m x))[n] = inveq m[n]#t
+:%,5#Pa:U,Pb:U,[n]Pf:a->b,Pg:a->b,Ph:a->b,[n]Pm:f=g,Pn:g=h,[n]fnext (λx:a.(happly m x)*(happly n x))[n] = m*n[n]#t
 :loop2,2@
 :%,1;1;1;1@......
 :%,1$[[ttI]]解锁区间类型I
+:ttI,1#Pa:U,Px:a,[n]Pm:refl x=refl x,[n]Pn:refl x=refl x,[n]m*n = n*m[n]#t
+:%*,5$获取20mg推理素
+:%*,2@
+:%*,3,1@
+:%,3@这个命题在说：[n]二维道路的连接有交换律[n]对应拓扑学中[n]高阶同伦群[n]都是交换群
+:%,5;0@...
 :ttindS1,4@ind_S1的意思是，[n]要构造从圆周S1[n]到其它类型的映射[n]除了要给定base映射的值[n]还要给出把路径loop[n]映射到哪里
 :%,0,3@依赖类型的相等[n]apd需要用到trans[n]所以看起来规则很复杂[n]要是有非依赖版的ind_S1[n](即rec_S1)就好了[n]直接ap，不会有[n]讨厌的apd和trans
 :ttmno,4#(rec_S1 U Bool (refl Bool)[n] base) = Bool[n]#t
@@ -1079,6 +1098,16 @@ export const mapData = `
 :%,0,3$[[ttLiftU]]解锁全类（宇宙）层级[n]提升操作LiftU[n]（提示：某个门的题目[n]不提升会有作用类型[n]不匹配错误，无法通过）
 :ttua,5,5#Pa:U,Pb:U,(LiftU(a~=b))~=(a=b)[n]#t
 :%*,5$获取9.8mg推理素
+
+:ttap2,3#Pa:U,Pb:a->U,Px:a,Py:a,Pz:a,[n]Pp:x=y,Pq:y=z,Pu:b x,[n]trans b (p*q) u = [n]trans b q (trans b p u)[n]#t
+:%,2#Pa:U,Pb:U,Pc:b->U,[n]Pf:a->b,Px:a,Py:a,[n]Pp:x=y,Pu:c (f x),[n]trans (Lx:a.c (f x)) p u[n] = trans c (ap f p) u[n]#t
+:%,1#Pa:U,Pc1:a->U,Pc2:a->U,[n]Pf:Px:a,(c1 x)->(c2 x),[n]Px:a,Py:a,Pp:x=y,Pu:c1 x,[n]trans c2 p (f x u) = [n]f y (trans c1 p u)[n]#t
+:%,2#Pa:U,Pc1:a->U,Pc2:a->U,[n]Px:a,Py:a,Pp:x=y,[n]Pu:(c1 x)X(c2 x),[n]trans (Lx:a.(c1 x)X(c2 x)) p u[n] = [n](trans c1 p (pr0 u), trans c2 p (pr1 u))[n]#t
+:%,1#Pa:U,Px0:a,Px1:a,Px2:a,[n]Pp:x1=x2,Pq:x0=x1,[n]trans (Lx:a,x0=x) p q = q*p[n]#t
+:%,1#Pa:U,Px0:a,Px1:a,Px2:a,[n]Pp:x1=x2,Pq:x1=x0,[n]trans (Lx:a,x=x0) p q = (inveq p)*q[n]#t
+:%,1#Pa:U,Px0:a,Px1:a,Px2:a,[n]Pp:x1=x2,Pq:x1=x1,[n]trans (Lx:a,x=x) p q = (inveq p)*q*p[n]#t
+:%,1#Pa:U,Pb:a->U,Pc:a->U,[n]Pm:a,Pn:a,Pp:m=n,[n]Pf:(b m)->(c m),[n](trans (Lx:a.(b x)->(c x)) p f) =[n]Lu:b n.trans (Lx:a.c x) p [n](f (trans (Lx:a.b x) (inveq p) u))[n]#t
+:%,1$获取8.8mg推理素
 
 :ttindTrue,4#Px:nat,Py:nat,eq (add x y) (add y x)[n]#t
 :%,1$[[ttmul]]解锁乘法函数[n]mul : nat->nat->nat

@@ -1,11 +1,11 @@
 import { TR } from "../lang.js";
-export const debugBoundVarId = false;
+export const debugBoundVarId = true;
 export type AST = {
     type: string, name: string, nodes?: AST[],
     checked?: AST, err?: any, bondVarId?: number, origin?: boolean | AST
 };
 export class ASTParser {
-    keywords = [":=", "->", "~=", "===", "=", "@ind_Sum", "ind_Sum", "@Sum", "Sum","@rec_S1", "rec_S1", "@ind_S1", "ind_S1", "S1", "@ind_Prod", "ind_Prod", "@Prod", "Prod", "@ind_LiftU", "ind_LiftU", "@LiftU", "LiftU", "@South", "@Sus", "South", "Sus"];
+    keywords = [":=", "->", "~=", "===", "=", "@ind_Sum", "ind_Sum", "@Sum", "Sum", "@rec_S1", "rec_S1", "@ind_S1", "ind_S1", "S1", "@ind_Prod", "ind_Prod", "@Prod", "Prod", "@ind_LiftU", "ind_LiftU", "@LiftU", "LiftU", "@South", "@Sus", "South", "Sus"];
     symChar = ".:,()PSLX~*+";
     ast: AST;
     cursor: number = 0;
@@ -208,11 +208,11 @@ export class ASTParser {
         return val;
     }
     private typeTerm2() {
-        let val = this.typeTerm3();
+        let val = this.typeTerm();
         while (this.token === "*") {
             const token = this.token;
             this.nextSym();
-            val = { type: token, name: "", nodes: [val, this.typeTerm3()] };
+            val = { type: token, name: "", nodes: [val, this.typeTerm()] };
         }
         return val;
     }
@@ -234,7 +234,7 @@ export class ASTParser {
         }
         return val;
     }
-    private typeTerm() {
+    private type() {
         const arr = [this.typeTerm0()];
         while (this.token === "->") {
             this.nextSym();
@@ -247,10 +247,10 @@ export class ASTParser {
         }
         return val;
     }
-    private type(): AST {
-        let val = this.typeTerm();
-        while (this.token && this.token !== ")" && this.token !== ":" && this.token !== "." && this.token !== "," && this.token !== ":=" && this.token !== "===") {
-            val = { type: "apply", name: "", nodes: [val, this.typeTerm()] }
+    private typeTerm(): AST {
+        let val = this.typeTerm3();
+        while (this.token && this.token !== ")" && this.token !== ":" && this.token !== "." && this.token !== "," && this.token !== ":=" && this.token !== "===" && this.token !== "=" && this.token !== "~=" && this.token !== "X" && this.token !== "*" && this.token !== "->" && this.token !== "+") {
+            val = { type: "apply", name: "", nodes: [val, this.typeTerm3()] }
         }
         if (!val) throw TR("表达式不完整");
         return val;

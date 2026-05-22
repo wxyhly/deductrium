@@ -681,7 +681,7 @@ export class Core {
                     if (!(ap.type === "var" && ap.name[0] === "?" && !this.state.inferTable.rel[ap.name]))
                         this.solveInferRel();
                 }
-                this.fillInfered(ast.checked);
+                this.fillInfered(ast);
                 // this.replaceVarInInfer(fnType.name, bondVarId, ast.nodes[1]);
                 this.replaceVar(ast.checked, fnType.name, bondVarId, ast.nodes[1], context);
                 return ast.checked;
@@ -746,7 +746,7 @@ export class Core {
         ["pair", 4], ["eq", 3], ["inl", 5], ["inr", 5], ["refl", 3], ["ind_Prod", 5], ["ind_eq", 4], ["ind_Sum", 6],
         ["ind_Bool", 2], ["ind_nat", 2], ["ap", 5], ["trans", 4], ["apd", 4], ["inveq", 4], ["compeq", 5],
         ["pr0", 3], ["prd1", 2], ["pr1", 3], ["id2eqv", 4], ["eqv", 2], ["LiftU", 2], ["liftU", 3], ["lowerU", 3], ["ua", 4], ["eqvrefl", 3],
-        ["transconst", 5], ["ap_apd", 5], ["apd_ap", 5], ["apd_loop", 5], ["Sus", 2], ["North", 2], ["South", 2], ["merid", 2]
+        ["transconst", 5], ["fnext", 5], ["happly", 5], ["apd_loop", 2], ["Sus", 2], ["North", 2], ["South", 2], ["merid", 2]
     ] as [string, number][];
     ensugar(ast: AST) {
         // no recursive, outter fn will do that

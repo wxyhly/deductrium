@@ -3,11 +3,13 @@ import { AST, ASTParser } from "./astparser.js";
 import { assignContext, Context, Core, Varlist, wrapApply, wrapLambda, wrapVar } from "./core.js";
 let core = new Core;
 let parser = new ASTParser;
+type GoalDependRel = { src: AST, dst: AST, goals: Goal[], varname: string };
+export type Goal = { context: Context, type: AST, ast: AST, depend: GoalDependRel };
 export class Assist {
     // the target theorem ast
     theorem: AST;
     // a goal has a context, a type (this is goal) and an ast pointer refered in elem
-    goal: { context: Context, type: AST, ast: AST }[];
+    goal: Goal[];
     // inhabited elem : theorem
     elem: AST;
     constructor(h: Core, target: AST | string) {
@@ -18,7 +20,7 @@ export class Assist {
         // this.theorem = Core.clone(core.markBondVars(target, []),false);
         // this.theorem = core.markBondVars(core.desugar(Core.clone(target),false),[]);
         this.elem = { type: "var", name: "(?#0)", checked: target };
-        this.goal = [{ context: [], type: target, ast: this.elem }];
+        this.goal = [{ context: [], type: target, ast: this.elem, depend: null }];
     }
     markTargets() {
         let count = 0;
@@ -27,6 +29,7 @@ export class Assist {
             g.ast.checked = g.type;
         }
     }
+    dependVarId = 0;
     autofillTactics() {
         const tactics = [];
         const g = this.goal[0];
@@ -46,7 +49,7 @@ export class Assist {
                     // found = true;
                 }
             }
-            tactics.push("ex ??");
+            tactics.push("ex");
         } else if (type.type === "P") {
             tactics.push("intro " + introVar(type.name));
         } else if (type.name === "True") {
@@ -131,24 +134,34 @@ export class Assist {
         if (findEqv(type)) tactics.push("expand eqv");
         return tactics;
     }
+    resolveDependGoal(d: GoalDependRel) {
+        if (!d) return;
+        const { src, dst, varname, goals } = d;
+        core.replaceVar(dst, varname, -1, src);
+        for (const goal of goals) {
+            core.replaceVar(goal.type, varname, -1, src);
+            for (const [k, v, id] of goal.context) {
+                core.replaceVar(v, varname, -1, src);
+            }
+        }
+    }
     isIndType(typ: AST) {
-        return (typ.name === "nat" || typ.name === "Bool" || typ.name === "True" || typ.name === "False"
+        return (typ.name === "nat" || typ.name === "Bool" || typ.name === "S1" || typ.name === "Ord" || typ.name === "True" || typ.name === "False"
             || typ.type === "+" || typ.type === "X" || typ.type === "S" || typ.type === "=") || typ.nodes?.[0]?.nodes?.[0]?.name === "eq";
     }
     intro(s: string) {
-        if (!s) throw TR("意外的空表达式");
         s = s.trim();
         if (s.includes(" ")) {
             return this.intros(s);
         }
         const goal = this.goal.shift();
         if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
-        if (goal.context.find(e => e[0] === s)) { this.goal.unshift(goal); throw TR("无法重复intro相同变量名"); }
         const tartgetType = goal.type;
         if (tartgetType.type !== "P" && tartgetType.type !== "->") {
             this.goal.unshift(goal);
             throw TR("intro 只能作用于函数类型");
         }
+        s = Core.getNewName(s || tartgetType.name || "h", new Set(goal.context.map(e => e[0])));
         goal.context.unshift([s, tartgetType.nodes[0], 0]);
         // goal.ast is refferd at outter level hole,  we fill the hole first
         Core.assign(goal.ast, { "type": "L", name: s, nodes: [tartgetType.nodes[0], { type: "var", name: "(?#0)" }] }, true);
@@ -184,6 +197,7 @@ export class Assist {
                 ]
             }, context, true);
             Core.assign(goal.ast, k, true);
+            this.resolveDependGoal(goal.depend);
             return this;
         } catch (e) { }
         let applyType: AST = null;
@@ -282,26 +296,14 @@ export class Assist {
         this.rw(eq, true);
         return this;
     }
+    // replace "search" in ast by "varname"
     genReplaceFn(ast: AST, search: AST, varname: string, excludedNames: Set<string>): AST {
-        if (Core.exactEqual(ast, search)) {
+        if (this.exactEqualByAlphaConversion(ast, search)) {
             return { type: "var", name: varname };
         }
         if (ast.type === "var") {
             excludedNames.add(ast.name);
             return ast;
-        }
-        if (ast.type === "L" || ast.type === "P" || ast.type === "S") {
-
-            if (ast.type === search.type) {
-                if (ast.name !== search.name) {
-                    // todo
-                }
-                // todo
-            }
-            const nast = Core.clone(ast);
-            nast.nodes[0] = this.genReplaceFn(nast.nodes[0], search, varname, excludedNames);
-            nast.nodes[1] = this.genReplaceFn(nast.nodes[1], search, varname, excludedNames);
-            return nast;
         }
         if (ast.nodes?.length === 2) {
             const nast = Core.clone(ast);
@@ -309,6 +311,40 @@ export class Assist {
             nast.nodes[0] = this.genReplaceFn(nast.nodes[0], search, varname, excludedNames);
             return nast;
         }
+    }
+    boundId = 0;
+    exactEqualByAlphaConversion(ast1: AST, ast2: AST) {
+        if (ast1 === ast2) return true;
+        if (ast1.type !== ast2.type) return false;
+        if (ast1.type === "var") return ast1.name === ast2.name;
+        if (ast1.nodes?.length !== ast2.nodes?.length) return false;
+        if (ast1.type === "L" || ast1.type === "P" || ast1.type === "S") {
+            const n1 = ast1.name;
+            const n2 = ast2.name;
+            if (n1 !== n2) {
+                ast1 = Core.clone(ast1);
+                ast2 = Core.clone(ast2);
+                ast1.name = ast2.name = (this.boundId++).toString();
+                this.replaceFreeVar(ast1.nodes[1], n1, wrapVar(ast1.name));
+                this.replaceFreeVar(ast2.nodes[1], n2, wrapVar(ast1.name));
+            }
+        }
+        if (ast1.nodes?.length) {
+            for (let i = 0; i < ast1.nodes.length; i++) {
+                if (!this.exactEqualByAlphaConversion(ast1.nodes[i], ast2.nodes[i])) return false;
+            }
+        }
+        return true;
+    }
+    search(ast: AST, search: AST): boolean {
+        if (this.exactEqualByAlphaConversion(ast, search)) {
+            return true;
+        }
+        if (ast.nodes?.length === 2) {
+            const nast = Core.clone(ast);
+            return this.search(nast.nodes[1], search) || this.search(nast.nodes[0], search);
+        }
+        return false;
     }
     rfl() {
         const goal = this.goal.shift();
@@ -318,7 +354,7 @@ export class Assist {
         if (!matched) matched = Core.match(goal.type, parser.parse("@eq $3 $4 $1 $2"), /^\$/);
         if (!matched) {
             this.goal.unshift(goal);
-            throw TR("无法对非相等类型使用rfl策略");
+            throw TR("无法对非相等类型使用该策略");
         }
         try {
             if (!core.checkType({ type: "===", name: "", nodes: [matched["$1"], matched["$2"]] }, goal.context, false)) {
@@ -331,16 +367,25 @@ export class Assist {
         const newAst = wrapVar("rfl");
         Core.assign(goal.ast, newAst, true);
         goal.ast.checked = goal.type;
+        this.resolveDependGoal(goal.depend);
         return this;
     }
     qed() {
         if (this.goal.length) throw TR("证明尚未完成");
         // core.checkType({ type: ":", name: "", nodes: [Core.clone(this.elem), Core.clone(this.theorem)] }, [], false);
     }
-    simpl() {
+    simpl(str?: string) {
+        if (str) {
+            str = str.trim();
+        }
         const goal = this.goal.shift();
         if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
-        this.whnf(goal.type, goal.context);
+        const type = goal.context.find(e => e[0] === str)?.[1];
+        if (!type && str) {
+            this.goal.unshift(goal);
+            throw TR("未知的变量：") + str;
+        }
+        this.whnf(type ?? goal.type, type ? goal.context.slice(0, goal.context.findIndex(e => e[0] === str)) : goal.context);
         this.goal.unshift(goal);
         return this;
     }
@@ -351,16 +396,16 @@ export class Assist {
         try {
             const t = goal.type;
             matched = Core.match(t, parser.parse("$2 = $3"), /^\$/) || Core.match(t, parser.parse("eq $2 $3"), /^\$/) || Core.match(t, parser.parse("@eq $0 $1 $2 $3"), /^\$/);
-            if (!matched) throw "TODO";
+            if (!matched) throw TR("无法对非相等类型使用该策略");
             if (!core.checkType({ type: ":", name: "", nodes: [matched["$2"], wrapLambda("->", "", wrapVar("_"), wrapVar("_"))] }, goal.context, false)) {
-                throw "TODO";
+                throw TR("无法对非函数相等类型使用fnext策略");
             }
             this.goal.unshift(goal);
         } catch (e) {
             this.goal.unshift(goal);
             throw e;
         }
-        this.apply(wrapApply(wrapVar("fnext"), matched["$2"], matched["$3"]));
+        this.apply(wrapApply(wrapVar("fnext")));
     }
     hyp(astr: string) {
         const goal = this.goal.shift();
@@ -382,7 +427,8 @@ export class Assist {
             const anotherGoal = {
                 ast: goal.ast.nodes[1],
                 context: goal.context,
-                type: Core.clone(ast)
+                type: Core.clone(ast),
+                depend: goal.depend
             };
             anotherGoal.ast.checked = anotherGoal.type;
             goal.ast = goal.ast.nodes[0].nodes[1];
@@ -390,6 +436,7 @@ export class Assist {
             goal.context = goal.context.slice(0);
             goal.context.unshift([name, ast, 0]);
             this.goal.unshift(goal);
+            goal.depend = null;
             this.goal.unshift(anotherGoal);
 
         } catch (e) { this.goal.unshift(goal); throw e; }
@@ -397,285 +444,186 @@ export class Assist {
     }
     destruct(n: string) {
         n = n.trim();
-        const param = n.split(" ");
-        n = param[0];
         const goal = this.goal.shift();
         if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
-        const nast = { type: "var", name: param[0] };
+        const nast = { type: "var", name: n };
         let nType: AST;
         try { nType = core.checkType(nast, goal.context, false); } catch (e) {
             this.goal.unshift(goal); throw e;
         }
         if (!this.isIndType(nType)) { this.goal.unshift(goal); throw TR("只能解构归纳类型的变量"); }
-        // for (const [k, v, id] of goal.context) {
-        //     if (Core.getFreeVars(v).has(n)) {
-        //         if (Core.getFreeVars(goal.type).has(k)) {
-        //             this.goal.unshift(goal); throw TR("解构失败：其它变量依赖该变量");
-        //         }
-        //         // delete goal.context[k];
-        //     }
-        // }
+
         const excludedSet = new Set(goal.context.map(e => e[0]));
+        Core.getFreeVars(goal.type, excludedSet);
 
-        const matched = { "$1": Core.clone(goal.type), "$nast": nast, "$typeN": nType };
-        if (nType.name === "Bool") {
-            let newAst = parser.parse(`ind_Bool (L${n}:$typeN.$1) (?#0) (?#0) $nast`);
-            Core.replaceByMatch(newAst, matched, /^\$/);
-            Core.assign(goal.ast, newAst);
-            goal.ast.nodes[1].checked = nType;
-            const t = core.checkType(goal.ast.nodes[0].nodes[0].nodes[0], goal.context, false);
-            goal.ast.nodes[0].nodes[0].checked = t.nodes[1];
-            goal.ast.nodes[0].checked = t.nodes[1].nodes[1];
-            const type0b = Core.clone(goal.type);
-            const type1b = Core.clone(goal.type);
-            this.replaceFreeVar(type0b, n, { type: "var", name: "0b" });
-            this.replaceFreeVar(type1b, n, { type: "var", name: "1b" });
-            core.checkType(type0b, goal.context, false);
-            core.checkType(type1b, goal.context, false);
-            goal.type = type0b;
-            const anotherGoal = {
-                ast: goal.ast.nodes[0].nodes[1],
-                context: goal.context.slice(0),
-                type: type1b
-            };
-            goal.ast = goal.ast.nodes[0].nodes[0].nodes[1];
-            goal.ast.checked = goal.type;
-            anotherGoal.ast.checked = anotherGoal.type;
-            this.goal.unshift(goal);
-            this.goal.unshift(anotherGoal);
-        } else if (nType.name === "True") {
-            let newAst = parser.parse(`ind_True (L${n}:$typeN.$1) (?#0) $nast`);
-            Core.replaceByMatch(newAst, matched, /^\$/);
-            Core.assign(goal.ast, newAst);
-            goal.ast.nodes[1].checked = nType;
-            const t = core.checkType(goal.ast.nodes[0].nodes[0], goal.context, false);
-            goal.ast.nodes[0].checked = t.nodes[1];
-            this.replaceFreeVar(goal.type, n, { type: "var", name: "true" });
-            core.checkType(goal.type, goal.context, false);
-            goal.ast = goal.ast.nodes[0].nodes[1];
-            this.goal.unshift(goal);
-        } else if (nType.nodes?.[0]?.nodes?.[0]?.name === "eq" || nType.type === "=") {
-            const x = nType.type === "=" ? nType.nodes[0] : nType.nodes?.[0]?.nodes?.[1];
-            const y = nType.nodes?.[1];
-            matched["$x"] = Core.clone(x, true);
-            matched["$y"] = Core.clone(y, true);
-            matched["$typex"] = core.checkType(x, goal.context, false);
-            const excludedSet = new Set(goal.context.map(e => e[0]));
-            Core.getFreeVars(x, excludedSet);
-            const ny = Core.getNewName(y.type === "var" ? y.name : "y", excludedSet);
-            // m: eq f(x) f(y)
-            // ind_eq f(x) Ly':T.Lm:eq f(x) y'.goal[f(y)/y']??.
-            let newAst = parser.parse(`ind_eq $x (L${ny}:$typex.L${n}:$x = ${ny}.$1) (?#0) $y $nast`);
-            matched["$1"] = this.genReplaceFn(matched["$1"], y, ny, excludedSet);
-            Core.replaceByMatch(newAst, matched, /^\$/);
-            Core.assign(goal.ast, newAst);
-            this.replaceFreeVar(goal.type, n, wrapApply(wrapVar("rfl")));
-            const replaced = this.genReplaceFn(goal.type, y, ny, excludedSet);
-            Core.replaceByMatch(replaced, { [ny]: x }, /./);
-            Core.assign(goal.type, replaced);
-            goal.ast.checked = goal.type;
-            goal.ast.nodes[1].checked = nType;
-            goal.ast.nodes[0].nodes[1].checked = nType.nodes[1].checked;
-            try {
-                const t = core.checkType(goal.ast.nodes[0].nodes[0].nodes[0], goal.context, false);
-                goal.ast.nodes[0].nodes[0].checked = t.nodes[1];
-                goal.ast.nodes[0].checked = wrapLambda("->", "", nType, t.nodes[1].nodes[1].nodes[1]);
-                goal.ast = goal.ast.nodes[0].nodes[0].nodes[1];
-            } catch (e) {
-                this.goal.unshift(goal);
-                throw e;
+
+        const indFnName = "ind_" + ((nType.nodes?.[0]?.nodes?.[0]?.name === "eq" || nType.type === "=") ? "eq" : nType.type === "+" ? "Sum" : nType.type === "X" ? "Prod" : nType.type === "S" ? "Prod" : nType.name);
+        // x in x=y, just parameter for types 
+        const typeParams = nType.nodes?.[0]?.nodes?.[0]?.name === "eq" ? [nType.nodes[0].nodes[1]] : nType.type === "=" ? [nType.nodes[0]] : nType.type === "X" ? [wrapLambda("L", Core.getNewName("x", excludedSet), nType.nodes[0], nType.nodes[1])] : nType.type === "S" ? [wrapLambda("L", nType.name, nType.nodes[0], nType.nodes[1])] : [];
+        // y in x=y: induction on this group of types
+        const groupParam = nType.nodes?.[0]?.nodes?.[0]?.name === "eq" || nType.type === "=" ? nType.nodes[1] : null;
+
+        // destruct with other variables in context as condition added in target C
+        const conds = [];
+        for (const [k, v, id] of goal.context) {
+            if (k === n) continue;
+            if (Core.getFreeVars(v).has(n) || (groupParam && this.search(v, groupParam))) {
+                conds.push([k, v, id]);
             }
-            this.goal.unshift(goal);
-            // delete goal.context[n];
-        } else if (nType.name === "False") {
-            let newAst = parser.parse(`ind_False (L${n}:$typeN.$1) $nast`);
-            Core.replaceByMatch(newAst, matched, /^\$/);
-            Core.assign(goal.ast, newAst);
-            core.checkType(goal.ast, goal.context, false);
-        } else if (nType.name === "nat") {
-            const fromParam1 = param[1];
-            if (fromParam1 && excludedSet.has(fromParam1)) {
-                this.goal.unshift(goal);
-                throw TR("destruct引入了重复的变量名");
-            }
-            const destructed = fromParam1 || Core.getNewName(n, excludedSet);
-            excludedSet.add(fromParam1);
-            const fromParam2 = param[2];
-            if (fromParam2 && excludedSet.has(fromParam2)) {
-                this.goal.unshift(goal);
-                throw TR("destruct引入了重复的变量名");
-            }
-            const induced = fromParam2 || Core.getNewName("H" + n, excludedSet);
-            let newAst = parser.parse(`ind_nat (L${n}:$typeN.$1) (?#0) (L${destructed}:nat.L${induced}:$indType.(?#0)) $nast`);
-
-            const type0 = Core.clone(goal.type);
-            const typen = Core.clone(goal.type);
-            const typeSn = Core.clone(goal.type);
-
-            this.replaceFreeVar(type0, n, { type: "var", name: "0" });
-            this.replaceFreeVar(typen, n, { type: "var", name: destructed });
-            this.replaceFreeVar(typeSn, n, { type: "apply", name: "", nodes: [{ type: "var", name: "succ" }, { type: "var", name: destructed }] });
-
-            matched["$indType"] = typen;
-
-            Core.replaceByMatch(newAst, matched, /^\$/);
-            Core.assign(goal.ast, newAst);
-            goal.ast.checked = goal.type;
-            goal.type = type0;
-            const t = core.checkType(goal.ast.nodes[0].nodes[0].nodes[0], goal.context, false);
-            goal.ast.nodes[0].nodes[0].checked = t.nodes[1];
-            goal.ast.nodes[0].checked = t.nodes[1].nodes[1];
-            core.checkType(goal.ast.nodes[0].nodes[1].nodes[0], goal.context, false);
-            goal.ast.nodes[0].nodes[1].nodes[1].checked = wrapLambda("->", "", typen, typeSn);
-            goal.ast.nodes[1].checked = wrapVar("nat");
-            const anotherGoal = {
-                ast: goal.ast.nodes[0].nodes[1].nodes[1].nodes[1],
-                context: goal.context.slice(0),
-                type: typeSn
-            };
-            anotherGoal.context.unshift([destructed, { type: "var", name: "nat", checked: wrapVar("nat") }, 0]);
-            anotherGoal.context.unshift([induced, typen, 0]);
-            core.checkType(goal.ast.nodes[0].nodes[1].nodes[1].nodes[0], anotherGoal.context, false);
-            // delete anotherGoal.context[n];
-            goal.ast = goal.ast.nodes[0].nodes[0].nodes[1];
-            // delete goal.context[n];
-            this.goal.unshift(anotherGoal);
-            this.goal.unshift(goal);
-            // } else if (nType.name === "Ord") {
-            //     const fromParam1 = param[1];
-            //     if (fromParam1 && excludedSet.has(fromParam1)) {
-            //         this.goal.unshift(goal);
-            //         throw TR("destruct引入了重复的变量名");
-            //     }
-            //     const destructed = fromParam1 || Core.getNewName(n, excludedSet);
-            //     excludedSet.add(fromParam1);
-            //     const fromParam2 = param[2];
-            //     if (fromParam2 && excludedSet.has(fromParam2)) {
-            //         this.goal.unshift(goal);
-            //         throw TR("destruct引入了重复的变量名");
-            //     }
-            //     const induced = fromParam2 || Core.getNewName("H" + n, excludedSet);
-            //     let newAst = parser.parse(`ind_Ord (L${n}:$typeN.$1) (?#0) (L${destructed}:nat.L${induced}:$indType.(?#0)) $nast`);
-
-            //     const type0 = Core.clone(goal.type);
-            //     const typen = Core.clone(goal.type);
-            //     const typeSn = Core.clone(goal.type);
-
-            //     this.replaceFreeVar(type0, n, { type: "var", name: "0" });
-            //     this.replaceFreeVar(typen, n, { type: "var", name: destructed });
-            //     this.replaceFreeVar(typeSn, n, { type: "apply", name: "", nodes: [{ type: "var", name: "succ" }, { type: "var", name: destructed }] });
-
-            //     matched["$indType"] = typen;
-
-            //     Core.replaceByMatch(newAst, matched, /^\$/);
-            //     Core.assign(goal.ast, newAst);
-            //     goal.ast.checked = goal.type;
-            //     goal.type = type0;
-            //     const t = core.checkType(goal.ast.nodes[0].nodes[0].nodes[0], goal.context, false);
-            //     goal.ast.nodes[0].nodes[0].checked = t.nodes[1];
-            //     goal.ast.nodes[0].checked = t.nodes[1].nodes[1];
-            //     core.checkType(goal.ast.nodes[0].nodes[1].nodes[0], goal.context, false);
-            //     goal.ast.nodes[0].nodes[1].nodes[1].checked = wrapLambda("->", "", typen, typeSn);
-            //     goal.ast.nodes[1].checked = wrapVar("nat");
-            //     const anotherGoal = {
-            //         ast: goal.ast.nodes[0].nodes[1].nodes[1].nodes[1],
-            //         context: goal.context.slice(0),
-            //         type: typeSn
-            //     };
-            //     anotherGoal.context.unshift([destructed, { type: "var", name: "nat", checked: wrapVar("nat") }, 0]);
-            //     anotherGoal.context.unshift([induced, typen, 0]);
-            //     core.checkType(goal.ast.nodes[0].nodes[1].nodes[1].nodes[0], anotherGoal.context, false);
-            //     // delete anotherGoal.context[n];
-            //     goal.ast = goal.ast.nodes[0].nodes[0].nodes[1];
-            //     // delete goal.context[n];
-            //     this.goal.unshift(anotherGoal);
-            //     this.goal.unshift(goal);
-        } else if (nType.type === "+") {
-
-            const fnl = Core.getNewName(n + "l", excludedSet);
-            const fnr = Core.getNewName(n + "r", excludedSet);
-            matched["$typel"] = nType.nodes[0];
-            matched["$typer"] = nType.nodes[1];
-            let newAst = parser.parse(`ind_Sum (L${n}:$typeN.$1) (L${fnl}:$typel.(?#0)) (L${fnr}:$typer.(?#0)) $nast`);
-            Core.replaceByMatch(newAst, matched, /^\$/);
-            Core.assign(goal.ast, newAst);
-            const newTypeL = matched["$1"];
-            const newTypeR = Core.clone(goal.type);
-            this.replaceFreeVar(newTypeL, n, wrapApply(wrapVar("inl"), wrapVar(fnl)));
-            this.replaceFreeVar(newTypeR, n, wrapApply(wrapVar("inr"), wrapVar(fnr)));
-            const anotherGoal = {
-                ast: goal.ast.nodes[0].nodes[1].nodes[1],
-                context: assignContext([fnr, nType.nodes[1], 0], goal.context),
-                type: newTypeR
-            };
-            goal.ast = goal.ast.nodes[0].nodes[0].nodes[1].nodes[1];
-            goal.context.unshift([fnl, nType.nodes[0], 0]);
-            goal.type = newTypeL;
-            this.goal.unshift(anotherGoal);
-            this.goal.unshift(goal);
-        } else if (nType.type === "X") {
-            const fnl = Core.getNewName(n + "0", excludedSet);
-            const fnr = Core.getNewName(n + "1", excludedSet);
-            matched["$typel"] = nType.nodes[0];
-            matched["$typer"] = nType.nodes[1];
-            let newAst = parser.parse(`ind_Prod (Lx:$typel.$typer) (L${n}:$typeN.$1) (L${fnl}:$typel.L${fnr}:$typer.(?#0))  $nast`);
-
-            Core.replaceByMatch(newAst, matched, /^\$/);
-            Core.assign(goal.ast, newAst);
-            const newType = matched["$1"];
-            // refering
-            this.replaceFreeVar(newType, n, wrapLambda(",", "", wrapVar(fnl), wrapVar(fnr)));
-
-            goal.ast = goal.ast.nodes[0].nodes[1].nodes[1].nodes[1];
-            goal.context.unshift([fnl, nType.nodes[0], 0]);
-            goal.context.unshift([fnr, nType.nodes[1], 0]);
-            goal.type = newType;
-            // delete goal.context[n];
-            this.goal.unshift(goal);
-        } else if (nType.type === "S") {
-            const fnl = Core.getNewName(n + "0", excludedSet);
-            const fnr = Core.getNewName(n + "1", excludedSet);
-            matched["$typel"] = nType.nodes[0];
-            matched["$typer"] = nType.nodes[1];
-            matched["$typerepl"] = Core.clone(nType.nodes[1]);
-            this.replaceFreeVar(matched["$typerepl"], nType.name, wrapVar(fnl));
-            let newAst = parser.parse(`ind_Prod (L${nType.name}:$typel.$typer) (L${n}:$typeN.$1) (L${fnl}:$typel.L${fnr}:$typerepl.(?#0))  $nast`);
-
-            Core.replaceByMatch(newAst, matched, /^\$/);
-            Core.assign(goal.ast, newAst);
-            const newType = matched["$1"];
-            // refering
-            this.replaceFreeVar(newType, n, wrapApply(wrapVar("pair"), { type: "L", name: nType.name, nodes: nType.nodes }, wrapVar(fnl), wrapVar(fnr)));
-
-            goal.ast = goal.ast.nodes[0].nodes[1].nodes[1].nodes[1];
-
-            goal.context.unshift([fnl, nType.nodes[0], 0]);
-            goal.context.unshift([fnr, matched["$typerepl"], 0]);
-            goal.type = newType;
-            // delete goal.context[n];
-            this.goal.unshift(goal);
         }
+        const condsNames = conds.map(e => e[0]);
+        let goalWithConds = Core.clone(goal.type);
+
+        for (const [k, v, id] of conds) {
+            goalWithConds = wrapLambda("P", k, v, goalWithConds);
+        }
+
+
+        let C = wrapLambda("L", n, nType, goalWithConds);
+        if (groupParam) {
+            const eqType = core.checkType(groupParam, goal.context, false);
+            const newY = Core.getNewName(groupParam.type === "var" ? groupParam.name : "y", excludedSet);
+            C = wrapLambda("L", newY, eqType, Core.clone(C, true));
+            C.nodes[1] = this.genReplaceFn(C.nodes[1], groupParam, newY, excludedSet);
+        }
+        const indFn = wrapVar(indFnName);
+        const indFnHead = wrapApply(indFn, ...typeParams.map(e => Core.clone(e)), Core.clone(C));
+        let headType: AST;
+        try {
+            headType = core.checkType(indFnHead, goal.context, false);
+        } catch (e) {
+            this.goal.unshift(goal);
+            throw e;
+        }
+        const indFnType = indFn.checked;
+        const flattenParams = (typ: AST) => {
+            let params: AST[] = [];
+            while (typ.type === "P" || typ.type === "->") {
+                params.push(typ.nodes[0]);
+                typ = typ.nodes[1];
+            }
+            return params;
+        }
+        const flattenParamNames = (typ: AST) => {
+            let names: string[] = [];
+            while (typ.type === "P" || typ.type === "->") {
+                names.push(typ.name);
+                typ = typ.nodes[1];
+            }
+            return names;
+        }
+        const indFnParams = flattenParams(indFnType);
+        const indFnParamNames = flattenParamNames(indFnType);
+        // holes includes ctor holes and also grpara / tail: x->C x
+        const holes = flattenParams(headType);
+        // grpara is group param
+        // ind_xxx :param->C->(C grpara? ctor1)->(C grpara? ctor2)->...->grpara->x:xxx->(C grpara xxx)
+        let ctorNumbers = indFnParams.length - typeParams.length - 1 - (groupParam ? 1 : 0) - 1;
+        const indFnBody = [];
+        const newGoals: Goal[] = [];
+        const introNums: string[][] = [];
+        const ctorOffset = typeParams.length + 1;
+        const dependence: number[][] = [];
+        for (let i = 0; i < ctorNumbers; i++) {
+            const gtype = holes[i];
+            const gast = wrapVar("(?#0)");
+            const ctx = Core.cloneContext(goal.context).filter(e => e[0] !== n && !condsNames.includes(e[0]));
+            gast.checked = gtype;
+            const indFnParamType = indFnParams[i + ctorOffset];
+            const indFnParamName = indFnParamNames[i + ctorOffset];
+            const holeParams = flattenParamNames(indFnParamType);
+            holeParams.push(...condsNames);
+            introNums.push(holeParams);
+            // mark depend
+            const depend = [];
+            if (indFnParamName) {
+                for (let j = i; j < ctorNumbers; j++) {
+                    if (j === i) continue;
+                    if (Core.getFreeVars(indFnParams[j + ctorOffset]).has(indFnParamName)) {
+                        depend.push(j);
+                    }
+                }
+            }
+            dependence.push(depend);
+            newGoals.push({ context: ctx, ast: gast, type: gtype, depend: null });
+            indFnBody.push(gast);
+        }
+        // record dependences in goals
+        for (let i = 0; i < ctorNumbers; i++) {
+            const d = dependence[i];
+            if (!d.length) continue;
+            const goals = d.map(j => newGoals[j]);
+            const varname = this.getNewDependGoalVarName();
+            newGoals[i].depend = {
+                src: newGoals[i].ast, dst: goal.ast, goals, varname
+            };
+            const srcname = indFnParamNames[i + ctorOffset];
+            for (const g of goals) {
+                this.replaceFreeVar(g.type, srcname, wrapVar(varname));
+            }
+        }
+        if (groupParam) indFnBody.push(groupParam);
+        Core.assign(goal.ast, wrapApply(indFnHead, ...indFnBody, nast, ...conds.map(e => {
+            const k = wrapVar(e[0]); k.checked = e[1]; return k;
+        })), true);
+        let k = 0;
+        for (const g of newGoals) {
+            this.goal.unshift(g);
+            const intros = introNums[k++];
+            intros.forEach(e => this.intro((n + "_" + e).replaceAll("_x", "")));
+            this.goal.shift();
+        }
+        if (!newGoals.length) {
+            this.resolveDependGoal(goal.depend);
+            return;
+        }
+        newGoals[newGoals.length - 1].depend = goal.depend;
+        this.goal.unshift(...newGoals);
         return this;
+    }
+    getNewDependGoalVarName() {
+        return "(%" + (this.dependVarId++) + ")";
     }
     ex(n: string) {
         const goal = this.goal.shift();
         if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
         if (goal.type.type !== "S") throw TR("ex策略只能作用于依赖积类型");
         const dfn = Core.clone(goal.type); dfn.type = "L";
+        n = n?.trim();
+        if (n?.startsWith("?") || n === "_") n = null;
         try {
-            const val = parser.parse(n);
+            let val = n ? parser.parse(n) : wrapVar("(?#0)");
             Core.assign(goal.ast, wrapApply(wrapVar("pair"), dfn, val, wrapVar("(?#0)")), true);
             goal.ast.checked = goal.type;
-            core.checkType(goal.ast.nodes[0], goal.context, false);
+            if (n) {
+                core.checkType(goal.ast.nodes[0], goal.context, false);
+            } else {
+                const newGoal: Goal = {
+                    ast: goal.ast.nodes[0].nodes[1],
+                    type: dfn.nodes[0],
+                    context: Core.cloneContext(goal.context),
+                    depend: {
+                        src: goal.ast.nodes[0].nodes[1],
+                        dst: goal.ast.nodes[1],
+                        goals: [goal],
+                        varname: this.getNewDependGoalVarName()
+                    }
+                };
+                val = wrapVar(newGoal.depend.varname);
+                this.goal.unshift(newGoal, goal);
+            }
             goal.ast = goal.ast.nodes[1];
             goal.type = Core.clone(dfn.nodes[1]);
             this.replaceFreeVar(goal.type, dfn.name, val);
-            core.checkType(goal.type, goal.context, false);
+            if (n) {
+                core.checkType(goal.type, goal.context, false);
+                this.goal.unshift(goal);
+            }
+
         } catch (e) {
             this.goal.unshift(goal);
             throw e;
         }
-        this.goal.unshift(goal);
     }
     left() {
         const goal = this.goal.shift();
@@ -706,16 +654,18 @@ export class Assist {
         if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
         if (goal.type.type !== "X") throw TR("case策略只能作用于积类型");
         Core.assign(goal.ast, { type: ",", name: "", nodes: [wrapVar("(?#0)"), wrapVar("(?#0)")] }, true);
-        const anotherGoal = {
+        const anotherGoal: Goal = {
             ast: goal.ast.nodes[1],
             context: goal.context.slice(0),
-            type: goal.type.nodes[1]
+            type: goal.type.nodes[1],
+            depend: goal.depend
         };
         anotherGoal.ast.checked = anotherGoal.type;
         goal.ast.checked = goal.type;
         goal.ast = goal.ast.nodes[0];
         goal.type = goal.type.nodes[0];
         goal.ast.checked = goal.type;
+        goal.depend = null;
         this.goal.unshift(anotherGoal);
         this.goal.unshift(goal);
     }
