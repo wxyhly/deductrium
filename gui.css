@@ -475,9 +475,10 @@ div.hintbar {
     border-color: rgb(255, 242, 0);
 }
 
-.error {
+div.wrapper.error {
     border: solid 1px;
     border-color: red;
+    background-color: rgb(255,210,210) !important;
 }
 
 

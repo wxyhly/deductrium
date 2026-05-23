@@ -146,7 +146,7 @@ export class Assist {
         }
     }
     isIndType(typ: AST) {
-        return (typ.name === "nat" || typ.name === "Bool" || typ.name === "S1" || typ.name === "Ord" || typ.name === "True" || typ.name === "False"
+        return (typ.name === "nat" || typ.name === "Bool" || typ.name === "S1" || typ.name === "Ord" || typ.name === "True" || typ.name === "False" || (typ.type === "apply" && typ.nodes?.[0]?.name === "Sus")
             || typ.type === "+" || typ.type === "X" || typ.type === "S" || typ.type === "=") || typ.nodes?.[0]?.nodes?.[0]?.name === "eq";
     }
     intro(s: string) {
@@ -457,9 +457,11 @@ export class Assist {
         Core.getFreeVars(goal.type, excludedSet);
 
 
-        const indFnName = "ind_" + ((nType.nodes?.[0]?.nodes?.[0]?.name === "eq" || nType.type === "=") ? "eq" : nType.type === "+" ? "Sum" : nType.type === "X" ? "Prod" : nType.type === "S" ? "Prod" : nType.name);
+        const indFnName = "ind_" + (nType.nodes?.[0]?.name === "Sus" ? "Sus" : (nType.nodes?.[0]?.nodes?.[0]?.name === "eq" || nType.type === "=") ? "eq" : nType.type === "+" ? "Sum" : nType.type === "X" ? "Prod" : nType.type === "S" ? "Prod" : nType.name);
         // x in x=y, just parameter for types 
-        const typeParams = nType.nodes?.[0]?.nodes?.[0]?.name === "eq" ? [nType.nodes[0].nodes[1]] : nType.type === "=" ? [nType.nodes[0]] : nType.type === "X" ? [wrapLambda("L", Core.getNewName("x", excludedSet), nType.nodes[0], nType.nodes[1])] : nType.type === "S" ? [wrapLambda("L", nType.name, nType.nodes[0], nType.nodes[1])] : [];
+
+        // nType.nodes?.[0]?.name === "Sus" ? [nType.nodes[1]] :
+        const typeParams =  nType.nodes?.[0]?.nodes?.[0]?.name === "eq" ? [nType.nodes[0].nodes[1]] : nType.type === "=" ? [nType.nodes[0]] : nType.type === "X" ? [wrapLambda("L", Core.getNewName("x", excludedSet), nType.nodes[0], nType.nodes[1])] : nType.type === "S" ? [wrapLambda("L", nType.name, nType.nodes[0], nType.nodes[1])] : [];
         // y in x=y: induction on this group of types
         const groupParam = nType.nodes?.[0]?.nodes?.[0]?.name === "eq" || nType.type === "=" ? nType.nodes[1] : null;
 

@@ -327,11 +327,19 @@ export function initTypeSystem() {
     addRule("@构造", "@merid:Pa:U_.a->(@eq _ (Sus a) (@North a) (@South a))");
     addRule("@构造", "merid:= @merid _");
     addRule("_构造", "merid");
-    // addRule("@解构", "@ind_Sus: Pu:U@,Pv:U@.PC:I->Uu,Pc0:(C 0I),Pc1:(C 1I),(Pcs: @eq u (C 1I) (trans C segI c0) c1,Pm:I,C m)");
-    // addRule("@解构", "ind_I:=@ind_I _");
-    // addRule("_解构", "ind_I");
-    // addRule("计算", "ind_I ?C ?c0 ?c1 ?cs 0I === ?c0");
-    // addRule("@计算", "@ind_I _ _ ?c0 _ _ 0I === ?c0");
-    // addRule("计算", "ind_I ?C ?c0 ?c1 ?cs 1I === ?c1");
+    addRule("@解构", "@ind_Sus: Pu:U@,Pv:U@,Pa:Uu,PC:Px:Sus a,Uv,Pcn:C North,Pcs:C South,Pcm:Px:a,trans C (merid x) cn = cs, Px:Sus a,C x");
+    addRule("@解构", "ind_Sus:=@ind_Sus _ _ _");
+    addRule("_解构", "ind_Sus");
+    addRule("计算", "ind_Sus ?C ?cn ?cs ?cm North === ?cn");
+    addRule("计算", "ind_Sus ?C ?cn ?cs ?cm South === ?cs");
+    addRule("计算", "ind_Sus ?C ?cn ?cs ?cm (@North ?a) === ?cn");
+    addRule("计算", "ind_Sus ?C ?cn ?cs ?cm (@South ?a) === ?cs");
+    addRule("@计算", "@ind_Sus _ _ _ ?C ?cn ?cs ?cm North === ?cn");
+    addRule("@计算", "@ind_Sus _ _ _ ?C ?cn ?cs ?cm South === ?cs");
+    addRule("@计算", "@ind_Sus _ _ ?a ?C ?cn ?cs ?cm (@North ?a) === ?cn");
+    addRule("@计算", "@ind_Sus _ _ ?a ?C ?cn ?cs ?cm (@South ?a) === ?cs");
+    addRule("@计算", "@apd_merid : Pu:U@,Pv:U@,Pa:Uu,PC:Px:Sus a,Uv,Pcn:C North,Pcs:C South,Pcm:Px:a,trans C (merid x) cn = cs,Px:a,eq (apd C (@ind_Sus u v a C cn cs cm) (merid x)) (cm x)");
+    addRule("@计算", "apd_merid := @apd_merid _ _ _ _ _ _ _");
+    addRule("_计算", "apd_merid : Px:?a,eq (apd ?C (ind_Sus ?C ?cn ?cs ?cm) (merid x)) (?cm x)");
     return ruleList;
 }
