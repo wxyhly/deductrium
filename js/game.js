@@ -5,6 +5,7 @@ import { TileBlockType } from "./hy/maploader.js";
 import { calcMaxReachOrd, cmp, printOrd } from "./hy/ordinal.js";
 import { langMgr, TR } from "./lang.js";
 import { GameSaveLoad } from "./saveload.js";
+import { Assist } from "./tt/assist.js";
 import { TTGui } from "./tt/gui.js";
 function parseDeductriumAmout(str) {
     let coeff;
@@ -807,6 +808,16 @@ export class Game {
                         this.ttGui.unlock("naiveqv" + i);
                     this.ttGui.updateAfterUnlock();
                     return;
+                case "ttI":
+                    for (let i = 0; i <= 14; i++)
+                        this.ttGui.unlock("I" + i);
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttSus":
+                    for (let i = 0; i <= 25; i++)
+                        this.ttGui.unlock("Sus" + i);
+                    this.ttGui.updateAfterUnlock();
+                    return;
                 case "ttlazy":
                     this.ttGui.enablecopygate = true;
                     return;
@@ -818,6 +829,17 @@ export class Game {
                     return;
                 case "ttdestruct":
                     this.ttGui.unlockedTactics.add("destruct");
+                    return;
+                case "ttranseq":
+                // this.ttGui.unlockedTactics.add("ttranseq"); return;
+                case "ttelimeq":
+                    Assist.disableDestructEq = false;
+                    return;
+                case "ttelimcond":
+                    Assist.disableDestructConds = false;
+                    return;
+                case "ttapply2":
+                    Assist.disableMultipleApply = false;
                     return;
                 case "ttrw":
                     this.ttGui.unlockedTactics.add("rw");

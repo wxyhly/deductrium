@@ -61,6 +61,9 @@ export class TTGui {
             this.disableSimpleEq = true;
         }
         else {
+            Assist.disableDestructConds = false;
+            Assist.disableDestructEq = false;
+            Assist.disableMultipleApply = false;
             document.getElementById("displayPi-label").classList.remove("hide");
             document.getElementById("tactic-div").classList.remove("hide");
         }

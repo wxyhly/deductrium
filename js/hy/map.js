@@ -901,11 +901,17 @@ export const mapData = `
         :%,0$[[ttindeq]]解锁ind_eq
             :%*,3#Pa:U,Pb:U,(eq a b)->(a->b)[n]#t
             :%*,2#not (eq True False)[n]#t
-            :%*,2,5$获取15mg推理素
+            :%*,2,5$[[ttelimeq]]解锁证明助手中[n]用destruct策略[n]解构相等类型
         :%,4@类型eq a b只有一个带参数[n]的构造子refl[n]且只能构造出类型eq a a[n]因此要证对任意m:eq a b成立[n]只需证明对refl a成立
             :%*,3#Pa:U,Px:a,Py:a,(eq x y)->(eq y x)[n]#t
             :%*,3,5$[[ttinveq]]解锁相等逆路径运算[n]inveq
+            :%*,2#通过此门需消耗推理素15mg
+            :%*,2,1$[[ttelimcond]]解锁证明助手中[n]用destruct策略时[n]自动抓取环境中的[n]依赖条件变量[n]避免一些“类型不匹配”错误
+
         :%,5@注意eq类型本身带参数[n]而不像nat\和\积类型[n]只是构造子带参数[n]因此ind_eq是在对[n]一簇类型使用“归纳法”
+            :%*,5,2#通过此门需消耗推理素15mg
+            :%*,5,2,5$[[ttapply2]]解锁证明助手中[n]apply策略支持多元函数[n]例如当前目标是c[n]有f:a->b->c[n]可用apply f[n]将当前目标c拆分成[n]两个子目标a与b
+
             :%*,3#Pa:U,Px:a,Py:a,Pz:a,(eq x y)->(eq y z)->(eq x z)[n]#t
             :%*,3,1$[[ttcompeq]]解锁相等连接路径运算[n]compeq[n]与简写：x * y === [n] compeq x y
             
@@ -998,7 +1004,7 @@ export const mapData = `
 :%*,3#[[ttmno]]Pa:U,Px:a,Py:a,Pz:a,Pw:a,[n]Pm:x=y,Pn:y=z,Po:z=w,[n]((m*n)*o)=(m*(n*o))[n]#t
 :%*,3,1#not (loop*loop = loop)[n]#t
 :%*,3,1,2#[[loop2]]not (loop*loop = (refl base))[n]#t
-:%*,3,1,2,1#I[n]#t
+:%*,3,1,2,1#Px:I,x=0I[n]#t
 :%,0,4#[[S1S1]](refl base) = [n](loop * (inveq loop))[n]#t
 :%*,4#inveq(inveq loop) = loop[n]#t
 :%*,4,5$获取1mg推理素
@@ -1058,6 +1064,7 @@ export const mapData = `
 :%*,1$获取2.3mg推理素
 :%,5#Pa:U,Pb:U,[n]Pf:a->b,Pg:a->b,Pm:f=g,[n]fnext (λx:a.inveq (happly m x))[n] = inveq m[n]#t
 :%,5#Pa:U,Pb:U,[n]Pf:a->b,Pg:a->b,Ph:a->b,[n]Pm:f=g,Pn:g=h,[n]fnext (λx:a.(happly m x)*(happly n x))[n] = m*n[n]#t
+:%,5$获取4.2mg推理素
 :loop2,2@
 :%,1;1;1;1@......
 :%,1$[[ttI]]解锁区间类型I
@@ -1068,6 +1075,8 @@ export const mapData = `
 :%,3@这个命题在说：[n]二维道路的连接有交换律[n]对应拓扑学中[n]高阶同伦群[n]都是交换群
 :%,5;0@...
 :ttindS1,4@ind_S1的意思是，[n]要构造从圆周S1[n]到其它类型的映射[n]除了要给定base映射的值[n]还要给出把路径loop[n]映射到哪里
+:%*,4#Px:S1,x=base[n]#t
+:%*,4,1$[[ttranseq]]解锁证明策略transeq[n]自动化简等式传输
 :%,0,3@依赖类型的相等[n]apd需要用到trans[n]所以看起来规则很复杂[n]要是有非依赖版的ind_S1[n](即rec_S1)就好了[n]直接ap，不会有[n]讨厌的apd和trans
 :ttmno,4#(rec_S1 U Bool (refl Bool)[n] base) = Bool[n]#t
     :%*,5#通过此门需消耗推理素29.9mg
@@ -1077,16 +1086,24 @@ export const mapData = `
 :eqvid,1#(not True)~= False[n]#t
 :%*,3#Pa:U,Pb:U,(a~=b)->(b~=a)[n]#t
 :%*,3,4$[[ttua]]解锁同伦类型论[n]泛等公理[n]ua[n](等价即相等)
-:%*,2#[[looprfl]]not (eq (refl base) loop)[n]#t
+:%*,2#[[looprfl]]not (refl base = loop)[n]#t
 :%*,2,1@loop不等于rfl的证明思路：[n]通过ind_S1构造映射f:S1->U[n]其中让f(base)=Bool，[n]f(loop)=ua(e)[n]若loop与rfl相等，则[n]ua(e)与rfl相等[n]后者能推出e(x)=x矛盾[n](e在双重否定消去思路中定义)
 :%*,2,4$[[ttrecS1]]解锁ind_S1的简化版rec_S1
-:%*,2,3$获取199mg推理素
+:%*,2,3$获取59mg推理素
 :%,1#Px:True,Py:True,(x=y)~=True[n]#t
 :%,1@双重否定消去错误[n]的证明思路：[n]设映射e:Bool->Bool[n]且e(0b)=1b，e(1b)=0b[n]可证e是Bool自身到自身的双射[n]即能构造eqv Bool Bool的证据
 :%*,2#(Bool~=Bool)~=Bool[n]#t
 :%*,2,1@则ua(e):eq Bool Bool[n]通过ua(e)使用ind_eq[n]可证明若存在f:Pa:U,~~a->a[n]则能推出e(f Bool x)=f Bool x[n]从而可推出矛盾
 :%,1#not Pa:U,(not(not a))->a[n]#t
-:%,1$获取499mg推理素
+:%,1$获取199mg推理素
+
+:looprfl,2#not (S1~=True)[n]#t
+:%*,4$获取39mg推理素
+:%*,2$[[ttSus]]解锁高阶同伦类型构造器[n]纬悬(Sus)
+:%,1#Sus False ~= Bool[n]#t
+:%,2#Sus Bool ~= S1[n]#t
+:%,2$获取99mg推理素
+
 :ttua,0,5@泛等公理不仅说ua是命题[n]“(eqv a b)->(eq a b)”的证据[n]它还说ua映射与id2eqv[n]映射互为逆映射
 :%*,4#Pa:U,Pb:U,(a~=b)~=(a=b)[n]#t
 :%*,4,5$你永远别想拿到这个奖励！

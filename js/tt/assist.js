@@ -10,6 +10,9 @@ export class Assist {
     goal;
     // inhabited elem : theorem
     elem;
+    static disableMultipleApply = true;
+    static disableDestructConds = true;
+    static disableDestructEq = true;
     constructor(h, target) {
         core = h;
         core.clearState();
@@ -168,8 +171,8 @@ export class Assist {
         }
     }
     isIndType(typ) {
-        return (typ.name === "nat" || typ.name === "Bool" || typ.name === "S1" || typ.name === "Ord" || typ.name === "True" || typ.name === "False" || (typ.type === "apply" && typ.nodes?.[0]?.name === "Sus")
-            || typ.type === "+" || typ.type === "X" || typ.type === "S" || typ.type === "=") || typ.nodes?.[0]?.nodes?.[0]?.name === "eq";
+        return (typ.name === "nat" || typ.name === "Bool" || typ.name === "I" || typ.name === "S1" || typ.name === "Ord" || typ.name === "True" || typ.name === "False" || (typ.type === "apply" && typ.nodes?.[0]?.name === "Sus")
+            || typ.type === "+" || typ.type === "X" || typ.type === "S" || (!Assist.disableDestructEq && ((typ.type === "=") || typ.nodes?.[0]?.nodes?.[0]?.name === "eq")));
     }
     intro(s) {
         s = s.trim();
@@ -242,8 +245,16 @@ export class Assist {
         }
         catch (e) {
             this.goal.unshift(goal);
-            core.checkType(ast, context, false);
-            throw TR("无法对类型") + parser.stringify(ast.checked) + TR("使用apply策略作用于类型") + parser.stringify(goal.type);
+            try {
+                if (Assist.disableMultipleApply)
+                    throw e;
+                this.apply2(ast);
+                return;
+            }
+            catch (e) {
+                core.checkType(ast, context, false);
+                throw TR("无法对类型") + parser.stringify(ast.checked) + TR("使用apply策略作用于类型") + parser.stringify(goal.type);
+            }
         }
         core.checkType(ast, context, false);
         // goal.ast is refferd at outter level hole,  we fill the hole first
@@ -257,6 +268,82 @@ export class Assist {
         goal.type = applyType;
         this.goal.unshift(goal);
         return this;
+    }
+    apply2(ast) {
+        const goal = this.goal.shift();
+        let fn;
+        try {
+            fn = core.checkType(ast, goal.context, false);
+        }
+        catch (e) {
+            this.goal.unshift(goal);
+            throw e;
+        }
+        const fnParams = this.flattenParams(fn, true);
+        const fnParamNames = this.flattenParamNames(fn);
+        let tail = fn;
+        let holeNumbers = 1;
+        while (true) {
+            if (tail.type === "->" || tail.type === "P") {
+                tail = tail.nodes[1];
+            }
+            else {
+                this.goal.unshift(goal);
+                throw TR("无法对类型") + parser.stringify(ast.checked) + TR("使用apply策略作用于类型") + parser.stringify(goal.type);
+            }
+            try {
+                core.checkType(wrapLambda("===", "", Core.clone(tail), Core.clone(goal.type)), goal.context, true);
+                break;
+            }
+            catch (e) { }
+            holeNumbers++;
+        }
+        const fnBody = [];
+        const newGoals = [];
+        const dependence = [];
+        for (let i = 0; i < holeNumbers; i++) {
+            const fnParamType = fnParams[i];
+            const fnParamName = fnParamNames[i];
+            const gast = wrapVar("(?#0)");
+            const ctx = Core.cloneContext(goal.context);
+            gast.checked = fnParamType;
+            // mark depend
+            const depend = [];
+            if (fnParamName) {
+                for (let j = i; j < holeNumbers; j++) {
+                    if (j === i)
+                        continue;
+                    if (Core.getFreeVars(fnParams[j]).has(fnParamName)) {
+                        depend.push(j);
+                    }
+                }
+            }
+            dependence.push(depend);
+            newGoals.push({ context: ctx, ast: gast, type: fnParamType, depend: null });
+            fnBody.push(gast);
+        }
+        // record dependences in goals
+        for (let i = 0; i < holeNumbers; i++) {
+            const d = dependence[i];
+            if (!d.length)
+                continue;
+            const goals = d.map(j => newGoals[j]);
+            const varname = this.getNewDependGoalVarName();
+            newGoals[i].depend = {
+                src: newGoals[i].ast, dst: goal.ast, goals, varname
+            };
+            const srcname = fnParamNames[i];
+            for (const g of goals) {
+                this.replaceFreeVar(g.type, srcname, wrapVar(varname));
+            }
+        }
+        Core.assign(goal.ast, wrapApply(ast, ...fnBody), true);
+        if (!newGoals.length) {
+            this.resolveDependGoal(goal.depend);
+            return;
+        }
+        newGoals[newGoals.length - 1].depend = goal.depend;
+        this.goal.unshift(...newGoals);
     }
     rw(eq, back = false) {
         if (typeof eq === "string")
@@ -492,6 +579,24 @@ export class Assist {
             throw e;
         }
     }
+    flattenParams(typ, withEnd) {
+        let params = [];
+        while (typ.type === "P" || typ.type === "->") {
+            params.push(typ.nodes[0]);
+            typ = typ.nodes[1];
+        }
+        if (withEnd)
+            params.push(typ);
+        return params;
+    }
+    flattenParamNames(typ) {
+        let names = [];
+        while (typ.type === "P" || typ.type === "->") {
+            names.push(typ.name);
+            typ = typ.nodes[1];
+        }
+        return names;
+    }
     destruct(n) {
         n = n.trim();
         const goal = this.goal.shift();
@@ -508,7 +613,7 @@ export class Assist {
         }
         if (!this.isIndType(nType)) {
             this.goal.unshift(goal);
-            throw TR("只能解构归纳类型的变量");
+            throw TR("只能解构解锁的归纳类型的变量");
         }
         const excludedSet = new Set(goal.context.map(e => e[0]));
         Core.getFreeVars(goal.type, excludedSet);
@@ -520,11 +625,13 @@ export class Assist {
         const groupParam = nType.nodes?.[0]?.nodes?.[0]?.name === "eq" || nType.type === "=" ? nType.nodes[1] : null;
         // destruct with other variables in context as condition added in target C
         const conds = [];
-        for (const [k, v, id] of goal.context) {
-            if (k === n)
-                continue;
-            if (Core.getFreeVars(v).has(n) || (groupParam && this.search(v, groupParam))) {
-                conds.push([k, v, id]);
+        if (!Assist.disableDestructConds) {
+            for (const [k, v, id] of goal.context) {
+                if (k === n)
+                    continue;
+                if (Core.getFreeVars(v).has(n) || (groupParam && this.search(v, groupParam))) {
+                    conds.push([k, v, id]);
+                }
             }
         }
         const condsNames = conds.map(e => e[0]);
@@ -550,26 +657,10 @@ export class Assist {
             throw e;
         }
         const indFnType = indFn.checked;
-        const flattenParams = (typ) => {
-            let params = [];
-            while (typ.type === "P" || typ.type === "->") {
-                params.push(typ.nodes[0]);
-                typ = typ.nodes[1];
-            }
-            return params;
-        };
-        const flattenParamNames = (typ) => {
-            let names = [];
-            while (typ.type === "P" || typ.type === "->") {
-                names.push(typ.name);
-                typ = typ.nodes[1];
-            }
-            return names;
-        };
-        const indFnParams = flattenParams(indFnType);
-        const indFnParamNames = flattenParamNames(indFnType);
+        const indFnParams = this.flattenParams(indFnType);
+        const indFnParamNames = this.flattenParamNames(indFnType);
         // holes includes ctor holes and also grpara / tail: x->C x
-        const holes = flattenParams(headType);
+        const holes = this.flattenParams(headType);
         // grpara is group param
         // ind_xxx :param->C->(C grpara? ctor1)->(C grpara? ctor2)->...->grpara->x:xxx->(C grpara xxx)
         let ctorNumbers = indFnParams.length - typeParams.length - 1 - (groupParam ? 1 : 0) - 1;
@@ -585,7 +676,7 @@ export class Assist {
             gast.checked = gtype;
             const indFnParamType = indFnParams[i + ctorOffset];
             const indFnParamName = indFnParamNames[i + ctorOffset];
-            const holeParams = flattenParamNames(indFnParamType);
+            const holeParams = this.flattenParamNames(indFnParamType);
             holeParams.push(...condsNames);
             introNums.push(holeParams);
             // mark depend

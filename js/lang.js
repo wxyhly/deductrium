@@ -213,7 +213,7 @@ class LangMgr {
         "使用rfl策略失败：等式两边无法化简至相等": "rfl strategy failed: The two sides of the equation cannot be simplified to be equal",
         "证明尚未完成": "The proof is not yet complete",
         "无法引入重复名称的假设变量": "Cannot introduce hypothesis variables with duplicate names",
-        "只能解构归纳类型的变量": "Only variables of inductive types can be destructed",
+        "只能解构解锁的归纳类型的变量": "Only variables of unlocked inductive types can be destructed",
         "解构失败：其它变量依赖该变量": "Destruction failed: Other variables depend on this variable",
         "destruct引入了重复的变量名": "Strategy 'destruct' introduced duplicate variable names",
         "ex策略只能作用于依赖积类型": "The 'ex' strategy can only be applied to dependent product types",

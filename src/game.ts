@@ -5,6 +5,7 @@ import { TileBlock, TileBlockType } from "./hy/maploader.js";
 import { calcMaxReachOrd, cmp, printOrd } from "./hy/ordinal.js";
 import { langMgr, TR } from "./lang.js";
 import { GameSaveLoad } from "./saveload.js";
+import { Assist } from "./tt/assist.js";
 import { TTGui } from "./tt/gui.js";
 function parseDeductriumAmout(str: string) {
     let coeff: number;
@@ -472,12 +473,22 @@ export class Game {
                 case "ttfnext": for (let i = 0; i <= 13; i++)this.ttGui.unlock("fnext" + i); this.ttGui.updateAfterUnlock(); return;
                 case "ttLiftU": for (let i = 0; i <= 12; i++)this.ttGui.unlock("LiftU" + i); this.ttGui.updateAfterUnlock(); return;
                 case "ttpseudoeqv": for (let i = 0; i <= 1; i++)this.ttGui.unlock("naiveqv" + i); this.ttGui.updateAfterUnlock(); return;
+                case "ttI": for (let i = 0; i <= 14; i++)this.ttGui.unlock("I" + i); this.ttGui.updateAfterUnlock(); return;
+                case "ttSus": for (let i = 0; i <= 25; i++)this.ttGui.unlock("Sus" + i); this.ttGui.updateAfterUnlock(); return;
                 case "ttlazy": this.ttGui.enablecopygate = true; return;
                 case "ttacticFnext": this.ttGui.unlockedTactics.add("fnext"); return;
                 case "ttsimpl":
                     this.ttGui.unlockedTactics.add("simpl"); return;
                 case "ttdestruct":
                     this.ttGui.unlockedTactics.add("destruct"); return;
+                case "ttranseq":
+                    // this.ttGui.unlockedTactics.add("ttranseq"); return;
+                case "ttelimeq":
+                    Assist.disableDestructEq = false; return;
+                case "ttelimcond":
+                    Assist.disableDestructConds = false; return;
+                case "ttapply2":
+                    Assist.disableMultipleApply = false; return;
                 case "ttrw":
                     this.ttGui.unlockedTactics.add("rw");
                     this.ttGui.unlockedTactics.add("rwb"); return;
