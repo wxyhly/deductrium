@@ -151,6 +151,10 @@ export class Game {
                     }
                     return solved;
                 }
+                if (tile.text.endsWith("#t:=")) {
+                    const solved = this.ttGui.queryDefPuzzle(tile.name.slice(2));
+                    return solved;
+                }
                 let reg;
                 if ((reg = tile.text.match(/^通过此门需消耗推理素(.+)$/)) && reg[1]) {
                     const needed = parseDeductriumAmout(reg[1]);
@@ -255,6 +259,20 @@ export class Game {
                     this.destructedGates++;
                     this.updateProgressParam();
                     return;
+                case "del-ttAleph":
+                    const tileLi = this.hyperGui.world.getBlock("ttpAleph");
+                    tileLi.text += "\n （此门已拆除）";
+                    tileLi.type = 0;
+                    this.destructedGates++;
+                    this.updateProgressParam();
+                    return;
+                case "del-W":
+                    const tileW = this.hyperGui.world.getBlock("W");
+                    tileW.text += "\n （此门已拆除）";
+                    tileW.type = 0;
+                    this.destructedGates++;
+                    this.updateProgressParam();
+                    return;
                 case "omega":
                     const tileOmega = this.hyperGui.world.getBlock("w");
                     tileOmega.text += "\n （此门已拆除）";
@@ -266,6 +284,13 @@ export class Game {
                     const tileAleph = this.hyperGui.world.getBlock("Aleph");
                     tileAleph.text += "\n （此门已拆除）";
                     tileAleph.type = 0;
+                    this.destructedGates++;
+                    this.updateProgressParam();
+                    return;
+                case "delAlw":
+                    const tileAlephw = this.hyperGui.world.getBlock("AlephW");
+                    tileAlephw.text += "\n （此门已拆除）";
+                    tileAlephw.type = 0;
                     this.destructedGates++;
                     this.updateProgressParam();
                     return;
@@ -638,11 +663,11 @@ export class Game {
                     return this.ttGui.updateAfterUnlock();
                 case "ttsimplEq":
                     this.ttGui.disableSimpleEq = false;
-                    this.ttGui.unlock("eq26");
+                    this.ttGui.unlock("eq.=");
                     return this.ttGui.updateAfterUnlock();
-                case "ttnotFn": return this.ttGui.unlock("(False)0", true);
+                case "ttnotFn": return this.ttGui.unlock("False.not", true);
                 case "ttEq":
-                    [0, 1, 2, 4, 5, 6].forEach(i => this.ttGui.unlock("eq" + i));
+                    this.ttGui.unlock("eq");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttactic1":
@@ -652,170 +677,284 @@ export class Game {
                     this.ttGui.unlockedTactics.add("apply");
                     return;
                 case "ttNat":
-                    this.ttGui.unlock("nat0");
-                    this.ttGui.unlock("nat1");
-                    this.ttGui.unlock("nat2");
+                    this.ttGui.unlock("nat");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttBool":
-                    this.ttGui.unlock("Bool0");
-                    this.ttGui.unlock("Bool1");
-                    this.ttGui.unlock("Bool2");
+                    this.ttGui.unlock("Bool");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttrfl":
-                    this.ttGui.unlock("eq7", true);
-                    this.ttGui.unlock("eq8", true);
+                    this.ttGui.unlock("eq.rfl", true);
                     document.getElementById("tactic-div").classList.remove("hide");
                     this.ttGui.unlockedTactics.add("rfl");
                     return;
                 case "ttindTrue":
-                    for (let i = 2; i < 6; i++)
-                        this.ttGui.unlock("True" + i);
+                    this.ttGui.unlock("True.ind");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttindFalse":
-                    for (let i = 1; i < 4; i++)
-                        this.ttGui.unlock("False" + i);
+                    this.ttGui.unlock("False.ind");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttindBool":
-                    for (let i = 3; i < 8; i++)
-                        this.ttGui.unlock("Bool" + i);
+                    this.ttGui.unlock("Bool.ind");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttindnat":
-                    for (let i = 3; i < 8; i++)
-                        this.ttGui.unlock("nat" + i);
+                    this.ttGui.unlock("nat.ind");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttProd":
-                    for (let i = 0; i < 9; i++)
-                        this.ttGui.unlock("Prod" + i);
+                    this.ttGui.unlock("Prod");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttSum":
-                    for (let i = 0; i < 9; i++)
-                        this.ttGui.unlock("Sum" + i);
+                    this.ttGui.unlock("Sum");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttindProd":
-                    for (let i = 9; i < 14; i++)
-                        this.ttGui.unlock("Prod" + i);
+                    this.ttGui.unlock("Prod.ind");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttindSum":
-                    for (let i = 9; i < 14; i++)
-                        this.ttGui.unlock("Sum" + i);
+                    this.ttGui.unlock("Sum.ind");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttindeq":
-                    for (let i = 9; i < 18; i++)
-                        this.ttGui.unlock("eq" + i);
+                    this.ttGui.unlock("eq.ind");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttpr":
-                    for (let i = 0; i < 12; i++)
-                        this.ttGui.unlock("(Prod)" + i);
+                    this.ttGui.unlock("Prod.pr0");
+                    this.ttGui.unlock("Prod.pr1");
+                    this.ttGui.unlock("Prod.prd1");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttinveq":
-                    for (let i = 15; i < 20; i++)
-                        this.ttGui.unlock("(eq)" + i);
+                    this.ttGui.unlock("eq.inv");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttcompeq":
-                    for (let i = 20; i < 27; i++)
-                        this.ttGui.unlock("(eq)" + i);
+                    this.ttGui.unlock("eq.*");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttransC":
-                    for (let i = 27; i < 32; i++)
-                        this.ttGui.unlock("(eq)" + i);
+                    this.ttGui.unlock("eq.transconst");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttpred":
-                    this.ttGui.unlock("(nat)0", true);
+                    this.ttGui.unlock("nat.pred", true);
                     return;
                 case "ttdbl":
-                    this.ttGui.unlock("(nat)1", true);
+                    this.ttGui.unlock("nat.double", true);
                     return;
                 case "ttadd":
-                    this.ttGui.unlock("(nat)2", true);
+                    this.ttGui.unlock("nat.add", true);
                     return;
                 case "ttmul":
-                    this.ttGui.unlock("(nat)3", true);
+                    this.ttGui.unlock("nat.mul", true);
+                    return;
+                case "ttpow":
+                    this.ttGui.unlock("nat.pow", true);
+                    return;
+                case "tt!":
+                    this.ttGui.unlock("nat.!", true);
                     return;
                 case "ttord":
-                    for (let i = 0; i < 10; i++)
-                        this.ttGui.unlock("Ord" + i);
-                    for (let i = 0; i < 4; i++)
-                        this.ttGui.unlock("(Ord)" + i);
+                    this.ttGui.unlock("Ord");
+                    this.ttGui.unlock("(Ord)");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttap":
-                    for (let i = 0; i < 5; i++)
-                        this.ttGui.unlock("(eq)" + i);
+                    this.ttGui.disableSimpleEq = false;
+                    this.ttGui.unlock("eq.=");
+                    this.ttGui.unlock("eq.ap");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttap2":
-                    for (let i = 0; i < 15; i++)
-                        this.ttGui.unlock("(eq)" + i);
+                    this.ttGui.unlock("eq.apd");
+                    this.ttGui.unlock("eq.trans");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "tteqprop1":
+                    this.ttGui.unlock("eq.rightrfl");
+                    this.ttGui.unlock("eq.invinv");
+                    this.ttGui.unlock("eq.rightinv");
+                    this.ttGui.unlock("eq.leftinv");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttransleft":
+                    this.ttGui.unlock("eq.transleft");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttransleftright":
+                    this.ttGui.unlock("eq.rightrfl");
+                    this.ttGui.unlock("eq.transleftright");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttransright":
+                    this.ttGui.unlock("eq.rightrfl");
+                    this.ttGui.unlock("eq.transright");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttS1":
-                    for (let i = 0; i < 4; i++)
-                        this.ttGui.unlock("S1" + i);
+                    this.ttGui.unlock("S1");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttindS1":
-                    for (let i = 0; i <= 11; i++)
-                        this.ttGui.unlock("S1" + i);
+                    this.ttGui.unlock("S1.ind");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttrecS1":
-                    for (let i = 0; i <= 16; i++)
-                        this.ttGui.unlock("S1" + i);
+                    this.ttGui.unlock("S1.rec");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttaploop":
-                    for (let i = 0; i <= 19; i++)
-                        this.ttGui.unlock("S1" + i);
+                    this.ttGui.unlock("S1.ap_loop");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "tteqv":
-                    for (let i = 0; i < 3; i++)
-                        this.ttGui.unlock("eqv" + i);
+                    this.ttGui.unlock("eqv");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttua":
-                    for (let i = 0; i < 16; i++)
-                        this.ttGui.unlock("eqv" + i);
+                    this.ttGui.unlock("eqv.id2eqv");
+                    this.ttGui.unlock("eqv.refl");
+                    this.ttGui.unlock("ua");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttfnext":
-                    for (let i = 0; i <= 13; i++)
-                        this.ttGui.unlock("fnext" + i);
+                    this.ttGui.unlock("fnext");
+                    this.ttGui.unlock("eq.happly");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttLiftU":
-                    for (let i = 0; i <= 12; i++)
-                        this.ttGui.unlock("LiftU" + i);
+                    this.ttGui.unlock("LiftU");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttpseudoeqv":
-                    for (let i = 0; i <= 1; i++)
-                        this.ttGui.unlock("naiveqv" + i);
+                    this.ttGui.unlock("naiveqv");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttI":
-                    for (let i = 0; i <= 14; i++)
-                        this.ttGui.unlock("I" + i);
+                    this.ttGui.unlock("I");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttZ":
+                    this.ttGui.unlock("Z");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttW":
+                    this.ttGui.unlock("W");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttisProp":
+                    this.ttGui.unlock("Prop");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttisSet":
+                    this.ttGui.unlock("Set");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttisContr":
+                    this.ttGui.unlock("Contr");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttTrunc":
+                    this.ttGui.unlock("Trunc");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttnat2Z":
+                    this.ttGui.unlock("Z.nat2");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttnegZ":
+                    this.ttGui.unlock("Z.neg");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttsuccZ":
+                    this.ttGui.unlock("Z.succ");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttpredZ":
+                    this.ttGui.unlock("Z.pred");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "pred_succZ":
+                    this.ttGui.unlock("Z.predsucc");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "succ_predZ":
+                    this.ttGui.unlock("Z.succpred");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttaddZ":
+                    this.ttGui.unlock("Z.add");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttmulZ":
+                    this.ttGui.unlock("Z.mul");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttloop^":
+                    this.ttGui.unlock("S1.loop_pow");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttSus":
-                    for (let i = 0; i <= 25; i++)
-                        this.ttGui.unlock("Sus" + i);
+                    this.ttGui.unlock("Sus");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttS2":
+                    this.ttGui.unlock("S2");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttS3":
+                    this.ttGui.unlock("S3");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttindS2":
+                    this.ttGui.unlock("S2.ind");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttEven":
+                    this.ttGui.unlock("Even");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttList":
+                    this.ttGui.unlock("List");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttAleph":
+                    this.ttGui.unlock("Aleph");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttOption":
+                    this.ttGui.unlock("Option");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttrans2":
+                    this.ttGui.unlock("eq.trans2");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttapd2":
+                    this.ttGui.unlock("eq.apd2");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttpo":
+                    this.ttGui.unlock("Pushout");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttJoin":
+                    this.ttGui.unlock("Pushout.Join");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttWedge":
+                    this.ttGui.unlock("Pushout.Wedge");
+                    this.ttGui.updateAfterUnlock();
+                    return;
+                case "ttNW":
+                    this.ttGui.unlock("W.nat");
                     this.ttGui.updateAfterUnlock();
                     return;
                 case "ttlazy":
@@ -824,14 +963,18 @@ export class Game {
                 case "ttacticFnext":
                     this.ttGui.unlockedTactics.add("fnext");
                     return;
+                case "ttsup":
+                    this.ttGui.unlockedTactics.add("sup");
+                    return;
                 case "ttsimpl":
                     this.ttGui.unlockedTactics.add("simpl");
                     return;
                 case "ttdestruct":
                     this.ttGui.unlockedTactics.add("destruct");
                     return;
-                case "ttranseq":
-                // this.ttGui.unlockedTactics.add("ttranseq"); return;
+                case "ttacticeq":
+                    this.ttGui.unlockedTactics.add("eq");
+                    return;
                 case "ttelimeq":
                     Assist.disableDestructEq = false;
                     return;
@@ -856,6 +999,50 @@ export class Game {
                     this.ttGui.unlockedTactics.add("left");
                     this.ttGui.unlockedTactics.add("right");
                     return;
+                case "disableua":
+                    text = langMgr.dataEnInCanvas[tile.text] ?? tile.text;
+                    this.ttGui.disableAxiom("ua", "ua_id2eqv", "id2eqv_ua");
+                    return setTimeout(() => {
+                        tile.text = text;
+                        tile.type = TileBlockType.Reward;
+                    }, 1);
+                case "enableua":
+                    text = langMgr.dataEnInCanvas[tile.text] ?? tile.text;
+                    this.ttGui.enableAxiom("ua", "ua_id2eqv", "id2eqv_ua");
+                    return setTimeout(() => {
+                        tile.text = text;
+                        tile.type = TileBlockType.Reward;
+                    }, 1);
+                case "disablefnext":
+                    text = langMgr.dataEnInCanvas[tile.text] ?? tile.text;
+                    this.ttGui.disableAxiom("fnext", "fnext_happly", "happly_fnext");
+                    return setTimeout(() => {
+                        tile.text = text;
+                        tile.type = TileBlockType.Reward;
+                    }, 1);
+                case "enablefnext":
+                    text = langMgr.dataEnInCanvas[tile.text] ?? tile.text;
+                    this.ttGui.disableAxiom("fnext", "fnext_happly", "happly_fnext");
+                    this.ttGui.enableAxiom("fnext", "fnext_happly", "happly_fnext");
+                    return setTimeout(() => {
+                        tile.text = text;
+                        tile.type = TileBlockType.Reward;
+                    }, 1);
+                case "disableI":
+                    text = langMgr.dataEnInCanvas[tile.text] ?? tile.text;
+                    this.ttGui.disableAxiom("I", "0I", "1I", "ind_I", "rec_I", "segI", "apd_segI", "ap_segI");
+                    return setTimeout(() => {
+                        tile.text = text;
+                        tile.type = TileBlockType.Reward;
+                    }, 1);
+                case "enableI":
+                    text = langMgr.dataEnInCanvas[tile.text] ?? tile.text;
+                    this.ttGui.disableAxiom("fnext", "fnext_happly", "happly_fnext");
+                    this.ttGui.enableAxiom("I", "0I", "1I", "ind_I", "rec_I", "segI", "apd_segI", "ap_segI");
+                    return setTimeout(() => {
+                        tile.text = text;
+                        tile.type = TileBlockType.Reward;
+                    }, 1);
             }
             let reg;
             if ((reg = tile.name?.match(/^tt(.+)$/)) && reg[1]) {

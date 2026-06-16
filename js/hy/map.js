@@ -777,7 +777,7 @@ export const mapData = `
     :%*,4@不同于传统编程中的函数[n]函数输出值的类型[n]可以依赖于输入的自变量
     :%*,4,5@λx:U.λy:x.y类型为[n]Πx:U,Πy:x,x[n]因为λy:x.y[n]类型为Πy:x,x
 :%,5#Pa:U,Px:a,a[n]#t
-:%*,4$获取0.2mg推理素
+:%*,4$获取0.05mg推理素
 :%,0#Px:True,Py:False,True[n]#t
 :%,5#Pa:U,Pb:U,Px:a,Py:b,a[n]#t
 :%,0$[[ttsimplFn]]解锁简写非依赖函数[n]类型符号“→”（->）
@@ -826,7 +826,7 @@ export const mapData = `
 :%*,2@自然数“1”定义为[n]succ 0[n]“2”定义为[n]succ (succ 0)[n] ...
 :%,0$[[ttBool]]解锁布尔类型Bool
 :%,2#eq 0b 0b[n]#t
-:%,3$获取0.1mg推理素
+:%,3$获取0.02mg推理素
 
 // tt ind_xxx
 
@@ -848,13 +848,13 @@ export const mapData = `
     :%,0#nat X nat[n]#t
     :%*,3#not (True X False)[n]#t
     :%*,4@对积类型A X B[n]需要同时提供[n]a:A与b:B才能构造[n]因此积类型可[n]理解为命题“A且B”
-    :%*,3,1$获取1mg推理素
+    :%*,3,1$获取0.1mg推理素
     :%,5@若(a,b)中，b的类型依赖于[n]a的值，则是依赖值对类型。
     :%,0@即若B:A->U，a:A，b:B(a)，[n]则依赖值对记作[n]pair B a b : Sx:A,B(x)[n]若B是常函数则[n]退化为非依赖的积类型
     :%*,4@要构造类型Sx:nat,eq x 1[n]需要提供一个nat类型的值x[n]和eq x 1类型的值[n]明显我们可以选择1:nat[n]和refl 1 : eq 1 1[n]组成依赖有序对
     :%*,4,5@因此也可把该[n]依赖有序对类型[n]理解为命题“存在x:nat[n]使得eq x 1成立”
     :%,5#Sx:nat,eq x 1[n]#t
-    :%*,4#通过此门需消耗推理素1mg
+    :%*,4#通过此门需消耗推理素0.1mg
     :%*,4,1$[[ttacticEx]]解锁证明策略[n]“ex”与“case”
     :%*,4,5$[[tthyp]]解锁证明策略“hyp”（假设）[n]通过“hyp XXX”可以引入[n]新的证明子目标XXX[n]完成后将得到值:XXX[n]作为条件供后续证明使用[n]执行“hyp a:A”可将引入的目标[n]证明后得到的变量命名为a
     :%,0$[[ttSum]]解锁和类型“+”
@@ -862,7 +862,7 @@ export const mapData = `
     :%,5@提示：可以直接在定理列表中[n]写xxx : XXX[n]断言xxx有类型XXX[n]系统类型推断可自动[n]匹配并验证其正确性
     :%,0#True + False[n]#t
     :%,5#False + True[n]#t
-    :%,5#通过此门需消耗推理素1mg
+    :%,5#通过此门需消耗推理素0.1mg
     :%,0$[[ttacticLR]]解锁证明策略[n]“left”/“right”
     :ttSum,0#Px:Bool,(eq x 0b)+(eq x 1b)[n]#t
     :%*,3@欲证该命题，需对x:Bool[n]通过ind_Bool分类讨论[n]建议采用“destruct”/“rfl”[n]“left”/“right”等证明策略[n]辅助构造证据
@@ -871,30 +871,30 @@ export const mapData = `
             :ttindProd,5@依赖有序对类型只有唯一[n]的带两个参数的构造子pair[n]因此仅需证明由任意的两值[n]组成的有序对成立，[n]就可证对所有有序对成立
             :%,5#Pa:U,Pb:U,aXb -> a[n]#t
             :%*,2@提示：可通过ind_Prod定义函数[n]f : aXb -> a，[n]使得对任意x:a和y:b[n]有f (x,y) === x
-            :%,0$获取1.5mg推理素
+            :%,0$获取0.15mg推理素
             :%*,4#Pa:U,Pb:U,Pc:U,(a->b->c)->((aXb)->c)[n]#t
-            :%*,4,5$获取2.5mg推理素
+            :%*,4,5$获取0.2mg推理素
             :%*,4,5,2#Pa:U,Pb:U,Pc:U,((aXb)->c)->(a->b->c)[n]#t
-            :%*,4,5,2,5$获取2.5mg推理素
+            :%*,4,5,2,5$获取0.2mg推理素
             :%*,5#Pa:U,Pb:U,Px:aXb,eq x (pr0 x, pr1 x)[n]#t
             :%,3$[[ttpr]]解锁投影函数pr0/pr1[n]与依赖投影函数prd1
             :%*,4#Px:U,Pa:U,Pb:U,(x->aXb)->(x->a)X(x->b)[n]#t
-            :%*,4,5$获取2.5mg推理素
+            :%*,4,5$获取0.2mg推理素
             :%*,2#Pa:U,Pb:U,(aXb)->(bXa)[n]#t
-            :%*,2,1$获取1mg推理素
+            :%*,2,1$获取0.1mg推理素
             :%,3#eq (pr0 (1,2)) 1[n]#t
             :%,3#eq (pr1 (3,4)) 4[n]#t
-            :%,3$获取0.5mg推理素
+            :%,3$获取0.02mg推理素
         :ttindProd,0,4$[[ttindSum]]解锁ind_Sum
             :ttindSum,1@和类型A+B有两个[n]分别带一个参数的构造子[n]要证对所有A+B的值均成立[n]需分别证明任意a:A对(inl a)成立，[n]且任意b:B对(inr b)成立
             :%*,3#Pa:U,Pb:U,(a+b)->(b+a)[n]#t
-            :%*,3,1$获取1mg推理素
+            :%*,3,1$获取0.1mg推理素
             :%*,3,1,2#Pa:U,Pb:U,Pc:U,[n]((a+b)+c)->(a+(b+c))[n]#t
-            :%*,3,1,2,5$获取1mg推理素
+            :%*,3,1,2,5$获取0.1mg推理素
             :%,2#Pa:U,Pb:U,Pc:U,[n](a->c)->(b->c)->(a+b)->c[n]#t
-            :%,1$获取1mg推理素
+            :%,1$获取0.1mg推理素
             :%*,2@不会解可交钱绕行
-            :%*,2,1#通过此门需消耗推理素5mg
+            :%*,2,1#通过此门需消耗推理素0.5mg
             :%*,2,1,2@
             :%,1#Pa:U,Pb:U,(a+b)->[n](not((not a) X (not b)))[n]#t
             :%,4;1;1;1;1;1@
@@ -905,11 +905,11 @@ export const mapData = `
         :%,4@类型eq a b只有一个带参数[n]的构造子refl[n]且只能构造出类型eq a a[n]因此要证对任意m:eq a b成立[n]只需证明对refl a成立
             :%*,3#Pa:U,Px:a,Py:a,(eq x y)->(eq y x)[n]#t
             :%*,3,5$[[ttinveq]]解锁相等逆路径运算[n]inveq
-            :%*,2#通过此门需消耗推理素15mg
+            :%*,2#通过此门需消耗推理素2mg
             :%*,2,1$[[ttelimcond]]解锁证明助手中[n]用destruct策略时[n]自动抓取环境中的[n]依赖条件变量[n]避免一些“类型不匹配”错误
 
         :%,5@注意eq类型本身带参数[n]而不像nat\和\积类型[n]只是构造子带参数[n]因此ind_eq是在对[n]一簇类型使用“归纳法”
-            :%*,5,2#通过此门需消耗推理素15mg
+            :%*,5,2#通过此门需消耗推理素2mg
             :%*,5,2,5$[[ttapply2]]解锁证明助手中[n]apply策略支持多元函数[n]例如当前目标是c[n]有f:a->b->c[n]可用apply f[n]将当前目标c拆分成[n]两个子目标a与b
 
             :%*,3#Pa:U,Px:a,Py:a,Pz:a,(eq x y)->(eq y z)->(eq x z)[n]#t
@@ -926,25 +926,25 @@ export const mapData = `
     :%*,3,1,2,1,1#(Pa:U,(not(not a))->a)[n]->(Pa:U,a+(not a))[n]#t
     :%*,3,1,2,1,1,1#(Pa:U,a+(not a))->[n](Pa:U,(not(not a))->a)[n]#t
     :%*,3,1,2,1,1,1,1#[[ttpierce]](Pa:U,a+(not a))->[n](Pa:U,Pb:U,((a->b)->a)->a)[n]#t
-    :%*,3,1,2,1,1,1,1,1$获取12mg推理素
-    :%*,3,5$获取0.99mg推理素
+    :%*,3,1,2,1,1,1,1,1$获取2mg推理素
+    :%*,3,5$获取0.49mg推理素
     :%,4#[[lemlie]]not Pa:U,a+(not a)[n]#t
-    :%,5$获取0.2g推理素
+    :%,5$获取0.01g推理素
 :ttBool,4$[[ttindFalse]]解锁ind_False
 :%,3@类型False没有值[n]要证对任意x:False成立[n]其实都永远成立[n]引入ind_False作为[n]该事实的证据[n]即“从谬误能推出一切”
 :%*,1#Pa:U,False->a[n]#t
-:%*,1,5$获取1mg推理素
+:%*,1,5$获取0.1mg推理素
 :%,5#False->(eq 0b 1b)[n]#t
-:%,2$获取1mg推理素
+:%,2$获取0.1mg推理素
 :ttBool,3$[[ttindBool]]解锁ind_Bool[n]提示：后方可解锁[n]ind_nat与[n]策略destruct
 :%,3@类型Bool有值0b和1b[n]要证对任意x:Bool成立[n]只需对0b与1b均成立[n]引入ind_Bool作为[n]该事实的证据
 :%*,4@提示：需分别证明[n]1. (not (eq 0b 0b))[n]->(eq 0b 1b)；[n]2. (not (eq 1b 0b))[n]->(eq 1b 1b)。[n]还有困难可交钱给更多提示
-:%*,4,5#通过此门需消耗推理素0.5mg
+:%*,4,5#通过此门需消耗推理素0.1mg
 :%*,4,5,3@ind_Bool函数首先接受[n]一个关于x:Bool的命题[n]然后分别接受对0b与1b[n]成立的命题证据[n]最后返回该命题的证据
 :%*,4,5,4@看看值“ind_Bool [n](Lx:Bool.(not (eq x 0b))[n]->(eq x 1b))”的类型[n]它将提醒你还需要[n]提供哪些参数
 :%*,4,5,4,5@1.要证关于0b的命题[n]可通过假设“not (eq 0b 0b)”[n]得到一个False类型的值[n]然后用否定爆炸ind_False即可；[n]2.要证关于1b的命题则很简单
 :%,5#Px:Bool,[n](not (eq x 0b))[n]->(eq x 1b)[n]#t
-:%*,3$获取2mg推理素
+:%*,3$获取0.3mg推理素
 
 // nat 递归函数
 
@@ -966,48 +966,133 @@ export const mapData = `
 :%,5$[[ttdbl]]解锁翻倍函数[n]double : nat->nat
 :%,0$[[ttadd]]解锁加法函数[n]add : nat->nat->nat
 :%,0#[[tt1+1]]eq (add 1 1) 2[n]#t
+:%*,4#[[:=what]]请定义一个常量what[n]使得下面的定义相等成立[n]what 0b === what 1b True[n]#t:=
+:%*,4,1$获取0.15mg推理素
+:%*,4,5@门 #t:= 开启方法：[n]在定理列表中定义[n]满足规定性质的常量后[n]才能通过此门[n]如旁边的门需定义[n]what := xxxxxx 
 :%,5#Px:nat,eq (double (succ x))[n](succ (succ (double x)))[n]#t
 :%,5#Px:nat,eq (add x 0) x[n]#t
 :%*,0@来都来了，[n]这点小钱都出不起吗？[n]赶紧交钱，[n]不然你自己想办法过去
-:%*,0,2#通过此门需消耗推理素4.444mg
+:%*,0,2#通过此门需消耗推理素2.222mg
 :%,5#[[0+x]]Px:nat,eq (add 0 x) x[n]#t
 :%*,4#Sf:nat->nat,[n](eq (f 0) 0) X[n](Pn:nat,eq (f(succ n)) n)[n]#t
 :%*,4,1$[[ttpred]]解锁“前继”函数[n]pred : nat->nat
+:%*,4,4$[[ttEven]]解锁递归定义的谓词“是偶数”[n]Even: nat->U
+:%*,4,3#[[:=ftr]]请定义函数ftr:nat->U[n]使得ftr 0 === True[n]ftr n === True->...->True[n]其中的True有n+1个[n]#t:=
+:%*,4,3,4$[[ftrdetour]]获取0.2mg推理素
+:%*,4,3,1#[[:=ftreq]]请定义函数ftreq:Px:nat,(ftr x)->U[n]使得ftreq 0 === Lx:ftr 0,eq x true[n]ftreq 1 === Lx:ftr 1,Pa:True,eq (x a) true[n]ftreq 2 === Lx:ftr 2,Pa:True,Pa':True,eq (x a a') true[n]....[n]#t:=
+:%*,4,3,1,2$获取0.4mg推理素
+:%*,4,3,1,5#Px:nat,Py:ftr x,ftreq x y[n]#t
+:%*,4,3,1,5,2$获取0.8mg推理素
 :%,5$[[ttrw]]解锁相等替换改写策略[n]rw(rewrite)[n]与rwb(rewrite back)
 :%*,0@若m: eq a b，则[n]执行策略“rw m”[n]将通过ind_eq把证明目标[n]中的所有a改写成b
 :%*,4@若没解锁ind_eq[n]系统会认为ind_eq未定义[n]无法使用该策略完成证明[n]提示：在ind_True的后方[n]可解锁ind_eq
 :%,2@若m: eq a b，则[n]执行策略“rwb m”[n]将通过ind_eq把证明目标[n]中的所有b改写成a
+:%,3;1;2;1;1;1;2;1;2;1;1;1;1;1;2;1;1;1;1;1;1;1;2;1;1;1;1;1;1;1;2;1;1;1;1;1@...............................................
+:%,1#[[ttpAleph]]未解锁的闸门无法通过[n]请寻找线索解开闸门[n]#Aleph
+
+:ftrdetour,5;5;0;5;0;4;5;5;0;5;0;5;0;5;0;5;0;5;0;5;0;5;0;5;0;5;0;5;0;5;0;5;0;5;0@...............................................
+:%,0#[[W]]未解锁的闸门无法通过[n]请寻找线索解开闸门[n]#W
+
+:ttEven,3#Even 0[n]#t
+:%,5#Even 4[n]#t
+:%,5#Px:nat, Even (double x)[n]#t
+:%,0#not (Even 1)[n]#t
+:%,5#not (Even 11)[n]#t
+:%,0#not (Even 111)[n]#t
+:%,5#Px:nat, Even x ->[n] Even (pred (pred x))[n]#t
+:%,0$[[ttAleph]]解锁小于ω的基数Aleph(א)
+
+:ttEven,3,1#Px:nat,Even x->[n]Sy:nat,eq (double y) x[n]#t
+:%,2#Px:nat,Py:nat,Even x->Even y->[n]Even (add x y)[n]#t
+:%,1#Px:nat,Even x->[n]not (Even (succ x))[n]#t
+:%,1#Px:nat,not (Even x)->[n]Even (succ x)[n]#t
+:%,1#Px:nat,Even (succ (succ x))[n]-> Even x[n]#t
+:%,1#Px:nat,Py:nat,[n]not (Even x)->not (Even y)->[n]Even (add x y)[n]#t
+:%,1$[[ttW]]解锁W类型
+
+:ttEven,2#Px:nat,Even x ~=[n]Sy:nat,eq (double y) x[n]#t
+:%,1$获取5mg推理素
+:ttEven,4#Px:Even 0, eq x even0[n]#t
+:%,5$获取5mg推理素
+
+// W-type
+
+:ttSum,0,5,0#Pa:U,not (Wx:False,a)[n]#t
+:%*,5#Pa:U,a->Wx:a,False
+:%*,5,0$[[ttsup]]解锁证明策略sup[n]遇到目标是W类型时[n]将帮你填上构造子sup
+:%*,3#Wx:True,True[n]#t
+:%,2@提示：解锁W类型的地方[n]在解锁Even类型的后方
+:%,5#通过此门需消耗推理素0.5mg
+:%,5;0;5;0@...
+:%*,5#Wx:Bool,ind_Bool (Lx:Bool,U) False True x[n]#t
+:%*,5,5$[[ttNW]]解锁该类型的简写NW
+:%*,5,5,0@NW类型有两个构造子[n]0b对应的构造子没参数[n]因为ind_Bool xxxx 0b = False[n]1b对应的构造子有一个递归参数[n]因为ind_Bool xxxx 1b = True
+:%*,5,0#Sx:NW,Sy:NW,not (x=y)[n]#t
+:%*,5,0,4$获取0.5mg推理素
+:%*,2#(Wx:True,True) ~= False[n]#t
+:%*,2,3$获取0.2mg推理素
+:%*,2,5@这个类型等价于[n]不能终止的递归类型T[n]T : U[n]ct : T->T[n]因此不能被构造
+:%*,4#(Wx:True,False) ~= True[n]#t
+:%*,4,3$获取0.2mg推理素
+:%*,4,1@类型Wx:a,b x解读：[n]这是一个递归类型[n]x:a代表它的构造子[n]y:b x则表示构造子x的参数
+:%*,4,1,5#Sa:U,Sb:a->U,[n](Wx:a,b x) ~= Option nat[n]#t
+:%*,4,1,5,2$获取0.2mg推理素
+:%*,4,5@类型Wx:True,False[n]只有一个true对应的构造子[n]找不到y:False[n]说明它不带参数[n]这就是单点类型True
+:%,3#NW ~= nat[n]#t
+:%*,4$获取2mg推理素
+:%*,2$获取2mg推理素
+:%,3#Pa:U,List a ~= [n]Wx:True+a,ind_Sum (Lx:True+a,U)[n](Lx:True,False) (Lx:a,True) x[n]#t
+:%*,4$获取4mg推理素
+:%*,2$获取4mg推理素
 
 :ttindTrue,2#[[x+x]]Px:nat,(eq x 1)->(eq (add x x) 2)[n]#t
 :%*,3$[[ttsimplEq]]解锁将eq x y简写为x = y
 :%,2#Pf:nat->nat->nat,[n](f = add)->((f 1 1) = 2)[n]#t
-:%,2#Pa:nat,Pb:nat,[n](a = b)->[n]((succ a) = (succ b))[n]#t
+:%,2#Pa:nat,Pb:nat,[n](a = b)->[n]succ a = succ b[n]#t
 :%,2$[[ttap]]解锁函数作用[n]传递相等的证据ap[n]即x=y能推出f(x)=f(y)
 :%*,1@证succ m=succ n -> m=n 的提示：[n]直接用ind_nat归纳法[n]无法化简证明目标[n]需引入pred函数
-:%*,1,4#Pa:nat,a = (pred (succ a))[n]#t
-:%*,1,4,4#Pa:nat,Pb:nat,[n]((succ a) = (succ b))[n]->((pred (succ a)) = (pred (succ b)))[n]#t
-:%*,1,4,4,1@怎么证明not(0=1)?[n]用ind_nat定义一个函数[n]f:U，f(0)=True，f(1)=False[n]然后就好办了
-:%,2#Pa:nat,Pb:nat,[n]((succ a) = (succ b))[n]->(a = b)[n]#t
-:%*,5$获取3mg推理素
+    :%*,1,4#Pa:nat,a = (pred (succ a))[n]#t
+    :%*,1,4,4#Pa:nat,Pb:nat,[n]((succ a) = (succ b))[n]->((pred (succ a)) = (pred (succ b)))[n]#t
+    :%*,1,4,4,4#Px:Z,predZ(succZ x)=x[n]#t
+    :%*,1,4,4,4,4$[[pred_succZ]]解锁证据pred_succZ[n]解锁证明策略eq后[n]可自动化简相应表达式
+    :%*,1,4,4,3#Px:Z,succZ(predZ x)=x[n]#t
+    :%*,1,4,4,3,5#[[nrflZ]]Sp:Z=Z,not (p = refl Z)[n]#t
+    :%*,1,4,4,3,1$[[succ_predZ]]解锁证据succ_predZ[n]解锁证明策略eq后[n]可自动化简相应表达式
+:%*,1,4,4,1@怎么证明not(0=1)?[n]用ind_nat定义一个函数[n]f(x):U，f(0)=True，f(1)=False[n]然后就好办了
+:%,2#Pa:nat,Pb:nat,[n](succ a = succ b)[n]-> a = b[n]#t
+:%*,5#通过此门需消耗推理素0.58mg
+:%*,5,3@提示：如果你卡在了证明[n]关于base和loop的命题上[n]不要着急
+:%*,5,3,1@ind_eq是对一簇类型做归纳[n]如果一来就固定了两端[n]反而会陷入绝境
+:%*,5,3,1,2@这些其实都是[n]相等路径的通用性质[n]可以先对任意类型[n]完成证明后[n]代入base与loop即可
+:%*,5,3,1,2,1@还有个问题就是[n]策略destruct不好用了[n]它无法自动知道[n]怎样从具体问题出发[n]构造通用问题
+:%*,5,3,1,2,1,1@因此我们后面专门引入[n]新的策略eq自动匹配[n]使用解锁的通用证据[n]来化简很多东西
+:%*,5,3,1,2,1,1,1$[[ttacticeq]]解锁证明策略eq[n]（斜对面就有一些通用证据）
 :%,2#not (0 = 1)[n]#t
 :%*,2$[[ttS1]]解锁圆周类型[n]S1[n](高阶同伦归纳类型)
 :%,5#[[1neq2]]not (1 = 2)[n]#t
 :%*,5$[[ttap2]]解锁相等类型证据[n]trans(传输)与[n]apd(依赖路径作用)
 :%*,5,5#Pa:U,Pb:U,Px:a,Py:a,[n]Pk:b,Pm:x=y,[n](trans (Lx:a.b) m k) = k[n]#t
-:%*,5,5,0$[[ttransC]]解锁刚才命题的证据transconst[n](常函数的传输是恒同函数)
-:%*,5,5,0,5#Pa:U,Pb:U,Px:a,Py:a,[n]Pf:a->b,Pp:x=y,[n](apd (Lx:a.b) f p)=[n]((transconst p (f x))*(ap f p))[n]#t
-:%*,5,5,0,5,0#Pa:U,Pb:U,Px:a,Py:a,[n]Pf:a->b,Pp:x=y,[n]((inveq (transconst p (f x)))[n]*(apd (Lx:a.b) f p))=[n](ap f p)[n]#t
+:%*,5,5,0$[[ttransC]]解锁刚才命题的证据transconst[n](常函数的传输是恒同函数[n]支持使用eq策略匹配化简)
+:%*,5,5,0,5#Pa:U,Pb:U,Px:a,Py:a,[n]Pf:a->b,Pp:x=y,[n](apd f p)=[n]((transconst p (f x))*(ap f p))[n]#t
+:%*,5,5,0,5,0#Pa:U,Pb:U,Px:a,Py:a,[n]Pf:a->b,Pp:x=y,[n]((inveq (transconst p (f x)))[n]*(apd f p))=[n](ap f p)[n]#t
 :%*,5,5,0,5,0,5$[[ttindS1]]解锁ind_S1
 :%*,5,2@1.ap是x=y推出[n]f(x)=f(y)的证据[n]2.trans是若x=y，则命题对x成立[n]就能推出对y成立的证据[n]3.apd是ap的依赖类型函数版本[n]由于x与y可以不定义相等[n]故若f(x)与f(y)类型不同[n]无法直接用eq比较相等[n]需要通过trans函数转换到[n]同一类型后才能用eq比较
-:%*,2$获取5.2mg推理素
+:%*,2$获取2.2mg推理素
 :%,0#Pm:base=base,Pn:base=base,[n]((loop*m)=(loop*n))->(m=n)[n]#t
-:%*,3#[[ttmno]]Pa:U,Px:a,Py:a,Pz:a,Pw:a,[n]Pm:x=y,Pn:y=z,Po:z=w,[n]((m*n)*o)=(m*(n*o))[n]#t
+:%*,2#Px:S1,x=base[n]#t
+:%*,3#[[ttmno]]Pm:base=base,[n]Pn:base=base,[n]Po:base=base,[n](m*n)*o = m*(n*o)[n]#t
+:%*,3,3@提示：路径的结合律[n]是个普遍规律
+:%*,3,2#Pm:base=base,[n]Pn:base=base,[n]m*n = n*m[n]#t
+:%*,3,2,4$获取6.6mg推理素
+:%*,3,2,5@但路径的交换律[n]是S1的特殊性质[n]对其它类型可以不成立[n]证明它有点难度
 :%*,3,1#not (loop*loop = loop)[n]#t
-:%*,3,1,2#[[loop2]]not (loop*loop = (refl base))[n]#t
-:%*,3,1,2,1#Px:I,x=0I[n]#t
+:%*,3,1,2@[[loop2-lin]]
+:%*,3,1,3#not (loop*loop = (refl base))[n]#t
+:%*,3,1,2,1#1I=0I[n]#t
 :%,0,4#[[S1S1]](refl base) = [n](loop * (inveq loop))[n]#t
 :%*,4#inveq(inveq loop) = loop[n]#t
-:%*,4,5$获取1mg推理素
+:%*,4,5$[[tteqprop1]]解锁证据 rightrfl / [n]leftinveq / rightinveq / invinveq 
+
 :%,3$[[tteqv]]解锁“等价”关系[n]eqv: U->U->U[n]与简写：x ~= y[n](~=显示为≃)
 :%,1@如果两个类型a与b之间[n]存在可逆的[n]一到一的双射f:a->b[n]则它们等价，记作[n]eqv A B
 :%,1@“f是双射”即为[n]存在函数g与h[n]使得f(g x) = x[n]且h(f x) = x
@@ -1022,20 +1107,20 @@ export const mapData = `
     :%,1#(not Bool) ~= False[n]#t
     :%,1#((not Bool) + Bool) ~= Bool[n]#t
     :%,1#Pa:U,Pb:U,Px:a,Py:b,[n]not (inl x = inr y)[n]#t
-    :%,1$获取9.99mg推理素
+    :%,1$获取0.999mg推理素
     :%*,0#Px:Bool=Bool,[n]pair (Lx:U.Bool=x) Bool x[n] = [n]pair (Lx:U.Bool=x) Bool rfl[n]#t
-    :%*,1#通过此门需消耗推理素29.9mg
+    :%*,1#通过此门需消耗推理素2.99mg
     :%*,1,1$[[ttfnext]]解锁函数外延公理[n]fnext
     :%*,1,1,1#Pa:U,Pb:U,[n]Px1:a,Px2:a,Py1:b,Py2:b,[n](x1,y1)=(x2,y2) ~= [n]((x1=x2)X(y1=y2))[n]#t
     :%,2@
     :%,1#Pa:U,Pb:U,Px:a,Py:b,[n]False ~= ((inl x) = (inr y))[n]#t
-    :%*,3$获取3mg推理素
+    :%*,3$获取0.3mg推理素
     :%,1@
     :%,1#(True->True) ~= True[n]#t
-    :%*,3$获取3mg推理素
+    :%*,3$获取0.3mg推理素
     :%,1@
     :%,1#(False->True) ~= True[n]#t
-    :%*,3$获取3mg推理素
+    :%*,3$获取0.3mg推理素
     :%,1@
     :ttfnext,2#(not(not Bool)) ~= True[n]#t
     :%,1$[[ttacticFnext]]解锁证明策略fnext[n]遇到函数相等目标[n]自动使用fnext公理
@@ -1058,85 +1143,480 @@ export const mapData = `
     :%*,2#trans (Lx:S1.base=x)[n] loop rfl = loop[n]#t
     :%,1#pair (Lx:S1.base=x) base (refl base)[n] = [n]pair (Lx:S1.base=x) base loop[n]#t
     :%*,4@还是没思路？[n]其实在刚解锁trans的不远处[n]就有命题能让你[n]构造旁边这个类型的值了
-    :%*,2$获取9.99mg推理素
+    :%*,2$获取0.999mg推理素
+
+:pred_succZ,0,3#通过此门需消耗推理素0.5mg
+:pred_succZ,0,2#Sf:Z->Z->Z,Px:Z.Py:Z,[n](f x (succZ y) = succZ (f x y))X[n](f (succZ x) y = succZ (f x y))[n]#t
+:%,5$[[ttaddZ]]解锁整数加法函数addZ
+:%,2#Sx:nat, neg x = [n]addZ (neg 2) (pos 0)[n]#t
+:%,1#Px:Z,addZ x 0Z = x[n]#t
+:%,1#Px:Z,addZ 0Z x = x[n]#t
+:%,1#Px:Z,Py:Z,addZ x (succZ y)[n] = succZ (addZ x y)[n]#t
+:%,1#Px:Z,Py:Z,addZ (succZ x) y[n] = succZ (addZ x y)[n]#t
+:%,1#Px:Z,addZ x (negZ x) = 0Z[n]#t
+:%*,3$获取0.1mg推理素
+:%,1#Px:Z,addZ (negZ x) x = 0Z[n]#t
+:%*,5$[[ttabsZ]]解锁整数绝对值函数[n]absZ : Z -> Z
+:%,1#Px:Z,Py:Z,addZ x y = addZ y x[n]#t
+:%*,3#Px:Z,leZ x (absZ x)[n]#t
+:%*,3,5#Px:Z,leZ 0Z (mulZ x x)[n]#t
+:%*,3,5,5#Px:Z,leZ (neg 0)[n](mulZ (predZ (predZ x)) x)[n]#t
+:%*,3,5,5,2$获取0.5mg推理素
+:%*,3,3$获取0.1mg推理素
+:%*,4$[[ttleZ]]解锁整数小于等于关系[n]leZ : Z -> Z -> U
+:%,2#Px:Z,Py:Z,Pz:Z,[n]addZ (addZ x y) z = [n]addZ x (addZ y z)[n]#t
+:%*,3$获取0.1mg推理素
+:%,5#Px:Z,Py:Z,Pz:Z,[n]addZ x z = addZ y z[n]-> x = y[n]#t
+:%*,3$获取0.1mg推理素
+
+:succ_predZ,0,4#Px:Z,Py:Z,[n]addZ (negZ x) (predZ y)[n] = predZ (addZ (negZ x) y)[n]#t
+:%*,4#通过此门需消耗推理素1mg
+:%,5#Sf:Z->Z->Z,Px:Z.Py:Z,[n](f x (succZ y) = addZ (f x y) x)X[n](f (succZ x) y = addZ (f x y) y)[n]#t
+:%,2$[[ttmulZ]]解锁整数乘法函数mulZ
+:%,5#Sx:nat,neg x = [n]mulZ (pos 8) (neg 11)[n]#t
+:%*,3$获取0.05mg推理素
+:%,0#Px:Z,mulZ x 0Z = 0Z[n]#t
+:%*,3$获取0.1mg推理素
+:%,5#Px:Z,mulZ 0Z x = 0Z[n]#t
+:%*,3$获取0.1mg推理素
+:%,0#Px:Z,mulZ 1 x = x[n]#t
+:%*,3$获取0.1mg推理素
+:%,5#Px:Z,mulZ (neg 0) x = negZ x[n]#t
+:%*,3$获取0.1mg推理素
+:%,0#Px:Z,Py:Z,mulZ (negZ x) y = negZ (mulZ x y)[n]#t
+:%*,3$获取0.1mg推理素
+
+:nrflZ,3#Sf:Z->base=base,Px:Z,[n](f (succZ x)=loop*(f x))X[n](f (predZ x)=(inveq loop)*(f x))[n]#t
+:nrflZ,4#通过此门需消耗推理素1mg
+:%,1$[[ttloop^]]解锁函数loop_pow : [n]Z -> (base=base)
+:%*,2#Px:Z,Py:Z,[n](loop_pow x)*(loop_pow y)[n] = loop_pow (addZ x y)[n]#t
+:%*,2,3$获取0.3mg推理素
+:%*,3#Px:Z,loop_pow (negZ x)[n] = inveq (loop_pow x)[n]#t
+:%*,3,3$获取0.8mg推理素
+:%*,4#Px:Z,Py:Z,[n](loop_pow x)*(loop_pow y)[n] = (loop_pow y)*(loop_pow x)[n]#t
+:%*,4,3$获取0.8mg推理素
+:%*,5#loop_pow 0Z = refl base[n]#t
+:%*,5,4$获取0.05mg推理素
+
+:loop2-lin,5#通过此门需消耗推理素1mg
+:%,5;0;5;0;5;0;5@......
+:%,0#Sf:S1->U,Sp:f base = Z,[n]trans (Lx:U.x->x) p[n] (trans f loop) = succZ[n]#t
+:%,2,5@为什么要这么多trans?[n]本来想这样写这个谜题[n]Sf:S1->U,(f base=Z) X (trans f loop = succZ)[n]但trans f loop : f base->f base[n]它的类型跟Z->Z不定义相等[n]故需用trans改变类型后再比较
+:%,0@提示：不要被这么多trans吓跑了[n]只要你的f base === Z[n]你就能把rfl填入p[n]后面的式子就化简了：[n]trans f loop = succZ
+:%,5@最后再提示：[n]用ind_S1把base映射到Z[n]把loop映射到ua(succZ)
+:%,0#通过此门需消耗推理素1mg
+:%,5@
+:%,0$[[ttcode_S1]]解锁code_S1 : S1->U
+:ttcode_S1,1,0#Px:S1,base = x -> code_S1 x[n]#t
+:%*,3$获取0.1mg推理素
+:%,5#Px:S1,code_S1 x -> base = x[n]#t
+:%*,3$获取0.1mg推理素
+:%*,0#[[pi1S1]](base=base) ~= Z[n]#t
+:%*,0,5$获取6.6mg推理素
+:%*,0,3#[[pi2S1]]Px:refl base=refl base,[n]x = refl (refl base)[n]#t
+:%*,0,3,5$获取2.2mg推理素
+:%,5#Px:S1,(base = x) ~= code_S1 x[n]#t
+:%*,3$获取1mg推理素
+
 
 :ttfnext,4#Pa:U,Pb:U,Pf:a->b,[n]fnext (Lx:a.refl (f x))[n] = refl f[n]#t
-:%*,1$获取2.3mg推理素
-:%,5#Pa:U,Pb:U,[n]Pf:a->b,Pg:a->b,Pm:f=g,[n]fnext (λx:a.inveq (happly m x))[n] = inveq m[n]#t
-:%,5#Pa:U,Pb:U,[n]Pf:a->b,Pg:a->b,Ph:a->b,[n]Pm:f=g,Pn:g=h,[n]fnext (λx:a.(happly m x)*(happly n x))[n] = m*n[n]#t
-:%,5$获取4.2mg推理素
-:loop2,2@
-:%,1;1;1;1@......
+:%*,1$获取0.23mg推理素
+:%,5#Pa:U,Pb:U,[n]Pf:a->b,Pg:a->b,Pm:f=g,[n]fnext (Lx:a.inveq (happly m x))[n] = inveq m[n]#t
+:%,5#Pa:U,Pb:U,[n]Pf:a->b,Pg:a->b,Ph:a->b,[n]Pm:f=g,Pn:g=h,[n]fnext (Lx:a.(happly m x)*(happly n x))[n] = m*n[n]#t
+:%,5$获取0.32mg推理素
+// :loop2,0,2@
+:loop2-lin,2@
+:%,1;1;1@......
+:%,1@区间类型有[n]两个端点0I和1I[n]以及连接它们的[n]一条路径segI
 :%,1$[[ttI]]解锁区间类型I
+:%,3#not (S2 ~= I)[n]#t
+:%*,5$获取2mg推理素
+:%,4$获取2mg推理素
 :ttI,1#Pa:U,Px:a,[n]Pm:refl x=refl x,[n]Pn:refl x=refl x,[n]m*n = n*m[n]#t
-:%*,5$获取20mg推理素
+:%*,5$[[ttS2]]解锁球面类型S2
+:%*,5,2#S2 ~= Sus S1[n]#t
+:%*,5,2,4$[[ttpo]]解锁Pushout类型
+:%*,5,2,3$获取1mg推理素
+:%*,5,0#not (S2 ~= S1)[n]#t
+:%*,5,0,3$获取1mg推理素
 :%*,2@
+:%*,4,1#通过此门需消耗推理素5mg
 :%*,3,1@
-:%,3@这个命题在说：[n]二维道路的连接有交换律[n]对应拓扑学中[n]高阶同伦群[n]都是交换群
-:%,5;0@...
+:%,3@证明思路：[n]先设三个点：x、y、z[n]四条路径p,q:x=y、r,s:y=z[n]两条二维路径m:p=q、n:r=s[n]证明p*q=r*s后，再[n]令x=y=z、p=q=r=s=rfl
+:%*,4#Pa:U,Px:a,Py:a,Pz:a,[n]Pp:x=y,Pq:x=y,Pr:y=z,Ps:y=z,[n]Pm:p=q, Pn:r=s,[n]p*r = q*s[n]#t
+    :%*,4,2@先证p*r=p*s，[n]但不要用rw/destruct n[n]把命题变成p*r=p*r[n]这样n被解构了
+    :%*,4,2,4@再证p*s=q*s，[n]同理不要用rw/destruct m[n]把命题变成p*s=p*s[n]这样m被解构了
+    :%*,4,2,4,4@把这两个证据路径连接[n]就得到了p*q=r*s[n]我们把这个生成p*q=r*s[n]的函数记作fR
+    :%*,4,2,4,4,2@通过解构m和n容易证明[n]fR跟另外某个地方[n]定义的fL是相等的
+    :%*,4,2,4,4,4@令x=y=z，令4条路径=rfl，即[n]fR a x x x rfl rfl rfl rfl m n[n]化简后的值就是n*m
+    :%*,4,2,4,2@解构s得到[n]p*rfl = q*rfl[n]然后用证据rightrfl分别得到[n]p*rfl=p 与 q*rfl=q[n]这其实对p和q解构了[n]但没关系不会卡住
+    :%*,4,2,4,2,2@即现在有[n]rightrfl p : p*rfl=p[n]rightrfl q : q*rfl=q[n]m : p=q[n]通过路径组合就能[n]得到p*rfl = q*rfl
+    :%*,4,2,2@我们可以解构p[n]变成证明rfl*r=rfl*s[n]但是p在收缩成rfl时[n]会牵着r和s的端点走动[n]你需要一起带着它们解构[n]即在ind_eq的目标类型中引入条件
+    :%*,4,2,2,2@证明rfl*r=rfl*s就简单了[n]它跟r=s定义相等[n]可直接填入证据n:r=s[n]我们避免了解构n
+
+    :%*,4,4@先证p*r=q*r，[n]但不要用rw/destruct m[n]把命题变成p*r=p*r[n]这样m被解构了
+    :%*,4,4,2@再证q*r=q*s，[n]同理不要用rw/destruct n[n]把命题变成q*r=q*r[n]这样n被解构了
+    :%*,4,4,2,2@把这两个证据路径连接[n]就得到了p*q=r*s[n]我们把这个生成p*q=r*s[n]的函数记作fL
+    :%*,4,4,2,2,4@通过解构m和n容易证明[n]fL跟另外某个地方[n]定义的fR是相等的
+    :%*,4,4,2,2,2@令x=y=z，令4条路径=rfl，即[n]fL a x x x rfl rfl rfl rfl m n[n]化简后的值就是m*n
+    :%*,4,4,4@解构r得到[n]p*rfl = q*rfl[n]然后用证据rightrfl分别得到[n]p*rfl=p 与 q*rfl=q[n]这其实对p和q解构了[n]但没关系不会卡住
+    :%*,4,4,4,4@即现在有[n]rightrfl p : p*rfl=p[n]rightrfl q : q*rfl=q[n]m : p=q[n]通过路径组合就能[n]得到p*rfl = q*rfl
+    :%*,4,4,2,4@我们可以解构q[n]变成证明rfl*r=rfl*s[n]但是q在收缩成rfl时[n]会牵着r和s的端点走动[n]你需要一起带着它们解构[n]即在ind_eq的目标类型中引入条件
+    :%*,4,4,2,4,4@证明rfl*r=rfl*s就简单了[n]它跟r=s定义相等[n]可直接填入证据n:r=s[n]我们避免了解构n
+:%,5@但m、n的两端都是rfl[n]无法解构m、n就卡住了[n]所以构造p*r = q*s的证据时[n]别用如rightrfl m这种[n]解构m、n才能得到的证据
+:%,0@这个命题在说：[n]二维道路的连接有交换律[n]对应拓扑学中[n]高阶同伦群[n]都是交换群
+
+:ttS2,3#Pa:U,Px:a,Py:a,Pm:x=y,Pn:x=y,[n]Pb:a->U, (m=n)->Pu:b x,[n]trans b m u = trans b n u[n]#t
+:%,1$[[ttrans2]]解锁二维路径传输[n]trans2
+:ttS2,5#Pa:U,Px:a,Py:a,Pm:x=y,Pn:x=y,[n]Pb:a->U,Pf:Px:a,b x,Pr:m=n,[n](apd f m)=(trans2 b r (f x))*(apd f n)[n]#t
+:%,0$[[ttapd2]]解锁依赖函数[n]作用于二维路径[n]apd2
+:ttS2,4#Pf:S2->U,Pu:f base2,[n]trans2 f surf u = rfl[n]#t
+:%,3$[[ttindS2]]解锁ind_S2
+
+:ttpo,5#Pa:U, Sus a ~= [n]Pushout a (Lx:a,true) (Lx:a,true)[n]#t
+:%,5$[[ttJoin]]解锁拓扑连接运算Join
+:%,0#Pa:U,Pb:U,[n]Join a b ~= Join b a[n]#t
+:%,5$[[ttWedge]]解锁拓扑单点并运算Wedge
+:%,0#Sus (Wedge base base)[n] ~= [n]Wedge base2 base2[n]#t
+:%,4$获取3mg推理素
+:ttrans2,5#Join S1 S1 ~= Sus S2[n]#t
+:%*,2@提示：S1 = Join Bool Bool[n]Sus S1 = Join ?? S1
+:%*,0@提示：Join有结合律
+:%,3$[[ttS3]]解锁超球面S3
+:ttI,4#Sr:refl base2 = refl base2,[n]not (r = rfl)[n]#t
+:%*,2$获取4mg推理素
+:%,5#Sr:refl (refl base2) = refl (refl base2),[n]not (r = rfl)[n]#t
+:%*,4$获取4g推理素
+:%,5$获取4g推理素
+:%,0#Sf:S3->S2,[n]not (f = Lx:S3,base2)[n]#t
+:%*,2$获取4g推理素
+
 :ttindS1,4@ind_S1的意思是，[n]要构造从圆周S1[n]到其它类型的映射[n]除了要给定base映射的值[n]还要给出把路径loop[n]映射到哪里
-:%*,4#Px:S1,x=base[n]#t
-:%*,4,1$[[ttranseq]]解锁证明策略transeq[n]自动化简等式传输
-:%,0,3@依赖类型的相等[n]apd需要用到trans[n]所以看起来规则很复杂[n]要是有非依赖版的ind_S1[n](即rec_S1)就好了[n]直接ap，不会有[n]讨厌的apd和trans
-:ttmno,4#(rec_S1 U Bool (refl Bool)[n] base) = Bool[n]#t
-    :%*,5#通过此门需消耗推理素29.9mg
-    :%,4#Pcl:Bool=Bool,[n](ap (rec_S1 U Bool cl)[n] loop) = cl[n]#t
+:%*,0,3@依赖类型的相等[n]apd需要用到trans[n]所以看起来规则很复杂[n]要是有非依赖版的ind_S1[n](即rec_S1)就好了[n]直接ap，不会有[n]讨厌的apd和trans
+:%*,3#Pa:U,[[a]]->not (not a)[n]#t
+:%*,3,4$[[LEM]]解锁纯命题的[n]排中律公理LEM
+:%*,3,1@“[[”、“]]”可以把[n]多余的loop的结构截掉[n]这样我们终于能够表达[n]关于S1的值只有base的事实了[n]但，哪里能解锁它呢？
+:%,4#[[nxeqbase]]not (Px:S1,x=base)[n]#t
+:%*,2$获取0.15mg推理素
+:%,1@旁边的等式看起来成立[n]但构造这个函数会让[n]圆圈loop等于rfl[n]因此该等式不成立[n]除非加上这个东西：[n]“[[”、“]]”
+:%*,5#Px:S1,[[x=base]][n]#t
+:%*,5,5@命题截断后，[n]我们只知道它成立[n]但丢失了其它所都信息[n]即无法重新构造出[n]截断前的类型的值[n]除非[[a]] = a
+:%*,5,4$获取0.15mg推理素
+:%*,4#Pa:U,Px:[[a]],trunc x x = refl x[n]#t
+:%*,4,3$获取0.2mg推理素
+:%*,4,5#Pa:U,isSet a[n] ->[[a]]->a[n]#t
+:%*,4,5,5$获取999kg推理素
+:%*,3#Pa:U,Pb:U,Pf:a->[[b]],[n]Sg:[[a]]->[[b]],[n]Px:a, g[x] = f x[n]#t
+:%*,3,2$获取0.15mg推理素
+:%*,3,5#Pa:U,[[a]]->a[n]#t
+:%*,3,5,2$获取999kg推理素
+:%,2#Pa:U,[[a]]~=(not (not a))[n]#t
+:%*,2$获取0.3mg推理素
+:%*,5#Pa:U,Pb:a->U,[n]isSet a->(Px:a,isProp (b x))->[n](Px:a,not (not(b x)))~=(not (not Px:a,b x))[n]#t
+:%*,5,2$获取3mg推理素
+:nxeqbase,5#Pa:U,Pf:I->a,[n]f(0I)=f(1I)[n]#t
+:%*,2$获取0.15mg推理素
+:%,5$[[ttranseq]]解锁用于化简传输非依赖[n]相等类型的证据[n]transeq
+:%,0#I~=Sus I[n]#t
+:%*,2$获取1.5mg推理素
+:%,5#I~=True[n]#t
+:%*,4$获取0.1mg推理素
+:%*,0#Px:I, x = 0I[n]#t
+:%*,0,3$获取0.1mg推理素
+:%,2#Px:I,Py:I, x = y[n]#t
+:%*,3$获取0.25mg推理素
+:%,1@这个区间 I 跟[n]单点类型True等价[n]这玩意有什么意义呢？[n]我们来做个挑战！
+:%*,4$[[enableI]]恢复I[n](前提是你本来就解锁了I)
+:%*,3$[[enablefnext]]恢复fnext[n](前提是你本来就解锁了fnext)
+:%,1$[[disablefnext]]暂时将fnext[n]设为未定义常量
+:%*,4$[[disableI]]暂时将I[n]设为未定义常量
+:%*,3@这里有两个挑战[n]一个是禁用ua/fnext[n]用I推出fnext[n]一个是禁用I/fnext[n]用ua推出fnexxt
+:%*,5,0$[[enableua]]恢复ua[n](前提是你本来就解锁了ua)
+:%*,1@不要任何公理[n]通过定义区间I上的函数[n]就能直接推出[n]函数外延公理fnext
+:%,2$[[disableua]]暂时将ua[n]设为未定义常量
+:%*,3@fnext证明思路：向前走交钱可看提示
+:%*,3,2#通过此门需消耗推理素0.4mg
+:%*,3,2,2@不交钱不准偷看！
+:%*,3,2,2,2@fnext证明思路：[n]设 m : Px:a,f x = g x[n]对任意x:a，构造f: I->b，使得[n]f x=0I、g x=1I[n]然后交换刚才整个[n]大函数的某些变量顺序[n]直接构造出I->(a->b)
+:%*,2@为什么把ua公理也要禁了呢？[n]因为从ua也能推出fnext[n]快去把区间类型I[n]禁用掉完成这个挑战！
+:disableua,4#Pa:U,Pb:U,[n]Pf:a->b,Pg:a->b,[n](Px:a,f x = g x)->(f=g)[n]#t
+:%*,5$获取0.8mg推理素
+:%*,4@完整的函数外延公理[n]不仅说fnext存在[n]还说它跟happly是双射
+:%*,3@其实只要有[n]单边方向的fnext存在[n]就足以推出这个等价了
+:%,2#Pa:U,Pb:U,[n]Pf:a->b,Pg:a->b,[n](Px:a,f x = g x)~=(f=g)[n]#t
+:%*,1$获取1.8mg推理素
+
+:ttmno,4#(rec_S1 Bool (refl Bool)[n] base) = Bool[n]#t
+    :%*,5#通过此门需消耗推理素2.99mg
+    :%,4#Pcl:Bool=Bool,[n](ap (rec_S1 Bool cl)[n] loop) = cl[n]#t
     :%,5$[[ttaploop]]解锁计算规则ap_loop
-    :%,2$获取10mg推理素
+    :%,2$获取1mg推理素
 :eqvid,1#(not True)~= False[n]#t
 :%*,3#Pa:U,Pb:U,(a~=b)->(b~=a)[n]#t
 :%*,3,4$[[ttua]]解锁同伦类型论[n]泛等公理[n]ua[n](等价即相等)
 :%*,2#[[looprfl]]not (refl base = loop)[n]#t
 :%*,2,1@loop不等于rfl的证明思路：[n]通过ind_S1构造映射f:S1->U[n]其中让f(base)=Bool，[n]f(loop)=ua(e)[n]若loop与rfl相等，则[n]ua(e)与rfl相等[n]后者能推出e(x)=x矛盾[n](e在双重否定消去思路中定义)
 :%*,2,4$[[ttrecS1]]解锁ind_S1的简化版rec_S1
-:%*,2,3$获取59mg推理素
+:%*,2,3$获取4.9mg推理素
 :%,1#Px:True,Py:True,(x=y)~=True[n]#t
+:%*,3#Pa:U,isProp(a)->a->(a~=True)[n]#t
+:%*,3,2#Pa:U,isProp(a)->[n](a~=True + a~=False)[n]#t
+:%*,3,2,1,1#True~=True~=True[n]#t
+:%*,3,2,1$[[ttisContr]]解锁谓词“可缩”(isContr)[n]即没其它多余证据的[n]可通过相等路径[n]缩成单点的类型
+:%*,4$[[ttisProp]]解锁谓词“纯命题”(isProp)[n]命题只有成立或不成立[n]即没其它多余证据的类型
+:%*,2#isProp(True)[n]#t
+:%*,2,1#isSet(nat)[n]#t
+:%*,2,1,1@“编码-解码”方法是[n]同伦类型论研究[n]相等类型的一种套路:[n]定义一个code函数[n]再定义编码、解码函数[n]最后证明code跟相等等价
+:%*,2,2#[[:=code_nat]]请定义函数code_nat:nat->nat->U[n]使得输入两个自然数相等时[n]计算值为True，否则为False[n]#t:=
+:%*,2,2,2$获取0.1mg推理素
+:%*,2,1,4#Px:nat,Py:nat, x = y[n]->code_nat x y[n]#t
+:%*,2,1,4,2$获取0.1mg推理素
+:%*,2,1,4,1#Px:nat,Py:nat,[n]code_nat x y[n]-> x = y[n]#t
+:%*,2,1,4,1,4$获取0.1mg推理素
+:%*,2,1,4,1,2#Px:nat,Py:nat,[n]code_nat x y = True +[n]code_nat x y = False[n]#t
+:%*,2,1,4,1,2,5@如果不会证，[n]再给个提示：[n]intro一个变量后[n]就destruct它[n]之后再intro下一个变量
+:%*,2,1,3#Px:nat,Py:nat,[n](code_nat x y)[n]~= (x = y)[n]#t
+:%*,2,1,2$获取1.8mg推理素
+:%*,2,3$[[ttisSet]]解锁谓词“集合”(isSet)[n]集合中的元素都是点状的[n]即它的相等类型是纯命题
 :%,1@双重否定消去错误[n]的证明思路：[n]设映射e:Bool->Bool[n]且e(0b)=1b，e(1b)=0b[n]可证e是Bool自身到自身的双射[n]即能构造eqv Bool Bool的证据
+:%*,3#Px:2027=2027,x=refl 2027[n]#t
+:%*,3,2$获取2.028mg推理素
+:%*,3,1$获取1.9mg推理素
 :%*,2#(Bool~=Bool)~=Bool[n]#t
+:%*,2,4$获取1.9mg推理素
 :%*,2,1@则ua(e):eq Bool Bool[n]通过ua(e)使用ind_eq[n]可证明若存在f:Pa:U,~~a->a[n]则能推出e(f Bool x)=f Bool x[n]从而可推出矛盾
 :%,1#not Pa:U,(not(not a))->a[n]#t
-:%,1$获取199mg推理素
+:%,1$获取1.99mg推理素
 
 :looprfl,2#not (S1~=True)[n]#t
-:%*,4$获取39mg推理素
+:%*,4$获取0.9mg推理素
 :%*,2$[[ttSus]]解锁高阶同伦类型构造器[n]纬悬(Sus)
 :%,1#Sus False ~= Bool[n]#t
 :%,2#Sus Bool ~= S1[n]#t
-:%,2$获取99mg推理素
+:%,5$获取1.9mg推理素
 
 :ttua,0,5@泛等公理不仅说ua是命题[n]“(eqv a b)->(eq a b)”的证据[n]它还说ua映射与id2eqv[n]映射互为逆映射
 :%*,4#Pa:U,Pb:U,(a~=b)~=(a=b)[n]#t
 :%*,4,5$你永远别想拿到这个奖励！
+:%*,4,5,5#Px:base=base,[n]Py:base=base,[n](pair (Lx:S1,x=base) base x =[n] pair (Lx:S1,x=base) base y)[n]->(x=y)[n]#t
 :%,0@映射id2eqv为命题[n]“(eq a b)->(eqv a b)”的证据[n]该证据可通过ind_eq得到[n]不需要添加新公理
 :ttua,0,1#(ind_S1 (Lx:S1.U) Bool [n](transconst loop Bool) base)=Bool[n]#t
-:%*,2#通过此门需消耗推理素29.9mg
+:%*,2#通过此门需消耗推理素2.99mg
 :ttua,5#Pa:U,Pb:U,Pc:U,[n](a~=b)->(b~=c)->(a~=c)[n]#t
-:%*,2$获取2.8mg推理素
+:%*,2$获取0.3mg推理素
 :%,0,3$[[ttLiftU]]解锁全类（宇宙）层级[n]提升操作LiftU[n]（提示：某个门的题目[n]不提升会有作用类型[n]不匹配错误，无法通过）
+:%,5#not (True~=False)[n]#t
+    :%*,4@不会？可以绕行
+    :%*,4,5@绕行都不收费？那是不可能的
+    :%*,4,5,5#通过此门需消耗推理素3.9mg
+:%,5#not (Bool~=True)[n]#t
+    :%*,3@换个命题证证吗？比如这个结合律
+    :%*,3,5#Pa:U,Pb:U,Pc:U,[n]aXbXc ~= (aX(bXc))[n]#t
+    :%*,4@或许这个命题能帮助你[n]证明Bool不等价于True
+    :%*,4,5#Pf:True->Bool,Pg:Bool->True,[n]Px:Bool,f(g x) = f true[n]#t
+    :%*,5@然后你再去证这个
+    :%*,5,0#Pf:True->Bool,Pg:Bool->True,[n](Px:Bool,f(g x)=0b) + [n](Px:Bool,f(g x)=1b)[n]#t
+:%,0#not (Bool~=(not (not Bool)))[n]#t
+    :%*,3@提示：[n]not (not Bool)~=True
+    :%*,4@
+:%,5#not (nat~=Bool)[n]#t
+:%,2;5;0;5;0;5@....
+:%,0@交钱绕行吧，傻孩子[n]或者...
+    :%*,5#not (isProp(Bool))[n]#t
+    :%,0#通过此门需消耗推理素2.13mg
+    :%*,2#not (isProp(nat))[n]#t
+    :%*,2,3$获取0.1mg推理素
+    :%*,2,5#not (isProp(S1))[n]#t
+    :%*,3#not (isSet(S1))[n]#t
+    :%*,3,3$获取0.1mg推理素
+    :%*,4,1#not (a(S1))[n]#t
+    :%*,4#Pa:U,isProp(isProp(a))[n]#t
+    :%*,4,3$获取0.2mg推理素
+    :%*,4,5#Pa:U,isProp(isSet(a))[n]#t
+    :%*,5#Pa:U,isSet(isSet(a))[n]#t
+    :%*,5,4$获取0.2mg推理素
+    :%*,5,0#Pa:U,isSet(isProp(a))[n]#t
+    :%*,5,0,5#not (isContr(S1))[n]#t
+    :%*,5,0,5,4$获取0.2mg推理素
+:%,0@提示：前往写有下面命题的门后解锁[n]isProp、isSet、isContr：[n]Px:True,Py:True,(x=y)~=True
+:%,5#not (nat~=S1)[n]#t
+:%,0#Pa:U,isProp(a)->isSet(a)[n]#t
+    :%*,5#isSet (S1~=S1)[n]#t
+    :%*,3$获取0.4mg推理素
+:%,4#Pa:U,isProp(isContr(a))[n]#t
+:%,5#Px:S1,not (isContr (x=base))[n]#t
+:%,5$[[ttTrunc]]解锁命题截断类型“[[”...“]]”[n]它强制把类型变成命题
+:%,0#Pa:U,isProp([[a]])[n]#t
+:%,5#Pa:U,isProp(a)->(a~=[[a]])[n]#t
+:%,0#Pa:U,isContr(a)->(isContr(isContr(a)))[n]#t
+:%,5#Pa:U,Pb:a->U,[n](Px:a,isContr(b x))[n]->isContr(Px:a,b x)[n]#t
+:%,0$获取1mg推理素
+:%*,0#Pa:U,Px:a,(Sx0:a,x=x0)~=a[n]#t
+:%,5#Sf:Px:S1,x=x,[n]not (f = Lx:S1.refl x)[n]#t
+:%,0#Pa:U,(S1->a)~=(Sx:a,x=x)[n]#t
+    :%*,3$获取0.8mg推理素
+    :%,5#Pa:U,Pb:U,[n]isSet(a)->isSet(b)[n]->isSet(a+b)[n]#t
+    :%*,3$获取0.2mg推理素
+    :%,0#Pa:U,Pb:U,[n]isSet(a)->isSet(b)[n]->isSet(aXb)[n]#t
+    :%*,3$获取0.2mg推理素
+:%,5#Pa:U,Pb:U,[n]isProp(a)->isProp(b)->[n](a->b)->(b->a)->(a~=b)[n]#t
+:%,0@当类型是纯命题时[n]类型等价终于跟[n]逻辑等价一样了
+:%,5@可是同伦类型论[n]不只是处理逻辑命题[n]在定义等价关系的时候[n]需要用到这个关键事实
+:%,0#Pa:U,Px:a,isContr(Sx0:a,x=x0)[n]#t
+:%,5@我们离证明“f是双射”[n]是纯命题不远了
+:%,0@
+:%,5#Pa:U,Pb:U,Pf:a->b,[n]isProp((Sg:b->a,Px:a,x=g(f x))[n]X(Sh:b->a,Px:b,x=f(h x)))[n]#t
+:%*,2$获取4.4mg推理素
+:%*,3@“f是双射”是纯命题的[n]等价定义很多，不只这一种[n]比如纤维可缩等等
+:%*,5$获取4.4mg推理素
+:%,0@另一边是从[n]“not (True~=False)”[n]附近出发的
+:%,5@如果这里卡住了[n]可以尝试从另一边绕行
+:%,0@
+
 :ttua,5,5#Pa:U,Pb:U,(LiftU(a~=b))~=(a=b)[n]#t
-:%*,5$获取9.8mg推理素
+:%*,5$获取0.888mg推理素
 
-:ttap2,3#Pa:U,Pb:a->U,Px:a,Py:a,Pz:a,[n]Pp:x=y,Pq:y=z,Pu:b x,[n]trans b (p*q) u = [n]trans b q (trans b p u)[n]#t
-:%,2#Pa:U,Pb:U,Pc:b->U,[n]Pf:a->b,Px:a,Py:a,[n]Pp:x=y,Pu:c (f x),[n]trans (Lx:a.c (f x)) p u[n] = trans c (ap f p) u[n]#t
-:%,1#Pa:U,Pc1:a->U,Pc2:a->U,[n]Pf:Px:a,(c1 x)->(c2 x),[n]Px:a,Py:a,Pp:x=y,Pu:c1 x,[n]trans c2 p (f x u) = [n]f y (trans c1 p u)[n]#t
-:%,2#Pa:U,Pc1:a->U,Pc2:a->U,[n]Px:a,Py:a,Pp:x=y,[n]Pu:(c1 x)X(c2 x),[n]trans (Lx:a.(c1 x)X(c2 x)) p u[n] = [n](trans c1 p (pr0 u), trans c2 p (pr1 u))[n]#t
+:ttLiftU,3#(nat+True) ~= nat[n]#t
+:%*,5@欢迎入住[n]希尔伯特无穷旅馆！
+:%,4#(nat+nat) ~= nat[n]#t
+:%*,3$获取1.1mg推理素
+:%,4#(natXnat) ~= nat[n]#t
+:%*,3$获取2.2mg推理素
+:%,5#(Bool->nat) ~= nat[n]#t
+:%,5#not ((nat->Bool) ~= nat)[n]#t
+:%*,3$获取3.3mg推理素
+:%*,5@证明思路：将所有满足f(x)=y[n]的数对(x,y)利用[n]natXnat=nat的构造[n]编码成单个自然数
+:%*,5,0@每个nat->nat函数[n]由所有编码组成的[n]集合唯一确定[n]编码的集合显然[n]是自然数的子集[n]可由nat->Bool描述
+:%,0#(nat->nat) ~= (nat->Bool)[n]#t
+:%*,3$获取8.88mg推理素
+:%*,4@提示：在解锁Even后方[n]可解锁Aleph
+:%,5#Pm:nat,pn:nat,[n](Aleph m~=Aleph n)[n] -> m = n[n]#t
+:%,0#(Sn:nat, Aleph n)~=(Pn:nat,Aleph (succ n))[n]#t
+:%*,0#Pn:nat, not (Aleph n[n]~= (Sn:nat, Aleph n))[n]#t
+:%*,0,5$[[delAlw]]拆除门#א_ω
+
+
+
+:ttLiftU,4#Pa:U,Pb:U,Pc:U,[n](aX(b+c)) ~= (aXb+aXc)[n]#t
+:%,2#[[:=Fin]]请定义函数Fin:nat->U[n]使得Fin(0) === False[n]Fin(n+1) === Fin(n) + True[n]#t:=
+:%,2#((Fin 1)+(Fin 2))~=(Fin 3)[n]#t
+:%*,3$获取0.1mg推理素
+:%,1#Px:nat,Py:nat,[n]((Fin x)+(Fin y))~=(Fin (add x y))[n]#t
+:%*,4$获取0.1mg推理素
+:%,2#Px:nat,Py:nat,[n]((Fin x)X(Fin y))~=(Fin (mul x y))[n]#t
+:%*,3$获取0.2mg推理素
+:%,1#Px:nat,[n](Bool->Fin x)~=(Fin (mul x x))[n]#t
+:%*,3$获取0.2mg推理素
+:%,1#Px:nat,[n](Fin x->Bool)~=(Fin (pow 2 x))[n]#t
+:%*,3$获取0.3mg推理素
+:%,1#Px:nat,Py:nat,[n](Fin x->Fin y)~=(Fin (pow y x))[n]#t
+:%*,3$获取0.3mg推理素
+:%,0#Px:nat,[n](Fin x ~= Fin x)~=(Fin (factorial x))[n]#t
+:%,2$获取8.88mg推理素
+
+// List
+
+:ttap,4#List False[n]#t
+:%,4#List nat[n]#t
+:%*,1@nil表示空列表[n]cons x : List a -> List a[n] 是个函数，对应向列表追加元素x
+:%*,4#Sx:List nat,[n]not (x=nil)[n]#t
+:%*,4,5$[[ttOption]]解锁Option类型
+:%*,4,5,2#not (Pa:U,Optiona ~=[n] Option (Option a))[n]#t
+:%*,4,5,2,5$获取0.4mg推理素
+:%*,4,1$获取0.15mg推理素
+:%*,5#[[:=fillList]]请定义一个函数fillList :[n]Pa:U,Px:a,Pn:nat,List a[n]它输出n个x组成的列表[n]如：fillList Bool 1b 2[n] === cons 1b (cons 1b nil)[n]#t:=
+:%,2#[[:=lastList]]请定义一个函数lastList :[n]Pa:U,Pl:List a,Option a[n]若列表非空则输出[n]最后一个放入的值some x[n]若列表为nil则输出none[n]如 lastList Bool[n](cons 1b (cons 0b nil))[n] === some 1b[n]#t:=
+:%,5#[[:=firstList]]请定义一个函数firstList :[n]Pa:U,Pl:List a,Option a[n]若列表非空则输出[n]第一个放入的值some x[n]若列表为nil则输出none[n]如 firstList Bool[n](cons 1b (cons 0b nil))[n] === some 0b[n]#t:=
+:%,2#Pa:U,Pl:List a,[n]firstList a l = none[n] -> l = nil[n]#t
+:%*,5#Pa:U,Pl:List a,[n](firstList a l = none)[n] ~= (l = nil)[n]#t
+:%*,5,0$获取0.1mg推理素
+:%*,5,5$获取1mg推理素
+:%,1#[[:=lenList]]请定义一个函数lenList :[n]Pa:U,Pl:List a,nat[n]输出列表中的元素个数[n]如lenList False nil === 0[n]lenList U (cons nat (cons True nil)) === 2[n]#t:=
+    :%*,2#[[:=sumList]]请定义一个函数sumList :[n](List nat)->nat[n]对列表的所有元素求和[n]如sumList (cons 1 (cons 2 (cons 3 nil)))[n] === 6[n]#t:=
+    :%*,2,5#Pl:List nat,Pn:nat,[n]add (sumList l) n[n]= sumList (cons n l)[n]#t
+    :%*,2,5,3$获取0.16mg推理素
+    :%*,2,4#Pl:List nat,[n]sumList l = [n]sumList (invList nat l)[n]#t
+    :%*,2,4,3$获取0.16mg推理素
+    :%*,3#[[:=mapList]]请定义一个函数mapList :[n]Pa:U,Pb:U,Pf:a->b,List a->List b[n]通过函数f把List a中的元素[n]一一映射构造List b[n]如mapList (List nat) nat sumList[n](cons nil (cons (cons 3 nil) nil))[n] === cons 0 (cons 3 nil)[n]#t:=
+    :%*,3,3,5#通过此门需消耗推理素8mg
+    :%*,3,4#Pa:U,(Px:List a,x=nil)~=(not a)[n]#t
+    :%*,3,4,4$获取3mg推理素
+    :%*,3,3,5,5$[[del-W]]拆除门#W[n]提示：也可以选择不拆除它
+    :%*,3,2$获取0.66mg推理素
+:%*,4#[[:=count_0]]请定义一个函数count_0 :[n]List nat -> nat[n]统计列表中0出现的次数，如[n]count_0 (cons 0 (cons 10 (cons 0 nil)))[n] === 2[n]#t:=
+:%*,4,4$获取0.6mg推理素
+:%*,4,1#[[:=del_0]]请定义一个函数del_0 :[n]List nat -> List nat[n]将列表中的所有0删去[n]其它元素顺序不变，如[n]del_0 (cons 10 (cons 0 (cons 8 nil)))[n] === cons 10 (cons 8 nil)[n]#t:=
+    :%*,4,1,2#Pl:List nat, sumList l[n]= sumList (del_0 l)[n]#t
+    :%*,4,1,2,5$获取0.2mg推理素
+    :%*,4,1,4,1$获取0.2mg推理素
+    :%*,4,1,4#Pl:List nat, [n]count_0 (del_0 l) = 0[n]#t
+    :%*,4,1,5$获取0.9mg推理素
+:%,1#[[:=invList]]请定义一个函数invList :[n]Pa:U,Pl:List a,List a[n]将列表顺序颠倒[n]如invList nat (cons 1 (cons 2 (cons 3 nil)))[n] === (cons 3 (cons 2 (cons 1 nil)))[n]#t:=
+:%*,3$获取0.2mg推理素
+:%*,5,5$获取1mg推理素
+:%*,5#Pa:U,Pl:List a, lenList a l[n] = lenList a (invList a l)[n]#t
+:%*,4#Pa:U,Pl:List a, firstList a l[n] = lastList a (invList a l)[n]#t
+:%*,4,3$获取1mg推理素
+:%,1#[[:=joinList]]请定义一个函数joinList :[n]Pa:U,List a->List a->List a[n]连接两个列表生成新列表[n]如joinList nat (cons 1 nil) (cons 2 nil)[n] === cons 1 (cons 2 nil)[n]#t:=
+:%*,3$获取0.2mg推理素
+:%,1#Pl1:List nat,Pl2:List nat,[n]lenList nat (joinList nat l1 l2)[n]= add (lenList nat l1) (lenList nat l2)[n]#t
+:%*,5$获取0.2mg推理素
+
+:ttap2,3@提示：解锁证明策略eq后[n]可匹配填入一些[n]这附近解锁的相等证据[n]来自动化简证明目标
+:%,2#Pa:U,Pb:a->U,Px:a,Py:a,Pz:a,[n]Pp:x=y,Pq:y=z,Pu:b x,[n]trans b (p*q) u = [n]trans b q (trans b p u)[n]#t
+:%,1#Pa:U,Pb:U,Pc:b->U,[n]Pf:a->b,Px:a,Py:a,[n]Pp:x=y,Pu:c (f x),[n]trans (Lx:a.c (f x)) p u[n] = trans c (ap f p) u[n]#t
+:%,2#Pa:U,Pc1:a->U,Pc2:a->U,[n]Pf:Px:a,(c1 x)->(c2 x),[n]Px:a,Py:a,Pp:x=y,Pu:c1 x,[n]trans c2 p (f x u) = [n]f y (trans c1 p u)[n]#t
+:%,1#Pa:U,Pc1:a->U,Pc2:a->U,[n]Px:a,Py:a,Pp:x=y,[n]Pu:(c1 x)X(c2 x),[n]trans (Lx:a.(c1 x)X(c2 x)) p u[n] = [n](trans c1 p (pr0 u), trans c2 p (pr1 u))[n]#t
 :%,1#Pa:U,Px0:a,Px1:a,Px2:a,[n]Pp:x1=x2,Pq:x0=x1,[n]trans (Lx:a,x0=x) p q = q*p[n]#t
+:%*,3$[[ttransright]]解锁证据transright
 :%,1#Pa:U,Px0:a,Px1:a,Px2:a,[n]Pp:x1=x2,Pq:x1=x0,[n]trans (Lx:a,x=x0) p q = (inveq p)*q[n]#t
+:%*,3$[[ttransleft]]解锁证据transleft
 :%,1#Pa:U,Px0:a,Px1:a,Px2:a,[n]Pp:x1=x2,Pq:x1=x1,[n]trans (Lx:a,x=x) p q = (inveq p)*q*p[n]#t
+:%*,3$[[ttransleftright]]解锁证据transleftright
 :%,1#Pa:U,Pb:a->U,Pc:a->U,[n]Pm:a,Pn:a,Pp:m=n,[n]Pf:(b m)->(c m),[n](trans (Lx:a.(b x)->(c x)) p f) =[n]Lu:b n.trans (Lx:a.c x) p [n](f (trans (Lx:a.b x) (inveq p) u))[n]#t
-:%,1$获取8.8mg推理素
+:%,3$获取0.6mg推理素
+:%,3@嫌钱给少了？[n]这可是证明排中律[n]不成立的关键步骤哦
 
+:1neq2,3$[[ttZ]]解锁整数类型[n]Z
+:1neq2,4#通过此门需消耗推理素3mg
+:%,2@
+:%,1$[[ttsuccZ]]解锁整数后继运算succZ
+:%,2;1;1;1@..
+:%,1#通过此门需消耗推理素2mg
+:ttZ,5#Sf:nat->Z,Sg:Z->nat,[n]Pn:nat,g(f n) = n X [n]f(nat2Z n) = nat2n(succ n)[n]#t
+:ttZ,1#Sf:nat->Z,Sg:Z->nat,[n]Pn:nat,g(f n) = n X [n]((f n = 0Z) + (not (n = f n))) [n]#t
+:ttZ,2#通过此门需消耗推理素3mg
+:%,1$[[ttnat2Z]]解锁自然数到整数[n]的转换函数nat2n
+:ttZ,4#Sf:Z->Z,Px:Z,[n]f(succZ x) = predZ(f x)[n] X (f 0Z = 0Z)
+:%,5$[[ttpredZ]]解锁自然数前继运算predZ
+:ttZ,3#通过此门需消耗推理素3mg
+:%,5$[[ttnegZ]]解锁自然数相反数运算negZ
 :ttindTrue,4#Px:nat,Py:nat,eq (add x y) (add y x)[n]#t
 :%,1$[[ttmul]]解锁乘法函数[n]mul : nat->nat->nat
+:%*,3#Pn:nat,Px:nat,Py:nat,[n]pow n (add x y) = [n]mul (pow n x) (pow n y)[n]#t
+:%*,3,5$获取0.66mg推理素
+:%*,5#Pn:nat,Px:nat,Py:nat,[n]pow n (mul x y) = [n]pow (pow n x) y[n]#t
+:%*,5,2$获取0.66mg推理素
 :%,2#Pn:nat,eq (mul 0 n) 0[n]#t
 :%,1#Pn:nat,eq (mul 1 n) n[n]#t
+:%*,4$[[ttList]]解锁列表类型List
 :%,1#Pn:nat,eq [n](mul n 2) (double n)[n]#t
 :%,1#Px:nat,Py:nat,eq (mul x y) (mul y x)[n]#t
+:%*,3#通过此门需消耗推理素10mg
+:%*,3,1$[[del-ttAleph]]拆除门#Aleph[n]提示：也可以选择不拆除它
+:%*,4$[[ttpow]]解锁幂函数[n]pow : nat->nat->nat
+:%*,4,5#Pm:nat,Pn:nat,Sx:nat,mul x [n](mul (factorial m) (factorial n))[n] = factorial (add m n)
+:%*,4,5,2$获取0.66mg推理素
+:%*,4,4#[[:=Combin]]定义组合函数[n]Combin:nat->nat->nat[n]使得Combin n k === [n] n!/k!/(n-k)![n]#t:=
+:%*,4,4,1$获取6.6mg推理素
+:%*,4,1#[[:=factorial2]]定义双阶乘函数[n]factorial2:nat->nat[n]使得对奇数n有[n]factorial2 n = 1x3x5x..xn[n]对偶数n有[n]factorial2 n = 2x4x6x..xn[n]#t:=
+:%*,4,1,5$获取6.6mg推理素
 :%,1#Px:nat,Py:nat,Pz:nat,[n]eq (mul x (add y z))[n](add (mul x y) (mul x z))[n]#t
+:%*,4$[[tt!]]解锁阶乘函数[n]factorial : nat->nat
 :%,1#Px:nat,Py:nat,Pz:nat,[n]eq (mul x (mul y z))[n](mul (mul x y) z)[n]#t
-:%,1$获取99mg推理素
+:%,1$获取0.5mg推理素
 :%,1#[[tt5R7]]Px:nat,not (eq (mul x 5) 7)[n]#t
-:%,2$获取157mg推理素
+:%,2$获取5.7mg推理素
 :hint-tt-a3,3@这种函数嵌套类型[n]其实就是多元函数类型
 :%,3@输入的自变量为[n]a:U、b:U、c:U、[n]x:a->b->c、y:a->b、[n]z:a这六个
 :%,3@输出的变量类型为c[n]我们的目标就是要构造[n]有这样输入输出[n]类型的多元函数
@@ -1202,6 +1682,7 @@ export const mapData = `
 :%,3OPTO(ZFC)
 :%,3OΩ
 :%,3#[[Aleph]]门#א
+:%,3#[[AlephW]]门#א_ω
 :%,3$获取0.999999kg推理素
 
 1,2,2@欢迎来到序数的世界[n]序数是自然数的推广

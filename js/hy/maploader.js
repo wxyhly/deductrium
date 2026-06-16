@@ -1,3 +1,4 @@
+import { langMgr } from "../lang.js";
 import { mapData } from "./map.js";
 import { genOrdTiles } from "./ordinal.js";
 export var TileBlockType;
@@ -65,7 +66,7 @@ export function initMap(p) {
             for (const s of hash.split(",")) {
                 p.getNeighborAndDir(t, Number(s), false);
             }
-        const matched = content.match(/^\s*(\[\[(.+)\]\])?(.*)$/);
+        const matched = content.match(/^\s*(\[\[([^\]]+)\]\])?(.*)$/);
         const tb = { type: tbt, name: matched[2], text: matched[3].replaceAll("[n]", "\n") };
         blockMap.set(t.join(","), tb);
         if (matched[2]) {
@@ -76,6 +77,6 @@ export function initMap(p) {
     });
     // console.log(Array.from(blockMap.values()).filter(e=>e.type!=TileBlockType.Ordinal&&(e.text.startsWith("["))));
     // console.log(JSON.stringify(Array.from(blockMap.values()).filter(e=>(/[\u4e00-\u9fa5]/.test(e.text))).map(e=>e.text)));
-    // console.log(JSON.stringify(Array.from(blockMap.values()).map(e=>langMgr.trc1(langMgr.trc(e.text))).filter(e=>(/[\u4e00-\u9fa5]/.test(e)))));
+    console.log(JSON.stringify(Array.from(blockMap.values()).map(e => langMgr.trc1(langMgr.trc(e.text))).filter(e => (/[\u4e00-\u9fa5]/.test(e)))));
 }
 //# sourceMappingURL=maploader.js.map

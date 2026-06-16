@@ -77,7 +77,7 @@ export class HWorld {
                         .replaceAll("N", "ℕ").replaceAll("Z", "ℤ").replaceAll("Q", "ℚ").replaceAll("R", "ℝ").replaceAll("ℝel", "Rel")
                 } else if (text.endsWith("#t")) {
                     text = text.replaceAll("~=", "≃").replaceAll("->", " → ").replaceAll("*", "▪").replaceAll("L", "λ").replaceAll("S", "Σ").replaceAll("P", "Π")
-                        .replaceAll("X", "×").replaceAll("λiftU", "LiftU").replaceAll("Σ1", "S1").replaceAll("Σus", "Sus")
+                        .replaceAll("X", "×").replaceAll("λiftU", "LiftU").replaceAll("λist", "List").replaceAll("Σet", "Set").replaceAll("Σ1", "S1").replaceAll("Σ2", "S2").replaceAll("Σ3", "S3").replaceAll("Πrop", "Prop").replaceAll("Πushout", "Pushout").replaceAll("Σus", "Sus").replaceAll("Σum", "Sum")
                 }
             } else {
                 if (text.endsWith("#p") || text.endsWith("#d")) {
