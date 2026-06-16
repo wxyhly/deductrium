@@ -2,6 +2,7 @@ import { ASTParser } from "./astparser.js";
 import { Deduction, DeductionStep, FormalSystem, Proposition } from "./formalsystem.js";
 import { FSGui } from "./gui.js";
 import { initFormalSystem } from "./initial.js";
+import { RuleParser } from "./metarule.js";
 type SerilizedDeductionStep = [string, number[], string[]];
 type SerilizedDeduction = [string, string, SerilizedDeductionStep[]] | [string, string, SerilizedDeductionStep[], string[]];
 type SerilizedProposition = [string, SerilizedDeductionStep];
@@ -12,6 +13,7 @@ export class SavesParser {
     creative = false;
     constructor(creative?: boolean) {
         this.creative = creative;
+        this.bug260616fixer.fixbug260616 = true;
     }
     serializeDeductionStep(s: DeductionStep) {
         return [
@@ -49,10 +51,17 @@ export class SavesParser {
         const num = Number(s.match(/>\.a1\_([1-9][0-9]*)$/)[1]);
         return s.replace(/>\.a1\_([1-9][0-9]*)$/, this.fixbug260330_(num));
     }
+    // rule :.=t is invalid but can be generated   ==convert it to==>   :.=t,.=t
+    // use a wrong version parser to generate 
+    bug260616fixer = new RuleParser;
+    private fixbug260616(s: string) {
+        if (s.split(":").length > s.split(",").length) return this.bug260616fixer.stringify(this.bug260616fixer.parse(s));
+        return s;
+    }
     deserializeDeduction(name: string, fs: FormalSystem, sd: SerilizedDeduction) {
         // deserialized data is reliable, no need to regen tempvars
         fs.addDeduction(name, astparser.parse(sd[0]), sd[1], sd[2]?.map(e => ({
-            deductionIdx: e[0].includes(">.a1_") ? this.fixbug260330(e[0]) : e[0], conditionIdxs: e[1], replaceValues: e[2].map(v => astparser.parse(v))
+            deductionIdx: e[0].includes(">.a1_") ? this.fixbug260330(e[0]) : e[0].includes(":") ? this.fixbug260616(e[0]) : e[0], conditionIdxs: e[1], replaceValues: e[2].map(v => astparser.parse(v))
         })), sd[3] ? new Set(sd[3]) : new Set());
     }
     serialize(gui: FSGui) {

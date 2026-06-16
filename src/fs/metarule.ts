@@ -5,6 +5,7 @@ import { ASTParser } from "./astparser.js";
 
 export type RuleTree = [string, ...RuleTree[]] | [string];
 export class RuleParser {
+    fixbug260616 = false;
     symChar = ":,";
     firstChar = "vuc<>#e";
     startNotAllowed = "ad#$";
@@ -97,7 +98,7 @@ export class RuleParser {
             while (true) {
                 params.push(this.nextRule());
                 const sep = this.nextToken();
-                if(!sep) throw TR("意外的规则名称表达式：冒号未匹配最后的逗号");
+                if (!sep && !this.fixbug260616) throw TR("意外的规则名称表达式：冒号未匹配最后的逗号");
                 if (sep !== ":") {
                     this.pos--;
                     params.push(this.nextRule());

@@ -3,6 +3,7 @@ import { AssertionSystem } from "./assertion.js";
 import { ASTMgr } from "./astmgr.js";
 import { ASTParser } from "./astparser.js";
 export class RuleParser {
+    fixbug260616 = false;
     symChar = ":,";
     firstChar = "vuc<>#e";
     startNotAllowed = "ad#$";
@@ -102,7 +103,7 @@ export class RuleParser {
             while (true) {
                 params.push(this.nextRule());
                 const sep = this.nextToken();
-                if (!sep)
+                if (!sep && !this.fixbug260616)
                     throw TR("意外的规则名称表达式：冒号未匹配最后的逗号");
                 if (sep !== ":") {
                     this.pos--;

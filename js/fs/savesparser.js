@@ -1,10 +1,12 @@
 import { ASTParser } from "./astparser.js";
 import { initFormalSystem } from "./initial.js";
+import { RuleParser } from "./metarule.js";
 const astparser = new ASTParser;
 export class SavesParser {
     creative = false;
     constructor(creative) {
         this.creative = creative;
+        this.bug260616fixer.fixbug260616 = true;
     }
     serializeDeductionStep(s) {
         return [
@@ -40,10 +42,18 @@ export class SavesParser {
         const num = Number(s.match(/>\.a1\_([1-9][0-9]*)$/)[1]);
         return s.replace(/>\.a1\_([1-9][0-9]*)$/, this.fixbug260330_(num));
     }
+    // rule :.=t is invalid but can be generated   ==convert it to==>   :.=t,.=t
+    // use a wrong version parser to generate 
+    bug260616fixer = new RuleParser;
+    fixbug260616(s) {
+        if (s.split(":").length > s.split(",").length)
+            return this.bug260616fixer.stringify(this.bug260616fixer.parse(s));
+        return s;
+    }
     deserializeDeduction(name, fs, sd) {
         // deserialized data is reliable, no need to regen tempvars
         fs.addDeduction(name, astparser.parse(sd[0]), sd[1], sd[2]?.map(e => ({
-            deductionIdx: e[0].includes(">.a1_") ? this.fixbug260330(e[0]) : e[0], conditionIdxs: e[1], replaceValues: e[2].map(v => astparser.parse(v))
+            deductionIdx: e[0].includes(">.a1_") ? this.fixbug260330(e[0]) : e[0].includes(":") ? this.fixbug260616(e[0]) : e[0], conditionIdxs: e[1], replaceValues: e[2].map(v => astparser.parse(v))
         })), sd[3] ? new Set(sd[3]) : new Set());
     }
     serialize(gui) {

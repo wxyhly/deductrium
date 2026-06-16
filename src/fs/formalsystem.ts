@@ -993,6 +993,7 @@ export class FormalSystem {
         }
         const d = this.generateDeduction(idx);
         const s = this._findNewReplName(idx);
+        const SmatchTable = { [s.name]: { type: "replvar", name: "#" + s.name } };
         // axiom
         if (!d.steps?.length && !d.conditions?.length) {
             return this.metaQuantifyAxiomSchema(idx, "元规则生成*");
@@ -1005,12 +1006,17 @@ export class FormalSystem {
             const step = d.steps[idx - d.conditions.length];
             const sdidx = step?.deductionIdx;
             const sd = this.generateDeduction(sdidx);
+            const stepReplaceValues = step?.replaceValues?.map(e => {
+                const rv = astmgr.clone(e);
+                astmgr.replaceByMatchTable(rv, SmatchTable);
+                return rv;
+            });
             if (!condMode) {
                 // avoid repeated deductions on the same prop (here reaching hyps are not possible)
                 if (isFinite(offsetTable[idx])) return offsetTable[idx];
                 // mp, axiom or macros
                 offsetTable[idx] = this.deduct({
-                    deductionIdx: sdidx, replaceValues: step.replaceValues,
+                    deductionIdx: sdidx, replaceValues: stepReplaceValues,
                     conditionIdxs: step.conditionIdxs.map(id => generate(false, id >= 0 ? id : idx + id))
                 });
                 return offsetTable[idx];
@@ -1019,7 +1025,7 @@ export class FormalSystem {
             if (isFinite(offsetCondTable[idx])) return offsetCondTable[idx];
             return offsetCondTable[idx] = this.deduct({
                 deductionIdx: this.metaConditionUniversalTheorem(sdidx, ""),
-                replaceValues: sd.conditions.length ? step.replaceValues : [s, ...step.replaceValues],
+                replaceValues: sd.conditions.length ? stepReplaceValues : [s, ...stepReplaceValues],
                 conditionIdxs: step.conditionIdxs.map(id => generate(true, id >= 0 ? id : idx + id))
             });
         }
@@ -1106,6 +1112,7 @@ export class FormalSystem {
                 const p1 = this.deduct({ deductionIdx: "<a6", conditionIdxs: [id], replaceValues: [s] });
                 offsetCondTable[id] = p1;
             });
+            replvarTable[s.name] = { type: "replvar", name: "#" + s.name };
             generate(true);
             const ret = this.addMacro("u" + idx, from);
             this.propositions = oldP;
