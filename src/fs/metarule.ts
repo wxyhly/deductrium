@@ -97,6 +97,7 @@ export class RuleParser {
             while (true) {
                 params.push(this.nextRule());
                 const sep = this.nextToken();
+                if(!sep) throw TR("意外的规则名称表达式：冒号未匹配最后的逗号");
                 if (sep !== ":") {
                     this.pos--;
                     params.push(this.nextRule());

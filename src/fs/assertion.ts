@@ -691,7 +691,7 @@ export class AssertionSystem {
 
             // #rp(a > b,c/d) = #rp(a,c/d) > #rp(b,c/d)
             // #rp(a @ b,c/d) = #rp(a,c/d) @ #rp(b,c/d)
-            if (nth === -1 && sub.type === "sym" &&
+            if ((nth === -1 || sub.name === "~") && sub.type === "sym" &&
                 (logicSyms.includes(sub.name) || verbSyms.includes(sub.name))
             ) {
                 for (const c of sub.nodes) {

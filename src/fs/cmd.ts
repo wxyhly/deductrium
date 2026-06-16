@@ -721,7 +721,7 @@ export class FSCmd {
         if (!s) throw null;
         if (this.gui.formalSystem.deductions[n]) return;
         const ast = this.astparser.parse(s);
-        this.gui.formalSystem.addDeduction(n, ast, "错误的公理");
+        this.gui.formalSystem.addDeduction(n, ast, TR("错误的公理"));
         if (!this.gui.deductions.includes("n")) {
             this.gui.deductions.push(n);
             this.gui.updateDeductionList();
