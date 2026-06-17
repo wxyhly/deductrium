@@ -45,9 +45,17 @@ export class SavesParser {
     // rule :.=t is invalid but can be generated   ==convert it to==>   :.=t,.=t
     // use a wrong version parser to generate 
     bug260616fixer = new RuleParser;
+    ruleparser = new RuleParser;
     fixbug260616(s) {
-        if (s.split(":").length > s.split(",").length)
-            return this.bug260616fixer.stringify(this.bug260616fixer.parse(s));
+        if (s.split(":").length > s.split(",").length) {
+            try {
+                this.ruleparser.parse(s);
+            }
+            catch (e) {
+                return this.bug260616fixer.stringify(this.bug260616fixer.parse(s));
+            }
+            return s;
+        }
         return s;
     }
     deserializeDeduction(name, fs, sd) {
