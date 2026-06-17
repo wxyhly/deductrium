@@ -56,10 +56,11 @@ export class RuleParser {
                 if ((i < tokens.length && (tokens[i] === "," || tokens[i] === ":")) || i === tokens.length) {
                     result.push(merged);
                     if (tokens[i] === ":") result.push(":");
+                    if (tokens[i] === ",") result.push(",");
                     i++;
                 }
             } else {
-                if (tokens[i] !== ",") result.push(tokens[i]);
+                if ((!this.fixbug260616) || tokens[i] !== ",") result.push(tokens[i]);
                 i++;
             }
         }
@@ -99,11 +100,17 @@ export class RuleParser {
                 params.push(this.nextRule());
                 const sep = this.nextToken();
                 if (!sep && !this.fixbug260616) throw TR("意外的规则名称表达式：冒号未匹配最后的逗号");
-                if (sep !== ":") {
+                if (sep === ",") {
+                    params.push(this.nextRule());
+                    break;
+                }
+                if (sep === ":") continue;
+                if (this.fixbug260616) {
                     this.pos--;
                     params.push(this.nextRule());
                     break;
                 }
+                throw TR("意外的规则名称表达式");
             }
             return params;
         }
