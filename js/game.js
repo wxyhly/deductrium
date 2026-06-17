@@ -155,7 +155,7 @@ export class Game {
                     const solved = this.ttGui.queryDefPuzzle(tile.name.slice(2));
                     return solved;
                 }
-                if (tile.name.startsWith("JJZP-")) {
+                if (tile.name?.startsWith("JJZP-")) {
                     if (this.rewards.includes("JJZI")) {
                         return true;
                     }
@@ -230,7 +230,7 @@ export class Game {
             const achievement = this.achievementsTable[tile.name];
             if (achievement)
                 this.finishAchievement(achievement, isLoading);
-            if (tile.name.startsWith("JJZ")) {
+            if (tile.name?.startsWith("JJZ")) {
                 const text = langMgr.dataEnInCanvas[tile.text] ?? tile.text;
                 if (tile.name.startsWith("JJZO")) {
                     this.rewards = this.rewards.filter(e => e !== "JJZI");
