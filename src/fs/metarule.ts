@@ -250,7 +250,7 @@ export class ConstrainSolver {
         return matchTable;
     }
     getNfAssertionsOfVarsInAST(ast: AST, isItem: boolean, scope: AST, res: { [name: string]: [AST, boolean] } = {}) {
-        if (ast.type === "replvar" && ast.name.startsWith("$")) {
+        if (ast.type === "replvar") {
             res[ast.name] ??= [{ type: "replvar", name: "$ " }, isItem];
             res[ast.name][0] = astmgr.clone({ type: "fn", name: scope.name, nodes: [res[ast.name][0], ...scope.nodes.slice(1)] });
             assert.expand(res[ast.name][0], isItem);

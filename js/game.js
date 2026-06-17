@@ -155,6 +155,12 @@ export class Game {
                     const solved = this.ttGui.queryDefPuzzle(tile.name.slice(2));
                     return solved;
                 }
+                if (tile.name.startsWith("JJZP-")) {
+                    if (this.rewards.includes("JJZI")) {
+                        return true;
+                    }
+                    return (this.deductriums < 4 && !this.rewards.includes("delgate"));
+                }
                 let reg;
                 if ((reg = tile.text.match(/^通过此门需消耗推理素(.+)$/)) && reg[1]) {
                     const needed = parseDeductriumAmout(reg[1]);
@@ -224,6 +230,22 @@ export class Game {
             const achievement = this.achievementsTable[tile.name];
             if (achievement)
                 this.finishAchievement(achievement, isLoading);
+            if (tile.name.startsWith("JJZ")) {
+                const text = langMgr.dataEnInCanvas[tile.text] ?? tile.text;
+                if (tile.name.startsWith("JJZO")) {
+                    this.rewards = this.rewards.filter(e => e !== "JJZI");
+                    this.hyperGui.world.setTileByName(tile.name.replace("JJZO", "JJZ"), "获取5µg推理素", TileBlockType.Reward);
+                }
+                ;
+                if (tile.name.startsWith("JJZI"))
+                    this.rewards.push("JJZI");
+                if (!tile.name.startsWith("JJZ-")) {
+                    return setTimeout(() => {
+                        tile.text = text;
+                        tile.type = TileBlockType.Reward;
+                    }, 1);
+                }
+            }
             switch (tile.name) {
                 case "dL": return document.getElementById("deduct-btn").classList.remove("hide");
                 case "progL":

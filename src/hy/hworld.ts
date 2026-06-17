@@ -26,7 +26,7 @@ export class HWorld {
         this.atlasTile.generateRotors();
         initMap(this.atlasTile);
     }
-    reload(){
+    reload() {
         initMap(this.atlasTile);
     }
     getBlock(hash: string) {
@@ -103,12 +103,18 @@ export class HWorld {
         }
     }
     hitReward(b: TileBlock, hash: string, isLoading?: boolean) {
-        if(!b) return;
+        if (!b) return;
         this.onGetReward(b.name ?? hash, b, isLoading);
         if (b.type !== TileBlockType.Gate) {
             b.text = "已" + b.text;
         }
         b.type = TileBlockType.Road;
+    }
+    setTileByName(tile: string, text: string, type: TileBlockType) {
+        const tb = blockMap.get(nameMap.get(tile));
+        if (!tb) { console.log("no no no!"); return; }
+        tb.text = text;
+        tb.type = type;
     }
     onPassOrd(hash: string, ord: number[]) {
         genOrdTiles(blockMap, nameMap, this.atlasTile, hash.split(",").map(e => Number(e)), ord);

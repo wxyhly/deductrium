@@ -117,6 +117,15 @@ export class HWorld {
         }
         b.type = TileBlockType.Road;
     }
+    setTileByName(tile, text, type) {
+        const tb = blockMap.get(nameMap.get(tile));
+        if (!tb) {
+            console.log("no no no!");
+            return;
+        }
+        tb.text = text;
+        tb.type = type;
+    }
     onPassOrd(hash, ord) {
         genOrdTiles(blockMap, nameMap, this.atlasTile, hash.split(",").map(e => Number(e)), ord);
     }
