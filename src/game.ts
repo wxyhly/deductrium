@@ -217,7 +217,7 @@ export class Game {
                 const text = langMgr.dataEnInCanvas[tile.text] ?? tile.text;
                 if (tile.name.startsWith("JJZO")) {
                     this.rewards = this.rewards.filter(e => e !== "JJZI");
-                    this.hyperGui.world.setTileByName(tile.name.replace("JJZO","JJZ"),"获取5µg推理素",TileBlockType.Reward);
+                    this.hyperGui.world.setTileByName(tile.name.replace("JJZO", "JJZ"), "获取5µg推理素", TileBlockType.Reward);
                 };
                 if (tile.name.startsWith("JJZI")) this.rewards.push("JJZI");
                 if (!tile.name.startsWith("JJZ-")) {
@@ -403,9 +403,7 @@ export class Game {
                 case "met":
                     this.unlockMetarule("et");
                 case "mvt":
-                    if (!this.fsGui.metarules.includes("cvt")) {
-                        this.unlockMetarule("cvt");
-                    }
+                    this.unlockMetarule("cvt");
                     this.unlockMetarule("vt");
                     return;
                 case "mcvt": const tileV = this.hyperGui.world.getBlock("V");
@@ -726,6 +724,7 @@ export class Game {
         this.rewards.push("[ach]" + a);
     }
     unlockMetarule(name: string) {
+        if (this.fsGui.metarules.includes(name)) return;
         this.fsGui.metarules.push(name);
         this.fsGui.formalSystem.fastmetarules += {
             "cdt": "c",

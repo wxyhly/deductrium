@@ -128,6 +128,7 @@ export class HWorld {
     }
     moveCam(x: number, y: number) {
         this.localCamMat = Rotor.move(x, y).mul(this.localCamMat).normalize();
+        if (isNaN(this.localCamMat.r + this.localCamMat.x + this.localCamMat.y + this.localCamMat.z)) this.localCamMat = new Rotor();
         this.updateCharactor(x, y);
         const pos = this.localCamMat.conj().apply(new Hvec);
         this.onStateChange();

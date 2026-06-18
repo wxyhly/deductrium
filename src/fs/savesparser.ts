@@ -131,7 +131,7 @@ export class SavesParser {
         }
 
         if (fsdata.arrM[0]) {
-            gui.metarules = fsdata.arrM.slice(1);
+            gui.metarules = Array.from(new Set(fsdata.arrM.slice(1)));
             this.deserializeMetaMacro(gui, fsdata.arrM[0]);
         }
         gui.skipRendering = skipRendering;

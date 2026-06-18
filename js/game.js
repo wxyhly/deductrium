@@ -611,9 +611,7 @@ export class Game {
                 case "met":
                     this.unlockMetarule("et");
                 case "mvt":
-                    if (!this.fsGui.metarules.includes("cvt")) {
-                        this.unlockMetarule("cvt");
-                    }
+                    this.unlockMetarule("cvt");
                     this.unlockMetarule("vt");
                     return;
                 case "mcvt":
@@ -1192,6 +1190,8 @@ export class Game {
         this.rewards.push("[ach]" + a);
     }
     unlockMetarule(name) {
+        if (this.fsGui.metarules.includes(name))
+            return;
         this.fsGui.metarules.push(name);
         this.fsGui.formalSystem.fastmetarules += {
             "cdt": "c",
