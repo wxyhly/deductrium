@@ -510,7 +510,7 @@ export class Assist {
             } else {
                 const useTrans = core.checkConst("trans", []) && (back || core.checkConst("inveq", []));
                 newAst = parser.parse(useTrans ?
-                    `trans $fn ` + (back ? `$eq` : `(inveq $eq)`) : `ind_eq $2 (L${y}:$type.L${m}:$2=${y}. P${m}:` + (back ? `$fn_2, $fn_y` : `$fn_y, $fn_2`) + `) (Lx:_.x) $3 $eq`);
+                    `trans $fn ` + (back ? `$eq` : `(inveq $eq)`) : `ind_eq $2 (L${y}:$type.L${m}:${core.state.disableSimpleEq?`eq $2 `+y:`$2=${y}`}. P${m}:` + (back ? `$fn_2, $fn_y` : `$fn_y, $fn_2`) + `) (Lx:_.x) $3 $eq`);
                 Core.replaceByMatch(newAst, matched, /^\$/);
                 try { core.checkType(newAst, goal.context, false); } catch (e) {
                     this.goal.unshift(goal);
