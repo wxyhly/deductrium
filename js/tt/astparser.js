@@ -1,5 +1,5 @@
 import { TR } from "../lang.js";
-export const debugBoundVarId = true;
+export const debugBoundVarId = false;
 export class ASTParser {
     keywords = [":=", "[[", "]]", "->", "~=", "==="];
     specialwords = ["Sum", "S1", "S2", "S3", "S4", "LiftU", "South", "Sus", "List", "LEM", "Pushout", "Wedge"];

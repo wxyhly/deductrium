@@ -60,7 +60,7 @@ class LangMgr {
         "要执行某个推理规则\n可在底部命令框中输入规则名\n或直接点击[D]表中的推理规则\n然后系统将提示你\n在[P]定理表中选择条件定理": "To apply a deduction rule\nyou may enter its name\nin the command box at the bottom\nor click the rule directly in table [D]\nThe system will then prompt you\nto select premise theorems\nfrom theorem table [P]",
         "什么是表达式？\n小写字母组成的单词是表达式\n(表达式1 > 表达式2)也是表达式\n在没有歧义时括号可以随意增删": "What is an expression?\nA word consisting of lowercase letters\nis an expression\n(expression1 > expression2)\nis also an expression\nParentheses may be added or removed\nwhenever there is no ambiguity",
         "[D]中有些规则直接以 ⊢ 开头\n它们能够无条件产生定理\n我们称之为“公理”": "Some rules in [D]\nbegin directly with ⊢\nThey generate theorems unconditionally\nWe call them \"axioms\"",
-        "提示：每通过一次\n推理素“收费站”\n你就得交一次过路费！\n跟本格子的某顶点\n相邻的另一个格子能够\n解锁拆门技能\n赶快去解锁它吧！": "Hint: Every time you pass\nthrough a Deductrium toll gate\nyou must pay!\nA neighboring cell\nsharing a vertex with this one\ncan unlock the gate destruction skill\nGo unlock it quickly!",
+        "提示：每通过一次\n推理素“收费站”\n你就得交一次过路费！\n跟本格子的某顶点\n相邻的另一个格子能够\n解锁拆门技能\n赶快去解锁它吧！": "Hint: Every time you pass\nthrough a Deductrium toll gate\nyou must pay!\nA neighboring cell\nsharing a vertex with this one\ncan unlock the gate destruction skill\nGo unlock it NOW!",
         "被耗光了推理素\n但不想重置游戏？\n请跟我来！": "Ran out of Deductrium\nbut don't want to reset the game?\nFollow me!",
         "只有没解锁拆门技能\n且推理素余额小于4µg\n才能通过此门\n#救济站": "Only players who have not unlocked\nthe gate destruction skill\nand have less than 4 µg of Deductrium\nmay pass through this gate\n#ReliefStation",
         "请向前走40格\n领取救济站发放的\n！！~免费推理素~！！\n5 µ g ！": "Please move forward 40 tiles\nto collect the relief station's\n!! ~FREE DEDUCTRIUM~ !!\n5 µ g !",

@@ -1,5 +1,5 @@
 import { TR } from "../lang.js";
-export const debugBoundVarId = true;
+export const debugBoundVarId = false;
 export type AST = {
     type: string, name: string, nodes?: AST[],
     checked?: AST, err?: any, bondVarId?: number, origin?: boolean | AST
