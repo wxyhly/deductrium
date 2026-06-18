@@ -214,7 +214,7 @@ export class Game {
             const achievement = this.achievementsTable[tile.name];
             if (achievement) this.finishAchievement(achievement, isLoading);
             if (tile.name?.startsWith("JJZ")) {
-                const text = langMgr.dataEnInCanvas[tile.text] ?? tile.text;
+                const text = langMgr.lang === "en" ? langMgr.dataEnInCanvas[tile.text] ?? tile.text : tile.text;
                 if (tile.name.startsWith("JJZO")) {
                     this.rewards = this.rewards.filter(e => e !== "JJZI");
                     this.hyperGui.world.setTileByName(tile.name.replace("JJZO", "JJZ"), "获取5µg推理素", TileBlockType.Reward);
@@ -444,13 +444,13 @@ export class Game {
                     return this.fsGui.formalSystem.fastmetarules += "Z";
                 case "apn5-err-out":
                     this.fsGui.cmd.addWrongDeduction("apn5x");
-                    text = langMgr.dataEnInCanvas[tile.text] ?? tile.text;
+                    text = langMgr.lang === "en" ? langMgr.dataEnInCanvas[tile.text] ?? tile.text : tile.text;
                     return setTimeout(() => {
                         tile.text = text; tile.type = TileBlockType.Reward;
                     }, 1);
                 case "asep-err-out":
                     this.fsGui.cmd.addWrongDeduction("asepx");
-                    text = langMgr.dataEnInCanvas[tile.text] ?? tile.text;
+                    text = langMgr.lang === "en" ? langMgr.dataEnInCanvas[tile.text] ?? tile.text : tile.text;
                     return setTimeout(() => {
                         tile.text = text; tile.type = TileBlockType.Reward;
                     }, 1);
@@ -569,37 +569,37 @@ export class Game {
                     this.ttGui.unlockedTactics.add("right"); return;
 
                 case "disableua":
-                    text = langMgr.dataEnInCanvas[tile.text] ?? tile.text;
+                    text = langMgr.lang === "en" ? langMgr.dataEnInCanvas[tile.text] ?? tile.text : tile.text;
                     this.ttGui.disableAxiom("ua", "ua_id2eqv", "id2eqv_ua");
                     return setTimeout(() => {
                         tile.text = text; tile.type = TileBlockType.Reward;
                     }, 1);
                 case "enableua":
-                    text = langMgr.dataEnInCanvas[tile.text] ?? tile.text;
+                    text = langMgr.lang === "en" ? langMgr.dataEnInCanvas[tile.text] ?? tile.text : tile.text;
                     this.ttGui.enableAxiom("ua", "ua_id2eqv", "id2eqv_ua");
                     return setTimeout(() => {
                         tile.text = text; tile.type = TileBlockType.Reward;
                     }, 1);
                 case "disablefnext":
-                    text = langMgr.dataEnInCanvas[tile.text] ?? tile.text;
+                    text = langMgr.lang === "en" ? langMgr.dataEnInCanvas[tile.text] ?? tile.text : tile.text;
                     this.ttGui.disableAxiom("fnext", "fnext_happly", "happly_fnext");
                     return setTimeout(() => {
                         tile.text = text; tile.type = TileBlockType.Reward;
                     }, 1);
                 case "enablefnext":
-                    text = langMgr.dataEnInCanvas[tile.text] ?? tile.text; this.ttGui.disableAxiom("fnext", "fnext_happly", "happly_fnext");
+                    text = langMgr.lang === "en" ? langMgr.dataEnInCanvas[tile.text] ?? tile.text : tile.text; this.ttGui.disableAxiom("fnext", "fnext_happly", "happly_fnext");
                     this.ttGui.enableAxiom("fnext", "fnext_happly", "happly_fnext");
                     return setTimeout(() => {
                         tile.text = text; tile.type = TileBlockType.Reward;
                     }, 1);
                 case "disableI":
-                    text = langMgr.dataEnInCanvas[tile.text] ?? tile.text;
+                    text = langMgr.lang === "en" ? langMgr.dataEnInCanvas[tile.text] ?? tile.text : tile.text;
                     this.ttGui.disableAxiom("I", "0I", "1I", "ind_I", "rec_I", "segI", "apd_segI", "ap_segI");
                     return setTimeout(() => {
                         tile.text = text; tile.type = TileBlockType.Reward;
                     }, 1);
                 case "enableI":
-                    text = langMgr.dataEnInCanvas[tile.text] ?? tile.text; this.ttGui.disableAxiom("fnext", "fnext_happly", "happly_fnext");
+                    text = langMgr.lang === "en" ? langMgr.dataEnInCanvas[tile.text] ?? tile.text : tile.text; this.ttGui.disableAxiom("fnext", "fnext_happly", "happly_fnext");
                     this.ttGui.enableAxiom("I", "0I", "1I", "ind_I", "rec_I", "segI", "apd_segI", "ap_segI");
                     return setTimeout(() => {
                         tile.text = text; tile.type = TileBlockType.Reward;
