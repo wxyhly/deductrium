@@ -771,6 +771,7 @@ class LangMgr {
         "逢": "Base ",
         "进位": " for Limit Ordinal",
         "欢迎联系游戏作者": "Feel Free to Contact Game Author ",
+        "。游戏QQ交流群：975918698": ".",
         "简化显示系统函数": "Display Omitted System Functions",
         "斜体显示项": "Italicize Terms",
         // p
