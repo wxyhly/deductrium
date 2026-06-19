@@ -1042,7 +1042,7 @@ export const mapData = `
 // W-type
 
 :ttSum,0,5,0#Pa:U,not (Wx:False,a)[n]#t
-:%*,5#Pa:U,a->Wx:a,False
+:%*,5#Pa:U,a->Wx:a,False[n]#t
 :%*,5,0$[[ttsup]]解锁证明策略sup[n]遇到目标是W类型时[n]将帮你填上构造子sup
 :%*,3#Wx:True,True[n]#t
 :%,2@提示：解锁W类型的地方[n]在解锁Even类型的后方
@@ -1611,7 +1611,7 @@ export const mapData = `
 :ttZ,1#Sf:nat->Z,Sg:Z->nat,[n]Pn:nat,g(f n) = n X [n]((f n = 0Z) + (not (n = f n))) [n]#t
 :ttZ,2#通过此门需消耗推理素3mg
 :%,1$[[ttnat2Z]]解锁自然数到整数[n]的转换函数nat2n
-:ttZ,4#Sf:Z->Z,Px:Z,[n]f(succZ x) = predZ(f x)[n] X (f 0Z = 0Z)
+:ttZ,4#Sf:Z->Z,Px:Z,[n]f(succZ x) = predZ(f x)[n] X (f 0Z = 0Z)[n]#t
 :%,5$[[ttpredZ]]解锁自然数前继运算predZ
 :ttZ,3#通过此门需消耗推理素3mg
 :%,5$[[ttnegZ]]解锁自然数相反数运算negZ
@@ -1629,7 +1629,7 @@ export const mapData = `
 :%*,3#通过此门需消耗推理素10mg
 :%*,3,1$[[del-ttAleph]]拆除门#Aleph[n]提示：也可以选择不拆除它
 :%*,4$[[ttpow]]解锁幂函数[n]pow : nat->nat->nat
-:%*,4,5#Pm:nat,Pn:nat,Sx:nat,mul x [n](mul (factorial m) (factorial n))[n] = factorial (add m n)
+:%*,4,5#Pm:nat,Pn:nat,Sx:nat,mul x [n](mul (factorial m) (factorial n))[n] = factorial (add m n)[n]#t
 :%*,4,5,2$获取0.66mg推理素
 :%*,4,4#[[:=Combin]]定义组合函数[n]Combin:nat->nat->nat[n]使得Combin n k === [n] n!/k!/(n-k)![n]#t:=
 :%*,4,4,1$获取6.6mg推理素
