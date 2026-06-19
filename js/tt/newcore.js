@@ -344,7 +344,12 @@ export class Core {
                 return ast.checked;
             }
             else if (tfn.type === "->" || tfn.type === "P") {
-                this.error(ast, TR("函数作用类型不匹配"), ignoreErr);
+                const _fnStr = parser.stringify(ast.nodes[0]);
+                const _rootStr = this.state.activeAst ? parser.stringify(this.state.activeAst) : "";
+                const _pos = _rootStr.indexOf(_fnStr);
+                const _posStr = _pos >= 0 ? String(_pos + 1) : "?";
+                const _expStr = tfn.nodes ? parser.stringify(tfn.nodes[0]) : "?";
+                this.error(ast, TR("位于第 ") + _posStr + TR(" 个字符的函数 ") + _fnStr + TR(" ,作用类型不匹配 应为 ") + _expStr + TR(" 实为 ") + parser.stringify(tap), ignoreErr);
                 return ast.checked;
             }
             const id = this.state.inferId;
