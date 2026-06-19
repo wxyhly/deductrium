@@ -1545,7 +1545,7 @@ export const mapData = `
 :%*,1@nil表示空列表[n]cons x : List a -> List a[n] 是个函数，对应向列表追加元素x
 :%*,4#Sx:List nat,[n]not (x=nil)[n]#t
 :%*,4,5$[[ttOption]]解锁Option类型
-:%*,4,5,2#not (Pa:U,Optiona ~=[n] Option (Option a))[n]#t
+:%*,4,5,2#not (Pa:U,Option a ~=[n] Option (Option a))[n]#t
 :%*,4,5,2,5$获取0.4mg推理素
 :%*,4,1$获取0.15mg推理素
 :%*,5#[[:=fillList]]请定义一个函数fillList :[n]Pa:U,Px:a,Pn:nat,List a[n]它输出n个x组成的列表[n]如：fillList Bool 1b 2[n] === cons 1b (cons 1b nil)[n]#t:=
