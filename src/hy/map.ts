@@ -1036,7 +1036,7 @@ export const mapData = `
 
 :ttEven,2#Px:nat,Even x ~=[n]Sy:nat,eq (double y) x[n]#t
 :%,1$获取5mg推理素
-:ttEven,4#Px:Even 0, eq x even0[n]#t
+:ttEven,4#[[tteven0]]Px:Even 0, eq x even0[n]#t
 :%,5$获取5mg推理素
 
 // W-type
@@ -1062,7 +1062,7 @@ export const mapData = `
 :%*,4,1,5#Sa:U,Sb:a->U,[n](Wx:a,b x) ~= Option nat[n]#t
 :%*,4,1,5,2$获取0.2mg推理素
 :%*,4,5@类型Wx:True,False[n]只有一个true对应的构造子[n]找不到y:False[n]说明它不带参数[n]这就是单点类型True
-:%,3#NW ~= nat[n]#t
+:%,3#[[ttWnat]]NW ~= nat[n]#t
 :%*,4$获取2mg推理素
 :%*,2$获取2mg推理素
 :%,3#Pa:U,List a ~= [n]Wx:True+a,ind_Sum (Lx:True+a,U)[n](Lx:True,False) (Lx:a,True) x[n]#t
@@ -1102,7 +1102,7 @@ export const mapData = `
 :%*,5,5,0,5,0,5$[[ttindS1]]解锁ind_S1
 :%*,5,2@1.ap是x=y推出[n]f(x)=f(y)的证据[n]2.trans是若x=y，则命题对x成立[n]就能推出对y成立的证据[n]3.apd是ap的依赖类型函数版本[n]由于x与y可以不定义相等[n]故若f(x)与f(y)类型不同[n]无法直接用eq比较相等[n]需要通过trans函数转换到[n]同一类型后才能用eq比较
 :%*,2$获取2.2mg推理素
-:%,0#Pm:base=base,Pn:base=base,[n]((loop*m)=(loop*n))->(m=n)[n]#t
+:%,0#[[ttPathElim]]Pm:base=base,Pn:base=base,[n]((loop*m)=(loop*n))->(m=n)[n]#t
 :%*,2#Px:S1,x=base[n]#t
 :%*,3#[[ttmno]]Pm:base=base,[n]Pn:base=base,[n]Po:base=base,[n](m*n)*o = m*(n*o)[n]#t
 :%*,3,3@提示：路径的结合律[n]是个普遍规律
@@ -1309,10 +1309,10 @@ export const mapData = `
 :%,3$[[ttS3]]解锁超球面S3
 :ttI,4#Sr:refl base2 = refl base2,[n]not (r = rfl)[n]#t
 :%*,2$获取4mg推理素
-:%,5#Sr:refl (refl base2) = refl (refl base2),[n]not (r = rfl)[n]#t
+:%,5#[[hopf1]]Sr:refl (refl base2) = refl (refl base2),[n]not (r = rfl)[n]#t
 :%*,4$获取4g推理素
 :%,5$获取4g推理素
-:%,0#Sf:S3->S2,[n]not (f = Lx:S3,base2)[n]#t
+:%,0#[[hopf2]]Sf:S3->S2,[n]not (f = Lx:S3,base2)[n]#t
 :%*,2$获取4g推理素
 
 :ttindS1,4@ind_S1的意思是，[n]要构造从圆周S1[n]到其它类型的映射[n]除了要给定base映射的值[n]还要给出把路径loop[n]映射到哪里
@@ -1382,14 +1382,14 @@ export const mapData = `
 :%*,2,1@loop不等于rfl的证明思路：[n]通过ind_S1构造映射f:S1->U[n]其中让f(base)=Bool，[n]f(loop)=ua(e)[n]若loop与rfl相等，则[n]ua(e)与rfl相等[n]后者能推出e(x)=x矛盾[n](e在双重否定消去思路中定义)
 :%*,2,4$[[ttrecS1]]解锁ind_S1的简化版rec_S1
 :%*,2,3$获取4.9mg推理素
-:%,1#Px:True,Py:True,(x=y)~=True[n]#t
+:%,1#[[ttPoint]]Px:True,Py:True,(x=y)~=True[n]#t
 :%*,3#Pa:U,isProp(a)->a->(a~=True)[n]#t
 :%*,3,2#Pa:U,isProp(a)->[n](a~=True + a~=False)[n]#t
 :%*,3,2,1,1#True~=True~=True[n]#t
 :%*,3,2,1$[[ttisContr]]解锁谓词“可缩”(isContr)[n]即没其它多余证据的[n]可通过相等路径[n]缩成单点的类型
 :%*,4$[[ttisProp]]解锁谓词“纯命题”(isProp)[n]命题只有成立或不成立[n]即没其它多余证据的类型
 :%*,2#isProp(True)[n]#t
-:%*,2,1#isSet(nat)[n]#t
+:%*,2,1#[[ttSetNat]]isSet(nat)[n]#t
 :%*,2,1,1@“编码-解码”方法是[n]同伦类型论研究[n]相等类型的一种套路:[n]定义一个code函数[n]再定义编码、解码函数[n]最后证明code跟相等等价
 :%*,2,2#[[:=code_nat]]请定义函数code_nat:nat->nat->U[n]使得输入两个自然数相等时[n]计算值为True，否则为False[n]#t:=
 :%*,2,2,2$获取0.1mg推理素
@@ -1403,7 +1403,7 @@ export const mapData = `
 :%*,2,1,2$获取1.8mg推理素
 :%*,2,3$[[ttisSet]]解锁谓词“集合”(isSet)[n]集合中的元素都是点状的[n]即它的相等类型是纯命题
 :%,1@双重否定消去错误[n]的证明思路：[n]设映射e:Bool->Bool[n]且e(0b)=1b，e(1b)=0b[n]可证e是Bool自身到自身的双射[n]即能构造eqv Bool Bool的证据
-:%*,3#Px:2027=2027,x=refl 2027[n]#t
+:%*,3#[[tteq2027]]Px:2027=2027,x=refl 2027[n]#t
 :%*,3,2$获取2.028mg推理素
 :%*,3,1$获取1.9mg推理素
 :%*,2#(Bool~=Bool)~=Bool[n]#t
@@ -1416,7 +1416,7 @@ export const mapData = `
 :%*,4$获取0.9mg推理素
 :%*,2$[[ttSus]]解锁高阶同伦类型构造器[n]纬悬(Sus)
 :%,1#Sus False ~= Bool[n]#t
-:%,2#Sus Bool ~= S1[n]#t
+:%,2#[[ttdrawS1]]Sus Bool ~= S1[n]#t
 :%,5$获取1.9mg推理素
 
 :ttua,0,5@泛等公理不仅说ua是命题[n]“(eqv a b)->(eq a b)”的证据[n]它还说ua映射与id2eqv[n]映射互为逆映射

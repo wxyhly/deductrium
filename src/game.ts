@@ -48,7 +48,7 @@ export class Game {
         "iff": "我推出你，你推出我（<>）", "andor": "逻辑门（与/或）", "pierce": "皮尔士定律((p>q)>p)>p", "lem": "排中律是真的！(p|~p)", "contra": "没毛病！~( p & ~p )", "mcpt": "命题逻辑自动推理",
         "1st": "一阶逻辑", "nf": "约束与自由", "rp": "丢掉量词，尽情替换！", "a7": "众生平等", "mvt": "概括一切（概括元定理）",
         ".prop": "命题逻辑大礼包", "mifft": "替换一切（互推替换元定理）", ".1st": "一阶逻辑大礼包", "terr1": "割让量词的领土", "terr2": "割让量词的领土",
-        "mnt": "改名换姓", "elV1": "量词连连消消乐", "elV2": "量词连连消消乐", "elV3": "量词连连消消乐",
+        "mnt": "准备改名换姓", "elV1": "量词连连消消乐", "elV2": "量词连连消消乐", "elV3": "量词连连消消乐",
         "peano": "皮亚诺公理", "1+1": "1+1=2", "2x2": "2*2=4", "commu+": "加法交换律", "xdistr": "乘法分配率", "3<4": "3小于4",
         "5R6": "5不整除6", "dPrime": "解锁素数", "prm7": "7是素数", "ex!": "任何数都有阶乘", "infprm": "质数有无穷个",
         "aExt": "ZFC集合论", ".<i": "我包含我", "ext<": "我包含我", "empty": "千里之行，始于空集", ".zfc": "ZFC简化大礼包", "UUII": "交交并并",
@@ -57,6 +57,8 @@ export class Game {
         "type": "类型论", "ttrue": "真理之门", "ttsimplFn": "简化依赖函数", "ttactic1": "证明助手上线！", "ttEq": "相等类型", "AllTrue": "True的值都是true",
         "ttindnat": "自然数的归纳法", "tt1+1": "1+1=2类型论版", "ttindeq": "相等的归纳法", "0+x": "代入方程即可", "x+x": "代入方程即可", "1neq2": "1就是1，2就是2（not (eq 1 2)）", "tt5R7": "数论达人(5不整除7)",
         "S1S1": "顺时针一圈逆时针一圈，还是回到原点", "eqvid": "我等价我", "ttua": "泛等公理（ua）", "looprfl": "圆圈跟圆点不同伦（loop不是rfl）", "ttpierce": "原来皮尔士跟他们是一伙的", "lemlie": "排中律是个谎言！？",
+        "ttEven": "又是偶数", "ttList": "cons cons cons nil", "ttZ": "类型论版自然数", ":=factorial2": "双阶乘！！", "tteven0": "Even 0只有even0", "ttWnat": "W自然数", "ttPathElim": "路径消消乐", "ttPoint": "零维的点", "ttisContr": "零维的点",
+        "ttSetNat": "无数个点", "tteq2027": "无数个点", "ttdrawS1": "徒手画圆(Sus Bool=S1)", "ttS2": "吹气球(S2)", "pi1S1": "π₁(S¹)=Z", "hopf1": "Hopf纤维丛", "hopf2": "Hopf纤维丛"
     };
     constructor() {
         const gamemode = window.location.search === "?creative" ? "creative" : "survival";
