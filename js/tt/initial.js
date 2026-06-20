@@ -579,6 +579,12 @@ export function initTypeSystem() {
     addRule("@计算", "@apd_surf : Pu:U@,PC:S2->Uu,Pcb:C base2,Pcs:refl cb=(trans2 C surf cb)*(refl cb), apd2 (ind_S2 C cb cs) surf = cs");
     addRule("@计算", "apd_surf := @apd_surf _ _ _");
     addRule("_计算", "apd_surf");
+    addRule("@计算", "@apd_surf : Pu:U@,PC:S2->Uu,Pcb:C base2,Pcs:refl cb=(trans2 C surf cb)*(refl cb), apd2 (ind_S2 C cb cs) surf = cs");
+    // typeName = "S2.rec";
+    // addRule("@解构", "@rec_S2:=Lu:U@.La:Uu.Lcb:a.Lcs:eq (refl cb) (refl cb).@ind_S2 u (Lx:S2.a) cb (transconst loop cb*cl)");
+    // addRule("@解构", "rec_S2:=@rec_S2 _ _");
+    // addRule("_解构", "rec_S1");
+    // addRule("计算", "rec_S1 ?cb ?cl base === ?cb");
     // @compeq_rfl:=(λu:U@.(λa:(Uu).(λx:a.(λy:a.(λm:(x=y).ind_eq x (λy':a.(λm:(x=y').((m▪(refl y'))=m))) rfl y m))))):(Πu:U@,(Πa:(Uu),(Πx:a,(Πy:a,(Πm:(x=y),((m▪(rfl))=m))))))
     // @compeq_re:=(λu:U@.(λa:(Uu).(λx:a.(λy:a.(λz:a.(λp:(y=z).ind_eq y (λz':a.(λp:(y=z').(Πm:(x=y),(Πn:(x=y),(((m▪p)=(n▪p))→(m=n)))))) (λm:(x=y).(λn:(x=y).(λh:((m▪rfl)=(n▪rfl)).(((inveq (@compeq_rfl u a x y m))▪h)▪(@compeq_rfl u a x y n))))) z p)))))):(Πu:U@,(Πa:(Uu),(Πx:a,(Πy:a,(Πz:a,(Πp:(y=z),(Πm:(x=y),(Πn:(x=y),(((m▪p)=(n▪p))→(m=n))))))))))
     // @compeq_le:=(λu:U@.(λa:(Uu).(λx:a.(λy:a.(λz:a.(λp:(x=y).ind_eq x (λy':a.(λp:(x=y').(Πm:(y'=z),(Πn:(y'=z),(((p▪m)=(p▪n))→(m=n)))))) (λm:(x=z).(λn:(x=z).(λh:((rfl▪m)=(rfl▪n)).h))) y p)))))):(Πu:U@,(Πa:(Uu),(Πx:a,(Πy:a,(Πz:a,(Πp:(x=y),(Πm:(y=z),(Πn:(y=z),(((p▪m)=(p▪n))→(m=n))))))))))

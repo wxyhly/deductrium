@@ -1203,7 +1203,7 @@ export const mapData = `
 :%*,3$获取0.1mg推理素
 :%,5#Px:Z,mulZ 0Z x = 0Z[n]#t
 :%*,3$获取0.1mg推理素
-:%,0#Px:Z,mulZ 1 x = x[n]#t
+:%,0#Px:Z,mulZ (pos 0) x = x[n]#t
 :%*,3$获取0.1mg推理素
 :%,5#Px:Z,mulZ (neg 0) x = negZ x[n]#t
 :%*,3$获取0.1mg推理素
@@ -1608,7 +1608,7 @@ export const mapData = `
 :%,2;1;1;1@..
 :%,1#通过此门需消耗推理素2mg
 :ttZ,5#Sf:nat->Z,Sg:Z->nat,[n]Pn:nat,g(f n) = n X [n]f(nat2Z n) = nat2n(succ n)[n]#t
-:ttZ,1#Sf:nat->Z,Sg:Z->nat,[n]Pn:nat,g(f n) = n X [n]((f n = 0Z) + (not (n = f n))) [n]#t
+:ttZ,1#Sf:nat->Z,Sg:Z->nat,[n]Pn:nat,g(f n) = n X [n]((f n = 0Z) + (not (n = g(f n)))) [n]#t
 :ttZ,2#通过此门需消耗推理素3mg
 :%,1$[[ttnat2Z]]解锁自然数到整数[n]的转换函数nat2n
 :ttZ,4#Sf:Z->Z,Px:Z,[n]f(succZ x) = predZ(f x)[n] X (f 0Z = 0Z)[n]#t
