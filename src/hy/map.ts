@@ -1607,10 +1607,10 @@ export const mapData = `
 :%,1$[[ttsuccZ]]解锁整数后继运算succZ
 :%,2;1;1;1@..
 :%,1#通过此门需消耗推理素2mg
-:ttZ,5#Sf:nat->Z,Sg:Z->nat,[n]Pn:nat,g(f n) = n X [n]f(nat2Z n) = nat2n(succ n)[n]#t
+:ttZ,5#Sf:nat->Z,Sg:Z->nat,[n]Pn:nat,g(f n) = n X [n]f(nat2Z n) = nat2Z(succ n)[n]#t
 :ttZ,1#Sf:nat->Z,Sg:Z->nat,[n]Pn:nat,g(f n) = n X [n]((f n = 0Z) + (not (n = g(f n)))) [n]#t
 :ttZ,2#通过此门需消耗推理素3mg
-:%,1$[[ttnat2Z]]解锁自然数到整数[n]的转换函数nat2n
+:%,1$[[ttnat2Z]]解锁自然数到整数[n]的转换函数nat2Z
 :ttZ,4#Sf:Z->Z,Px:Z,[n]f(succZ x) = predZ(f x)[n] X (f 0Z = 0Z)[n]#t
 :%,5$[[ttpredZ]]解锁自然数前继运算predZ
 :ttZ,3#通过此门需消耗推理素3mg

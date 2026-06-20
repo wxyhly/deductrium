@@ -350,7 +350,7 @@ class LangMgr {
         "嫌钱给少了？\n这可是证明排中律\n不成立的关键步骤哦": "Think the fee is too low?\nThis is a crucial step\nin proving that\nexcluded middle does not hold!",
         "解锁整数类型\nZ": "Unlock the integer type\nZ",
         "解锁整数后继运算succZ": "Unlock integer successor operation succZ",
-        "解锁自然数到整数\n的转换函数nat2n": "Unlock the conversion function\nfrom natural numbers to integers\nnat2n",
+        "解锁自然数到整数\n的转换函数nat2Z": "Unlock the conversion function\nfrom natural numbers to integers\nnat2Z",
         "解锁自然数前继运算predZ": "Unlock integer predecessor operation predZ",
         "解锁自然数相反数运算negZ": "Unlock integer negation operation negZ",
         "解锁列表类型List": "Unlock the List type",
