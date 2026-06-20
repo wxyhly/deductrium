@@ -837,7 +837,7 @@ class LangMgr {
         "割让量词的领土": "Quantifier Relinquishment",
         "一阶逻辑大礼包": "1st-Order Logic Toolkit",
         "量词连连消消乐": "Quantifier Elimination Challenge",
-        "改名换姓（换名元定理）": "α-Conversion (Metatheorem)",
+        "准备改名换姓": "Ready for α-Conversion",
         "加大剂量（累计获1mg推理素）": "Dose Increased (Accumulated 1mg of Deductrium)",
         "皮亚诺公理": "Peano Axioms",
         "1+1=2": "1+1=2",
@@ -887,7 +887,22 @@ class LangMgr {
         "一切皆可良序": "Everything Is Well-Ordered",
         "ω^ω^ω^ω": "ω^ω^ω^ω",
         "临界质量（累计获50.1kg推理素）": "Critical Mass (Accumulated 50.1kg of Deductrium)",
-        "⟳重置游戏": "⟳RESTART"
+        "⟳重置游戏": "⟳RESTART",
+        "又是偶数": "Even Again",
+        "类型论版整数": "Integers in Type Theory",
+        "双阶乘！！": "Double factorial!!",
+        "Even 0只有even0": "Even 0 has only even0",
+        "W自然数": "W-nat",
+        "外延公理(fnext)": "function extensionality axiom (fnext)",
+        "我不要外延公理了": "I don't need fnext anymore",
+        "isProp(是双射)": "isProp (is bijective)",
+        "来了无穷位客人住旅馆": "Infinite number of guests arrive at the hotel",
+        "排列大师": "Master of permutation",
+        "路径消消乐": "Path Elimination",
+        "零维的点": "0D point",
+        "无数个点": "Infinite 0D points",
+        "徒手画圆(Sus Bool=S1)": "Drawing a circle freehand (Sus Bool=S1)",
+        "Hopf纤维丛": "Hopf fibration"
     };
     tr(text: string, mode: string) {
         if (this.lang === "zh") return text;
