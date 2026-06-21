@@ -413,7 +413,7 @@ export class Core {
         this.state.bondVarRel = new DisjointSet();
     }
     error(ast, msg, stop) {
-        this.state.errormsg.push({ ast, msg });
+        this.state.errormsg.unshift({ ast, msg });
         console.log(parser.stringify(ast), msg);
         ast.err = msg;
         if (stop)
@@ -491,11 +491,11 @@ export class Core {
                 this.check(ast.checked, context, true);
             }
             this.solveInferRel();
-            this.solveInferDefered();
             for (const [k, v] of Object.entries(this.state.inferTable.rel)) {
                 this.whnf(v, this.state.inferTable.list.get(k.replace(/\:+$/, "").slice(1)), true);
             }
             this.fillInfered(ast);
+            this.solveInferDefered();
         }
         catch (e) {
             errmsg = e;
@@ -1430,12 +1430,15 @@ export class Core {
         return true;
     }
     solveInferDefered() {
-        // for (const [a, b, context] of this.state.inferTable.defered) {
-        //     if (!this.equal(a, b, context)) {
-        //         this.error(a, TR("类型推断错误，发现不一致的推断：") + this.printErrAst(a, context) + " ≠ " + this.printErrAst(b, context), false);
-        //         return false;
-        //     }
-        // }
+        const deferArr = this.state.inferTable.defered.slice(0);
+        for (const [a, b, context] of deferArr) {
+            this.fillInfered(a);
+            this.fillInfered(b);
+            if (!this.equal(a, b, context)) {
+                this.error(a, TR("类型推断错误：") + this.printErrAst(a, context) + " ≠ " + this.printErrAst(b, context), false);
+                return false;
+            }
+        }
         return true;
     }
     solveInferRel() {
@@ -1450,19 +1453,19 @@ export class Core {
                     replaceKey = k;
                     const kt = k + ":";
                     const astT = it.rel[kt];
+                    const ctxt = it.list.get(k.slice(1)) ?? [];
                     if (astT) {
                         for (const [k, v] of Object.entries(it.rel)) {
                             if (!solved.has(k)) {
                                 this.replaceVar(v, kt, -1, astT);
                             }
                         }
-                        const ctxt = it.list.get(k.slice(1)) ?? [];
                         this.whnf(v, ctxt, true);
                         if (!this.equal(this.check(v, ctxt, false), astT, ctxt))
                             return false;
-                        it.rel[kt] = this.check(v, ctxt, false);
-                        solved.add(kt);
                     }
+                    it.rel[kt] = this.check(v, ctxt, false);
+                    solved.add(kt);
                     break;
                 }
             }
@@ -1686,6 +1689,7 @@ export class Core {
         if (ma || mb)
             return this.equal(a, b, context);
         console.log(`? ${parser.stringify(a)} != ${parser.stringify(b)}`);
+        this.error(a, TR("类型推断错误：") + this.printErrAst(a, context) + " ≠ " + this.printErrAst(b, context), false);
         return false;
     }
     lazyExpand(a, b, context) {

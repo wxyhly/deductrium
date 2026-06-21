@@ -475,6 +475,7 @@ class LangMgr {
         "未知的全类层级运算": "Unknown universe type operation",
         "尝试对非全类操作层级": "Attempted to use hierarchy operator for non-universe object",
         "类型推断错误：发现循环引用": "Type inference error: Circular reference detected",
+        "类型推断错误：": "Type inference error: ",
         "本应约束的变量在类型推断时自由出现：": "Variable that should be bound occurs free during type inference: ",
         "由系统保留": " is reserved by the system",
         // game.ts

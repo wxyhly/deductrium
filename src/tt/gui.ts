@@ -720,6 +720,7 @@ export class TTGui {
                         this.core.checkType(ast, [], false);
                     }
                     checkInfer(ast);
+                    if (ast.checked) checkInfer(ast.checked);
                 } catch (e) {
                     error += e;
                     wrapper.classList.add("error");
@@ -873,16 +874,16 @@ export class TTGui {
                 this.core.checkType(parser.parse("count_0 nil === 0"), [], false);
                 this.core.checkType(parser.parse("count_0 (cons 0 nil) === 1"), [], false);
                 this.core.checkType(parser.parse("count_0 (cons 45 (cons 0 (cons 20 (cons 0 nil)))) === 2"), [], false);
-            // } else if (name === "Aleph") {
-            //     let k = wrapVar("nat");
-            //     for (let i = 0; i < 5; i++) {
-            //         this.core.checkType({
-            //             type: "===", name: "", nodes: [
-            //                 wrapApply(defvar, wrapVar(String(i))), k
-            //             ]
-            //         }, [], false);
-            //         k = wrapLambda("->", "", k, wrapVar("Bool"));
-            //     }
+                // } else if (name === "Aleph") {
+                //     let k = wrapVar("nat");
+                //     for (let i = 0; i < 5; i++) {
+                //         this.core.checkType({
+                //             type: "===", name: "", nodes: [
+                //                 wrapApply(defvar, wrapVar(String(i))), k
+                //             ]
+                //         }, [], false);
+                //         k = wrapLambda("->", "", k, wrapVar("Bool"));
+                //     }
             } else if (name === "ftreq") {
                 let p = "";
                 let a = "";

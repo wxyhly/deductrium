@@ -65,7 +65,7 @@ export class Game {
         "type": "类型论", "ttrue": "真理之门", "ttsimplFn": "简化依赖函数", "ttactic1": "证明助手上线！", "ttEq": "相等类型", "AllTrue": "True的值都是true",
         "ttindnat": "自然数的归纳法", "tt1+1": "1+1=2类型论版", "ttindeq": "相等的归纳法", "0+x": "代入方程即可", "x+x": "代入方程即可", "1neq2": "1就是1，2就是2（not (eq 1 2)）", "tt5R7": "数论达人(5不整除7)",
         "S1S1": "顺时针一圈逆时针一圈，还是回到原点", "eqvid": "我等价我", "ttua": "泛等公理（ua）", "looprfl": "圆圈跟圆点不同伦（loop不是rfl）", "ttpierce": "原来皮尔士跟他们是一伙的", "lemlie": "排中律是个谎言！？",
-        "ttEven": "又是偶数", "ttList": "cons cons cons nil", "ttZ": "类型论版自然数", ":=factorial2": "双阶乘！！", "tteven0": "Even 0只有even0", "ttWnat": "W自然数", "ttPathElim": "路径消消乐", "ttPoint": "零维的点", "ttisContr": "零维的点",
+        "ttEven": "又是偶数", "ttList": "cons cons cons nil", "ttZ": "类型论版整数", ":=factorial2": "双阶乘！！", "tteven0": "Even 0只有even0", "ttWnat": "W自然数", "ttPathElim": "路径消消乐", "ttPoint": "零维的点", "ttisContr": "零维的点",
         "ttSetNat": "无数个点", "tteq2027": "无数个点", "ttdrawS1": "徒手画圆(Sus Bool=S1)", "ttS2": "吹气球(S2)", "pi1S1": "π₁(S¹)=Z", "hopf1": "Hopf纤维丛", "hopf2": "Hopf纤维丛",
         "ttfnext": "外延公理(fnext)", "ttNoFnext": "我不要外延公理了", "Bool=Bool=Bool": "Bool=Bool=Bool", "isequivP": "isProp(是双射)",
         "infhotel": "来了无穷位客人住旅馆", "permMaster": "排列大师"

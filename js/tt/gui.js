@@ -808,6 +808,8 @@ export class TTGui {
                         this.core.checkType(ast, [], false);
                     }
                     checkInfer(ast);
+                    if (ast.checked)
+                        checkInfer(ast.checked);
                 }
                 catch (e) {
                     error += e;
