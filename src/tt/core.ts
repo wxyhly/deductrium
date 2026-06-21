@@ -30,6 +30,7 @@ export class InferTable {
     list: Map<string, Context> = new Map;
     rel: Varlist = {};
     solved = new Set<string>;
+    defered: [AST, AST, Context][] = [];
     // find new name, and add it to list. param is just a ref value for finding
     addNewName(n = 0, ctxt: Context) {
         if (!n) n = 0;
@@ -52,6 +53,7 @@ export class InferTable {
             return [k, nv];
         }));
         n.solved = new Set(this.solved);
+        n.defered = this.defered.map(e => [Core.clone(e[0], true), Core.clone(e[1], true), e[2]]);
         return n;
     }
     constructor(ast?: AST, context?: Context) {
@@ -383,20 +385,20 @@ export class Core {
         inferTable: null,
         errormsg: [],
     };
-    cloneState(): State {
-        return {
-            sysTypes: this.state.sysTypes,
-            bondVarId: this.state.bondVarId,
-            bondVarRel: this.state.bondVarRel?.clone(),
-            sysDefs: this.state.sysDefs,
-            userDefs: this.state.userDefs,
-            defTypes: this.state.defTypes,
-            computeRules: this.state.computeRules,
-            inferTable: this.state.inferTable?.clone(),
-            errormsg: this.state.errormsg,
-            root: this.state.root
-        }
-    }
+    // cloneState(): State {
+    //     return {
+    //         sysTypes: this.state.sysTypes,
+    //         bondVarId: this.state.bondVarId,
+    //         bondVarRel: this.state.bondVarRel?.clone(),
+    //         sysDefs: this.state.sysDefs,
+    //         userDefs: this.state.userDefs,
+    //         defTypes: this.state.defTypes,
+    //         computeRules: this.state.computeRules,
+    //         inferTable: this.state.inferTable?.clone(),
+    //         errormsg: this.state.errormsg,
+    //         root: this.state.root
+    //     }
+    // }
     clearState() {
         this.state.errormsg = [];
         this.state.inferTable = new InferTable;
@@ -466,6 +468,7 @@ export class Core {
             }
 
             this.solveInferRel();
+            this.solveInferDefered();
             for (const [k, v] of Object.entries(this.state.inferTable.rel)) {
                 this.whnf(v, this.state.inferTable.list.get(k.replace(/\:+$/, "").slice(1)), true);
             }
@@ -706,21 +709,21 @@ export class Core {
                 this.replaceVar(ast.checked, fnType.name, bondVarId, ast.nodes[1], context);
                 return ast.checked;
             } else {
-                const print = (ast: AST) => {
-                    ast = Core.clone(ast);
-                    this.reduce(ast, context, false);
-                    return parser.stringify(ast);
-                }
-                const _fnStr = print(ast.nodes[0]);
-                const _rootStr = this.state.root ? print(this.state.root) : "";
+                const _fnStr = this.printErrAst(ast.nodes[0], context);
+                const _rootStr = this.state.root ? this.printErrAst(this.state.root, context) : "";
                 const _pos = _rootStr.indexOf(_fnStr);
-                const _posStr = _pos >= 0 ? String(_pos + 1) : "?";
-                const _expStr = tfn.nodes ? print(tfn.nodes[0]) : print(tfn);
-                this.error(ast, (_posStr === "?" ? TR("函数 ") : TR("位于第 ") + _posStr + TR(" 个字符的函数 ")) + _fnStr + TR(" ,作用类型不匹配：应为 ") + _expStr + TR("，实为 ") + print(tap), ignoreErr);
+                const _posStr = _pos >= 0 ? String(_pos) : "?";
+                const _expStr = tfn.nodes ? this.printErrAst(tfn.nodes[0], context) : this.printErrAst(tfn, context);
+                this.error(ast, (_posStr === "?" ? TR("函数 ") : TR("位于第 ") + _posStr + TR(" 个字符的函数 ")) + _fnStr + TR(" ,作用类型不匹配：应为 ") + _expStr + TR("，实为 ") + this.printErrAst(tap, context), ignoreErr);
             }
             return ast.checked;
         }
         this.error(ast, TR("未知的表达式"), ignoreErr);
+    }
+    private printErrAst(ast: AST, context: Context) {
+        ast = Core.clone(ast);
+        this.reduce(ast, context, false);
+        return parser.stringify(ast);
     }
     desugar(ast: AST, allowModify: boolean) {
         ast.origin = !allowModify;
@@ -1280,6 +1283,15 @@ export class Core {
         this.state.inferTable.rel[name] = ast;
         return true;
     }
+    solveInferDefered() {
+        // for (const [a, b, context] of this.state.inferTable.defered) {
+        //     if (!this.equal(a, b, context)) {
+        //         this.error(a, TR("类型推断错误，发现不一致的推断：") + this.printErrAst(a, context) + " ≠ " + this.printErrAst(b, context), false);
+        //         return false;
+        //     }
+        // }
+        return true;
+    }
     solveInferRel() {
         const it = this.state.inferTable;
         const solved = it.solved;
@@ -1394,12 +1406,14 @@ export class Core {
         if (a.type === b.type && a.name == b.name && a.nodes?.length && a.nodes?.length === b.nodes?.length && ((a.nodes[0].name === "U") === (b.nodes[0].name === "U"))) {
             let breaked = false;
             if (a.nodes[0].nodes?.[0]?.name === "@max" || b.nodes[0].nodes?.[0]?.name === "@max") {
-                console.log("can't determine @max(?,?) === xxx, ignore");
+                this.state.inferTable.defered.push([a, b, context]);
+                // console.log("can't determine @max(?,?) === xxx, ignore");
                 return true;
             }
             if (!Core.exactEqual(a.nodes[0], b.nodes[0]) && (a.nodes[0].name.startsWith("?") || b.nodes[0].name.startsWith("?"))) {
                 // no, here is not failed, we just don't know. but here
-                console.log("can't determine ?fn1 xxx === ?fn2 xxx, ignore");
+                this.state.inferTable.defered.push([a, b, context]);
+                // console.log("can't determine ?fn1 xxx === ?fn2 xxx, ignore");
                 return true;
             }
             // if recursive eq failed, we need to undo inferring during recursive eq.
@@ -1497,7 +1511,8 @@ export class Core {
             return this.addInferRel(a.nodes[0].name, l, context);
         }
         if (a?.nodes?.[0]?.nodes?.[0]?.name === "@max" || b?.nodes?.[0]?.nodes?.[0]?.name === "@max") {
-            console.log("can't determine @max(?,?) === xxx, ignore");
+            this.state.inferTable.defered.push([a, b, context]);
+            // console.log("can't determine @max(?,?) === xxx, ignore");
             return true;
         }
         const ma = this.fillInfered(a);

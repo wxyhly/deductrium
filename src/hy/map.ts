@@ -1367,7 +1367,7 @@ export const mapData = `
 :%*,5$获取0.8mg推理素
 :%*,4@完整的函数外延公理[n]不仅说fnext存在[n]还说它跟happly是双射
 :%*,3@其实只要有[n]单边方向的fnext存在[n]就足以推出这个等价了
-:%,2#Pa:U,Pb:U,[n]Pf:a->b,Pg:a->b,[n](Px:a,f x = g x)~=(f=g)[n]#t
+:%,2#[[ttNoFnext]]Pa:U,Pb:U,[n]Pf:a->b,Pg:a->b,[n](Px:a,f x = g x)~=(f=g)[n]#t
 :%*,1$获取1.8mg推理素
 
 :ttmno,4#(rec_S1 Bool (refl Bool)[n] base) = Bool[n]#t
@@ -1406,7 +1406,7 @@ export const mapData = `
 :%*,3#[[tteq2027]]Px:2027=2027,x=refl 2027[n]#t
 :%*,3,2$获取2.028mg推理素
 :%*,3,1$获取1.9mg推理素
-:%*,2#(Bool~=Bool)~=Bool[n]#t
+:%*,2#[[Bool=Bool=Bool]](Bool~=Bool)~=Bool[n]#t
 :%*,2,4$获取1.9mg推理素
 :%*,2,1@则ua(e):eq Bool Bool[n]通过ua(e)使用ind_eq[n]可证明若存在f:Pa:U,~~a->a[n]则能推出e(f Bool x)=f Bool x[n]从而可推出矛盾
 :%,1#not Pa:U,(not(not a))->a[n]#t
@@ -1453,7 +1453,7 @@ export const mapData = `
     :%*,2,5#not (isProp(S1))[n]#t
     :%*,3#not (isSet(S1))[n]#t
     :%*,3,3$获取0.1mg推理素
-    :%*,4,1#not (a(S1))[n]#t
+    :%*,4,1#not ((S1))[n]#t
     :%*,4#Pa:U,isProp(isProp(a))[n]#t
     :%*,4,3$获取0.2mg推理素
     :%*,4,5#Pa:U,isProp(isSet(a))[n]#t
@@ -1489,7 +1489,7 @@ export const mapData = `
 :%,0#Pa:U,Px:a,isContr(Sx0:a,x=x0)[n]#t
 :%,5@我们离证明“f是双射”[n]是纯命题不远了
 :%,0@
-:%,5#Pa:U,Pb:U,Pf:a->b,[n]isProp((Sg:b->a,Px:a,x=g(f x))[n]X(Sh:b->a,Px:b,x=f(h x)))[n]#t
+:%,5#[[isequivP]]Pa:U,Pb:U,Pf:a->b,[n]isProp((Sg:b->a,Px:a,x=g(f x))[n]X(Sh:b->a,Px:b,x=f(h x)))[n]#t
 :%*,2$获取4.4mg推理素
 :%*,3@“f是双射”是纯命题的[n]等价定义很多，不只这一种[n]比如纤维可缩等等
 :%*,5$获取4.4mg推理素
@@ -1502,7 +1502,7 @@ export const mapData = `
 
 :ttLiftU,3#(nat+True) ~= nat[n]#t
 :%*,5@欢迎入住[n]希尔伯特无穷旅馆！
-:%,4#(nat+nat) ~= nat[n]#t
+:%,4#[[infhotel]](nat+nat) ~= nat[n]#t
 :%*,3$获取1.1mg推理素
 :%,4#(natXnat) ~= nat[n]#t
 :%*,3$获取2.2mg推理素
@@ -1535,7 +1535,7 @@ export const mapData = `
 :%*,3$获取0.3mg推理素
 :%,1#Px:nat,Py:nat,[n](Fin x->Fin y)~=(Fin (pow y x))[n]#t
 :%*,3$获取0.3mg推理素
-:%,0#Px:nat,[n](Fin x ~= Fin x)~=(Fin (factorial x))[n]#t
+:%,0#[[permMaster]]Px:nat,[n](Fin x ~= Fin x)~=(Fin (factorial x))[n]#t
 :%,2$获取8.88mg推理素
 
 // List
