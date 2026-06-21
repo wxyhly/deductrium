@@ -59,8 +59,8 @@ export class Game {
         "S1S1": "顺时针一圈逆时针一圈，还是回到原点", "eqvid": "我等价我", "ttua": "泛等公理（ua）", "looprfl": "圆圈跟圆点不同伦（loop不是rfl）", "ttpierce": "原来皮尔士跟他们是一伙的", "lemlie": "排中律是个谎言！？",
         "ttEven": "又是偶数", "ttList": "cons cons cons nil", "ttZ": "类型论版自然数", ":=factorial2": "双阶乘！！", "tteven0": "Even 0只有even0", "ttWnat": "W自然数", "ttPathElim": "路径消消乐", "ttPoint": "零维的点", "ttisContr": "零维的点",
         "ttSetNat": "无数个点", "tteq2027": "无数个点", "ttdrawS1": "徒手画圆(Sus Bool=S1)", "ttS2": "吹气球(S2)", "pi1S1": "π₁(S¹)=Z", "hopf1": "Hopf纤维丛", "hopf2": "Hopf纤维丛",
-        "ttfnext":"外延公理(fnext)","ttNoFnext":"我不要外延公理了","Bool=Bool=Bool":"Bool=Bool=Bool","isequivP":"isProp(是双射)",
-        "infhotel":"来了无穷位客人住旅馆","permMaster":"排列大师"
+        "ttfnext": "外延公理(fnext)", "ttNoFnext": "我不要外延公理了", "Bool=Bool=Bool": "Bool=Bool=Bool", "isequivP": "isProp(是双射)",
+        "infhotel": "来了无穷位客人住旅馆", "permMaster": "排列大师"
     };
     constructor() {
         const gamemode = window.location.search === "?creative" ? "creative" : "survival";
@@ -624,17 +624,18 @@ export class Game {
         const txtarea = document.getElementById("progress-txtarea") as HTMLTextAreaElement;
 
         const gameSaveLoad = new GameSaveLoad(gamemode);
-
+        let loadFile = false;
         progressBtns[0].addEventListener("click", () => gameSaveLoad.save(this, txtarea));
         progressBtns[1].addEventListener("click", () => {
             const title = document.getElementById("gamemode").innerText;
             document.getElementById("gamemode").innerText = "[...Loading...]";
             // to update title [...Loading...]
             setTimeout(() => {
-                if (!confirm(TR("请粘贴进度代码至保存加载按钮下方的文本框内。粘贴好了请点确定，还未粘贴请先点取消\n注意：加载新进度后，当前游戏进度会丢失！"))) {
+                if (!loadFile && !confirm(TR("请粘贴进度代码至保存加载按钮下方的文本框内。粘贴好了请点确定，还未粘贴请先点取消\n注意：加载新进度后，当前游戏进度会丢失！"))) {
                     document.getElementById("gamemode").innerText = title;
                     return;
                 }
+                loadFile = false;
                 const str = txtarea.value;
                 if (!str.trim()) { alert(TR("进度代码为空！")); } else {
                     this.fsGui.skipRendering = true;
@@ -644,9 +645,32 @@ export class Game {
                 document.getElementById("gamemode").innerText = title;
             }, 20);
         });
-        progressBtns[2].addEventListener("click", () => gameSaveLoad.reset());
+        progressBtns[2].addEventListener("click", () => {
+            // 跟Btns[0]相同，但保存到文件
+            const str = gameSaveLoad.save(this);
+            const blob = new Blob([str], { type: "text/plain" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `deductrium_progress${new Date().toISOString()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+        document.querySelector(".progress-btns input[type='file']").addEventListener("change", (e) => {
+            // 跟Btns[1]相同，但从文件加载
+            loadFile = true;
+            const file = (e.target as HTMLInputElement).files[0];
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const str = (ev.target as FileReader).result as string;
+                txtarea.value = str;
+                progressBtns[1].click();
+            };
+            reader.readAsText(file);
+        });
+        progressBtns[3].addEventListener("click", () => gameSaveLoad.reset());
         document.querySelector(".restart").addEventListener("click", () => gameSaveLoad.reset());
-        progressBtns[3].addEventListener("click", () => { langMgr.setLang(langMgr.lang === "en" ? "zh" : "en"); window.location.reload() });
+        progressBtns[4].addEventListener("click", () => { langMgr.setLang(langMgr.lang === "en" ? "zh" : "en"); window.location.reload() });
 
         const saves = localStorage.getItem(gameSaveLoad.storageKey);
         // autosave while updated within a time interval

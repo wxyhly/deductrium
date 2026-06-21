@@ -40,8 +40,10 @@
         <div id="panel-3">
             <hr>
             <div class="progress-btns">
-                <button>保存</button>
-                <button class="danger">加载</button>
+                <button>保存为文本</button>
+                <button class="danger">加载文本</button>
+                <button>保存为文件</button>
+                <label>加载文件</label>: <input class="danger" type="file" style="width:100px" />
                 <button class="danger">清除进度</button>
                 <button>Toggle Game Language to English</button>
             </div>
@@ -200,7 +202,8 @@
                         target="_blank">请点击这里</a>。</p>
             </div>
             <h3>若遇Bug或其它任何问题：</h3>
-            <p><label>欢迎联系游戏作者</label><a target="_blank" href="https://wxyhly.github.io/about/">Hqak</a><label>。游戏QQ交流群：975918698</label></p>
+            <p><label>欢迎联系游戏作者</label><a target="_blank"
+                    href="https://wxyhly.github.io/about/">Hqak</a><label>。游戏QQ交流群：975918698</label></p>
         </div>
         <div id="panel-1">
             <label id="wrap-simpl-sysfn" class="hide"><input id="simpl-sysfn" type="checkbox" checked />简化显示系统函数</label>
@@ -259,7 +262,7 @@
                 github</a>
         </div>
         <div id="panel-2">
-            <label id="displayPi-label" class="hide"><input type="checkbox" id="displayPi"/>箭头表示依赖函数</label>
+            <label id="displayPi-label" class="hide"><input type="checkbox" id="displayPi" />箭头表示依赖函数</label>
             <div class="tlist">
                 <div class="float-type"></div>
                 <label class="before-list-wrapper">公理类型：</label>
@@ -267,25 +270,26 @@
                     <div class="list" id="type-list">
                     </div>
                 </div>
-                <label  class="before-list-wrapper">定理：</label>
+                <label class="before-list-wrapper">定理：</label>
                 <div class="list-wrapper">
                     <div class="inhabitat" id="inhabit-list">
                         <button class="inhabitat-modify" id="add-btn">+</button>
                     </div>
                 </div>
                 <div id="tactic-div" class="hide">
-                <div id="copygate"></div>
-                <label>证明策略：</label><button class="inhabitat-modify hide" id="tactic-clear">x</button><span id="tactic-hint"></span>
-                <div class="list-wrapper" style="user-select: text;cursor:default;">
-                    <div id="tactic-list">
-                        <div id="tactic-state"></div>
-                        <button class="inhabitat-modify hide" id="tactic-remove">-</button><button
-                            class="inhabitat-modify" id="tactic-begin">+</button><input id="tactic-input"
-                            class="hide" />
-                        <div id="tactic-errmsg"></div>
-                        <div id="tactic-autofill"></div>
+                    <div id="copygate"></div>
+                    <label>证明策略：</label><button class="inhabitat-modify hide" id="tactic-clear">x</button><span
+                        id="tactic-hint"></span>
+                    <div class="list-wrapper" style="user-select: text;cursor:default;">
+                        <div id="tactic-list">
+                            <div id="tactic-state"></div>
+                            <button class="inhabitat-modify hide" id="tactic-remove">-</button><button
+                                class="inhabitat-modify" id="tactic-begin">+</button><input id="tactic-input"
+                                class="hide" />
+                            <div id="tactic-errmsg"></div>
+                            <div id="tactic-autofill"></div>
+                        </div>
                     </div>
-                </div>
                 </div>
             </div>
         </div>

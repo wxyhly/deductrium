@@ -1079,16 +1079,18 @@ export class Game {
         const progressBtns = Array.from(document.querySelectorAll(".progress-btns button"));
         const txtarea = document.getElementById("progress-txtarea");
         const gameSaveLoad = new GameSaveLoad(gamemode);
+        let loadFile = false;
         progressBtns[0].addEventListener("click", () => gameSaveLoad.save(this, txtarea));
         progressBtns[1].addEventListener("click", () => {
             const title = document.getElementById("gamemode").innerText;
             document.getElementById("gamemode").innerText = "[...Loading...]";
             // to update title [...Loading...]
             setTimeout(() => {
-                if (!confirm(TR("请粘贴进度代码至保存加载按钮下方的文本框内。粘贴好了请点确定，还未粘贴请先点取消\n注意：加载新进度后，当前游戏进度会丢失！"))) {
+                if (!loadFile && !confirm(TR("请粘贴进度代码至保存加载按钮下方的文本框内。粘贴好了请点确定，还未粘贴请先点取消\n注意：加载新进度后，当前游戏进度会丢失！"))) {
                     document.getElementById("gamemode").innerText = title;
                     return;
                 }
+                loadFile = false;
                 const str = txtarea.value;
                 if (!str.trim()) {
                     alert(TR("进度代码为空！"));
@@ -1101,9 +1103,32 @@ export class Game {
                 document.getElementById("gamemode").innerText = title;
             }, 20);
         });
-        progressBtns[2].addEventListener("click", () => gameSaveLoad.reset());
+        progressBtns[2].addEventListener("click", () => {
+            // 跟Btns[0]相同，但保存到文件
+            const str = gameSaveLoad.save(this);
+            const blob = new Blob([str], { type: "text/plain" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `deductrium_progress${new Date().toISOString()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+        document.querySelector(".progress-btns input[type='file']").addEventListener("change", (e) => {
+            // 跟Btns[1]相同，但从文件加载
+            loadFile = true;
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const str = ev.target.result;
+                txtarea.value = str;
+                progressBtns[1].click();
+            };
+            reader.readAsText(file);
+        });
+        progressBtns[3].addEventListener("click", () => gameSaveLoad.reset());
         document.querySelector(".restart").addEventListener("click", () => gameSaveLoad.reset());
-        progressBtns[3].addEventListener("click", () => { langMgr.setLang(langMgr.lang === "en" ? "zh" : "en"); window.location.reload(); });
+        progressBtns[4].addEventListener("click", () => { langMgr.setLang(langMgr.lang === "en" ? "zh" : "en"); window.location.reload(); });
         const saves = localStorage.getItem(gameSaveLoad.storageKey);
         // autosave while updated within a time interval
         this.hyperGui.world.onStateChange = this.ttGui.onStateChange = this.fsGui.onStateChange = () => gameSaveLoad.stateChange(this);
