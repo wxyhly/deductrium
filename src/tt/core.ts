@@ -714,7 +714,11 @@ export class Core {
                 const _pos = _rootStr.indexOf(_fnStr);
                 const _posStr = _pos >= 0 ? String(_pos) : "?";
                 const _expStr = tfn.nodes ? this.printErrAst(tfn.nodes[0], context) : this.printErrAst(tfn, context);
-                this.error(ast, (_posStr === "?" ? TR("函数 ") : TR("位于第 ") + _posStr + TR(" 个字符的函数 ")) + _fnStr + TR(" ,作用类型不匹配：应为 ") + _expStr + TR("，实为 ") + this.printErrAst(tap, context), ignoreErr);
+                if (!this.equal(wrapLambda("P", "_", wrapVar("_"), wrapVar("_")), tfn, context)) {
+                    // 非函数尝试作用
+                    this.error(ast, TR("非函数尝试作用") + ": " + this.printErrAst(ast.nodes[0], context), ignoreErr);
+                } else
+                    this.error(ast, (_posStr === "?" ? TR("函数 ") : TR("位于第 ") + _posStr + TR(" 个字符的函数 ")) + _fnStr + TR(" ,作用类型不匹配：应为 ") + _expStr + TR("，实为 ") + this.printErrAst(tap, context), ignoreErr);
             }
             return ast.checked;
         }
