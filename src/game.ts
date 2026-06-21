@@ -548,6 +548,8 @@ export class Game {
                 case "ttlazy": this.ttGui.enablecopygate = true; return;
                 case "ttacticFnext": this.ttGui.unlockedTactics.add("fnext"); return;
                 case "ttsup": this.ttGui.unlockedTactics.add("sup"); return;
+                case "ttleZ": this.ttGui.unlockedTactics.add("Z.le"); return;
+                case "ttabsZ": this.ttGui.unlockedTactics.add("Z.abs"); return;
                 case "ttsimpl":
                     this.ttGui.unlockedTactics.add("simpl"); return;
                 case "ttdestruct":

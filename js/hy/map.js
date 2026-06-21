@@ -1453,7 +1453,7 @@ export const mapData = `
     :%*,2,5#not (isProp(S1))[n]#t
     :%*,3#not (isSet(S1))[n]#t
     :%*,3,3$获取0.1mg推理素
-    :%*,4,1#not ((S1))[n]#t
+    :%*,4,1#not (isContr(S1))[n]#t
     :%*,4#Pa:U,isProp(isProp(a))[n]#t
     :%*,4,3$获取0.2mg推理素
     :%*,4,5#Pa:U,isProp(isSet(a))[n]#t
@@ -1514,7 +1514,7 @@ export const mapData = `
 :%,0#(nat->nat) ~= (nat->Bool)[n]#t
 :%*,3$获取8.88mg推理素
 :%*,4@提示：在解锁Even后方[n]可解锁Aleph
-:%,5#Pm:nat,pn:nat,[n](Aleph m~=Aleph n)[n] -> m = n[n]#t
+:%,5#Pm:nat,Pn:nat,[n](Aleph m~=Aleph n)[n] -> m = n[n]#t
 :%,0#(Sn:nat, Aleph n)~=(Pn:nat,Aleph (succ n))[n]#t
 :%*,0#Pn:nat, not (Aleph n[n]~= (Sn:nat, Aleph n))[n]#t
 :%*,0,5$[[delAlw]]拆除门#א_ω
@@ -1607,7 +1607,7 @@ export const mapData = `
 :%,1$[[ttsuccZ]]解锁整数后继运算succZ
 :%,2;1;1;1@..
 :%,1#通过此门需消耗推理素2mg
-:ttZ,5#Sf:nat->Z,Sg:Z->nat,[n]Pn:nat,g(f n) = n X [n]f(nat2Z n) = nat2Z(succ n)[n]#t
+:ttZ,5#Sf:nat->Z,Sg:Z->nat,[n]Pn:nat,g(f n) = n X [n] (f n) = nat2Z(succ n)[n]#t
 :ttZ,1#Sf:nat->Z,Sg:Z->nat,[n]Pn:nat,g(f n) = n X [n]((f n = 0Z) + (not (n = g(f n)))) [n]#t
 :ttZ,2#通过此门需消耗推理素3mg
 :%,1$[[ttnat2Z]]解锁自然数到整数[n]的转换函数nat2Z
