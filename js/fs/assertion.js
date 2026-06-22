@@ -76,7 +76,11 @@ export class AssertionSystem {
                 quants.push(ast.nodes[i]);
             }
             for (; i < ast.nodes.length; i++) {
-                vars.add(this.getVarName(ast.nodes[i]));
+                const n = this.getVarName(ast.nodes[i]);
+                if (!n) {
+                    throw TR('系统函数') + ast.name + TR(`第${i + 1}个参数中：`) + TR(`表达式出现在了变量的位置中`);
+                }
+                vars.add(n);
             }
             return [ast.nodes[0], quants, vars];
         }

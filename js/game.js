@@ -996,6 +996,9 @@ export class Game {
                 case "ttabsZ":
                     this.ttGui.unlockedTactics.add("Z.abs");
                     return;
+                case "ttcode_S1":
+                    this.ttGui.unlockedTactics.add("S1.code");
+                    return;
                 case "ttsimpl":
                     this.ttGui.unlockedTactics.add("simpl");
                     return;

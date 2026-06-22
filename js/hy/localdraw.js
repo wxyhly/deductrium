@@ -18,6 +18,13 @@ export class LocalDraw {
         this.ctxt.arc(this.canvas.width / 2, this.canvas.height / 2, this.scale * Math.min(this.canvas.width, this.canvas.height) / 2, 0, Math.PI * 2);
         this.ctxt.fill();
     }
+    hitTestPoincareDisk(x, y) {
+        //跟drawOutBorder配合使用，判断点击是否在盘内
+        const dx = x * window.devicePixelRatio - this.canvas.width / 2;
+        const dy = y * window.devicePixelRatio - this.canvas.height / 2;
+        const distance = Math.hypot(dx, dy);
+        return distance > this.scale * Math.min(this.canvas.width, this.canvas.height) / 2;
+    }
     // drawPlayer() {
     //     this.ctxt.beginPath();
     //     this.ctxt.arc(this.canvas.width / 2, this.canvas.height / 2, 10*window.devicePixelRatio, 0, Math.PI * 2);

@@ -581,6 +581,10 @@ export function initTypeSystem() {
     addRule("@计算", "loop_pow (pos (succ ?x)) === loop * loop_pow (pos ?x)");
     addRule("@计算", "loop_pow (neg 0) === inveq loop");
     addRule("@计算", "loop_pow (neg (succ ?x)) === (inveq loop)*loop_pow (neg ?x)");
+    typeName = "S1.code";
+    addRule("定义", "code_S1:S1->U");
+    addRule("计算", "code_S1 base === Z");
+    addRule("计算", "code_S1_loop: pr0 (id2eqv (ap code_S1 loop)) = succZ");
 
     typeName = "S2";
     addRule("类型", "S2:U");

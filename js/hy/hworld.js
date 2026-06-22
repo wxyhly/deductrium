@@ -136,6 +136,9 @@ export class HWorld {
         this.localDraw.rotorL.mulsl(R[0]).norms();
         this.localDraw.rotorR.mulsr(R[1]).norms();
     }
+    rotate(z) {
+        this.localCamMat = Rotor.rotate(z).mul(this.localCamMat).normalize();
+    }
     moveCam(x, y) {
         this.localCamMat = Rotor.move(x, y).mul(this.localCamMat).normalize();
         if (isNaN(this.localCamMat.r + this.localCamMat.x + this.localCamMat.y + this.localCamMat.z))

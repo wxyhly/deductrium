@@ -10,6 +10,9 @@ export class HyperGui {
     touchDx = 0;
     touchDy = 0;
     active = true;
+    outside = false;
+    touchStartX = 0;
+    touchStartY = 0;
     constructor() {
         window.onresize = () => { this.onresize(); };
         this.onresize();
@@ -17,7 +20,15 @@ export class HyperGui {
         this.canvas.addEventListener("mousemove", ev => {
             if (!(ev.buttons & 1))
                 return;
-            this.world.moveCam(-ev.movementX / 1000, ev.movementY / 1000);
+            if (this.outside) {
+                const startX = ev.offsetX - ev.movementX;
+                const startY = ev.offsetY - ev.movementY;
+                const centerX = this.canvas.width / 2 / window.devicePixelRatio;
+                const centerY = this.canvas.height / 2 / window.devicePixelRatio;
+                this.world.rotate(Math.atan2(startY - centerY, startX - centerX) - Math.atan2(ev.offsetY - centerY, ev.offsetX - centerX));
+            }
+            else
+                this.world.moveCam(-ev.movementX / 1000, ev.movementY / 1000);
             this.needUpdate = true;
         });
         document.addEventListener("keydown", ev => {
@@ -30,20 +41,18 @@ export class HyperGui {
             this.keyDowns.clear();
         });
         this.canvas.addEventListener("mousedown", ev => {
-            if (ev.button !== 2)
-                return;
+            // if (ev.button !== 2) return;
             ev.preventDefault();
             ev.stopPropagation();
-            // this.world.texts.push([this.guiDraw.currentTile, this.guiDraw.camMat.conj().apply(new Hvec), "oma"]);
+            this.outside = this.world.localDraw.hitTestPoincareDisk(ev.offsetX, ev.offsetY);
             this.needUpdate = true;
         });
-        let touchStartX = 0;
-        let touchStartY = 0;
         this.canvas.addEventListener("touchstart", ev => {
             ev.preventDefault();
             ev.stopPropagation();
-            touchStartX = ev.targetTouches[0].clientX;
-            touchStartY = ev.targetTouches[0].clientY;
+            this.touchStartX = ev.targetTouches[0].clientX;
+            this.touchStartY = ev.targetTouches[0].clientY;
+            this.outside = this.world.localDraw.hitTestPoincareDisk(ev.targetTouches[0].clientX - this.canvas.getBoundingClientRect().left, ev.targetTouches[0].clientY - this.canvas.getBoundingClientRect().top);
         });
         const prettyPrintInput = document.querySelector("#panel-0 input");
         prettyPrintInput.onfocus = () => prettyPrintInput.blur();
@@ -54,8 +63,12 @@ export class HyperGui {
         this.canvas.addEventListener("touchmove", ev => {
             ev.preventDefault();
             ev.stopPropagation();
-            this.touchDx = ev.targetTouches[0].clientX - touchStartX;
-            this.touchDy = ev.targetTouches[0].clientY - touchStartY;
+            this.touchDx = ev.targetTouches[0].clientX - this.touchStartX;
+            this.touchDy = ev.targetTouches[0].clientY - this.touchStartY;
+            if (this.outside) {
+                this.touchStartX = ev.targetTouches[0].clientX;
+                this.touchStartY = ev.targetTouches[0].clientY;
+            }
         });
         this.canvas.addEventListener("contextmenu", ev => {
             ev.preventDefault();
@@ -74,7 +87,17 @@ export class HyperGui {
     mainLoop(deltaTime) {
         if (this.active) {
             if (this.touchDx || this.touchDy) {
-                this.world.moveCam(this.touchSpeed * this.touchDx / this.canvas.width, -this.touchSpeed * this.touchDy / this.canvas.width);
+                if (this.outside) {
+                    const centerX = this.canvas.width / 2 / window.devicePixelRatio;
+                    const centerY = this.canvas.height / 2 / window.devicePixelRatio;
+                    const startX = this.touchStartX - this.canvas.getBoundingClientRect().left;
+                    const startY = this.touchStartY - this.canvas.getBoundingClientRect().top;
+                    const endX = startX + this.touchDx;
+                    const endY = startY + this.touchDy;
+                    this.world.rotate(Math.atan2(startY - centerY, startX - centerX) - Math.atan2(endY - centerY, endX - centerX));
+                }
+                else
+                    this.world.moveCam(this.touchSpeed * this.touchDx / this.canvas.width, -this.touchSpeed * this.touchDy / this.canvas.width);
                 this.touchDx = 0;
                 this.touchDy = 0;
                 this.needUpdate = true;
