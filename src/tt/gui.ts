@@ -650,7 +650,8 @@ export class TTGui {
                 div.removeChild(div.firstChild);
             }
             const checkInfer = (ast: AST) => {
-                const _checkInfer = (ast: AST, context: Context, expandConsts: Set<string>) => {
+                const _checkInfer = (ast: AST, context: Context, expandConsts: Set<string>, checkType: boolean) => {
+                    // if (checkType && ast.checked && !_checkInfer(ast.checked, context, expandConsts, false)) return false;
                     if (ast.type === "var") {
                         if (ast.name[0] === "?" || ast.name === "_") {
                             if (!ast.checked) return false;
@@ -659,7 +660,7 @@ export class TTGui {
                             if (t.name === "U@") return true;
                             if (t.type === "apply" && t.nodes[0].name === "U") return true;
                             // if ttt is not Universe or level number, we check xxx recursively
-                            return ast.checked.type === ":" ? _checkInfer(ast.checked.nodes[0], context, expandConsts) : false;
+                            return ast.checked.type === ":" ? _checkInfer(ast.checked.nodes[0], context, expandConsts, checkType) : false;
                         }
                         if (!context.find(e => e[0] === ast.name)) {
                             // if this is a constant, check its value recursively
@@ -671,25 +672,25 @@ export class TTGui {
                     }
                     if (ast.nodes) {
                         if (ast.type === "apply" && ast.nodes[0].name === "U" && ast.nodes[0].type === "var") return true;
-                        if (!_checkInfer(ast.nodes[0], context, expandConsts)) return false;
+                        if (!_checkInfer(ast.nodes[0], context, expandConsts, checkType)) return false;
                         if (ast.type === "P" || ast.type === "L" || ast.type === "W" || ast.type === "S") {
                             context = assignContext([ast.name, ast.nodes[0], 0], context);
                         }
-                        if (ast.nodes[1] && !_checkInfer(ast.nodes[1], context, expandConsts)) return false;
+                        if (ast.nodes[1] && !_checkInfer(ast.nodes[1], context, expandConsts, checkType)) return false;
                     }
                     return true;
                 }
+
                 let nast = ast;
                 let expandConsts = new Set<string>;
                 while (true) {
-                    if (!_checkInfer(nast, [], expandConsts)) { wrapper.classList.add("infering"); return; }
+                    if (!_checkInfer(nast, [], expandConsts, true)) { wrapper.classList.add("infering"); return; }
                     if (!expandConsts.size) return;
                     if (nast === ast) { nast = Core.clone(ast); }
                     this.core.expandDef(nast, [], expandConsts);
                     this.core.checkType(nast, [], false);
                     expandConsts = new Set<string>;
                 }
-
             }
             if (ast) {
                 try {
@@ -720,7 +721,6 @@ export class TTGui {
                         this.core.checkType(ast, [], false);
                     }
                     checkInfer(ast);
-                    if (ast.checked) checkInfer(ast.checked);
                 } catch (e) {
                     error += e;
                     wrapper.classList.add("error");

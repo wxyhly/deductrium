@@ -1572,6 +1572,38 @@ export class Core {
             this.state.bondVarRel.union(this.getBondVarId(a), this.getBondVarId(b));
             return this.equal(a.nodes[1], b.nodes[1], assignContext([a.name, a.nodes[0], this.getBondVarId(a)], context));
         }
+        // a = ?xx b  ->  ?xx := L_.a
+        // f(b) = ?xx b -> ?xx := Lx.f(x)
+        if (b.type === "apply" && b.nodes[0].type === "var" && b.nodes[0].name[0] === "?" && b.nodes[1].type === "var" && b.nodes[1].bondVarId
+        // !(a.type === "apply" && a.nodes[0].type === "var" && a.nodes[0].name[0] === "?") &&
+        // !(a.type === "apply" && a.nodes[1].type === "var" && this.isBondVarIdEqual(b.nodes[1].bondVarId, a.nodes[1].bondVarId))
+        ) {
+            const l = wrapLambda("L", "_", b.checked ?? wrapVar("_"), Core.clone(a, true));
+            this.getBondVarId(l);
+            if (b.nodes[1].type === "var" && b.nodes[1].bondVarId) {
+                l.name = b.nodes[1].name;
+                const varB = wrapVar(b.nodes[1].name);
+                varB.bondVarId = l.bondVarId;
+                this.replaceVar(l.nodes[1], "", b.nodes[1].bondVarId, varB, context);
+            }
+            return this.addInferRel(b.nodes[0].name, l, context);
+        }
+        // b = ?xx a  ->  ?xx := L_.b
+        // f(a) = ?xx a -> ?xx := Lx.f(x)
+        if (a.type === "apply" && a.nodes[0].type === "var" && a.nodes[0].name[0] === "?" && a.nodes[1].type === "var" && a.nodes[1].bondVarId
+        // !(b.type === "apply" && b.nodes[0].type === "var" && b.nodes[0].name[0] === "?") &&
+        // !(b.type === "apply" && b.nodes[1].type === "var" && this.isBondVarIdEqual(b.nodes[1].bondVarId, a.nodes[1].bondVarId))
+        ) {
+            const l = wrapLambda("L", "_", a.checked ?? wrapVar("_"), Core.clone(b, true));
+            this.getBondVarId(l);
+            if (a.nodes[1].type === "var" && a.nodes[1].bondVarId) {
+                l.name = a.nodes[1].name;
+                const varA = wrapVar(a.nodes[1].name);
+                varA.bondVarId = l.bondVarId;
+                this.replaceVar(l.nodes[1], "", a.nodes[1].bondVarId, varA, context);
+            }
+            return this.addInferRel(a.nodes[0].name, l, context);
+        }
         // recurse
         if (a.type === b.type && a.name == b.name && a.nodes?.length && a.nodes?.length === b.nodes?.length && ((a.nodes[0].name === "U") === (b.nodes[0].name === "U"))) {
             let breaked = false;
@@ -1583,7 +1615,7 @@ export class Core {
             if (!Core.exactEqual(a.nodes[0], b.nodes[0]) && (a.nodes[0].name.startsWith("?") || b.nodes[0].name.startsWith("?"))) {
                 // no, here is not failed, we just don't know. but here
                 this.state.inferTable.defered.push([a, b, context]);
-                // console.log("can't determine ?fn1 xxx === ?fn2 xxx, ignore");
+                console.log("can't determine ?fn1 xxx === ?fn2 xxx, ignore");
                 return true;
             }
             // if recursive eq failed, we need to undo inferring during recursive eq.
@@ -1657,32 +1689,6 @@ export class Core {
         if (a.type === b.type && a.type === "var" && a.bondVarId && b.bondVarId) {
             // they are both bond vars, test whether they are equal by alpha/beta conversion
             return this.state.bondVarRel.eq(a.bondVarId, b.bondVarId);
-        }
-        // a = ?xx b  ->  ?xx := L_.a
-        // f(b) = ?xx b -> ?xx := Lx.f(x)
-        if (b.type === "apply" && b.nodes[0].name[0] === "?") {
-            const l = wrapLambda("L", "_", b.checked ?? wrapVar("_"), Core.clone(a, true));
-            this.getBondVarId(l);
-            if (b.nodes[1].type === "var" && b.nodes[1].bondVarId) {
-                l.name = b.nodes[1].name;
-                const varB = wrapVar(b.nodes[1].name);
-                varB.bondVarId = l.bondVarId;
-                this.replaceVar(l.nodes[1], "", b.nodes[1].bondVarId, varB, context);
-            }
-            return this.addInferRel(b.nodes[0].name, l, context);
-        }
-        // b = ?xx a  ->  ?xx := L_.b
-        // f(a) = ?xx a -> ?xx := Lx.f(x)
-        if (a.type === "apply" && a.nodes[0].name[0] === "?") {
-            const l = wrapLambda("L", "_", a.checked ?? wrapVar("_"), Core.clone(b, true));
-            this.getBondVarId(l);
-            if (a.nodes[1].type === "var" && a.nodes[1].bondVarId) {
-                l.name = a.nodes[1].name;
-                const varA = wrapVar(a.nodes[1].name);
-                varA.bondVarId = l.bondVarId;
-                this.replaceVar(l.nodes[1], "", a.nodes[1].bondVarId, varA, context);
-            }
-            return this.addInferRel(a.nodes[0].name, l, context);
         }
         if (a?.nodes?.[0]?.nodes?.[0]?.name === "@max" || b?.nodes?.[0]?.nodes?.[0]?.name === "@max") {
             this.state.inferTable.defered.push([a, b, context]);
@@ -1878,6 +1884,22 @@ export class Core {
             const ninf = this.state.inferTable.addNewName(0, ctxt);
             map.set(inf, ninf);
             mapInv.set(ninf, inf);
+        }
+        for (const [a, b, ct] of inferTable.defered) {
+            const ctxt = Core.cloneContext(ct);
+            const na = Core.clone(a);
+            InferTable.mapInferVal(a, map);
+            const nb = Core.clone(b);
+            InferTable.mapInferVal(b, map);
+            this.increaseBondVarIdsBy(na, bondvarIdBase);
+            this.increaseBondVarIdsBy(nb, bondvarIdBase);
+            // first we remark bondvar id in the context of infer vars
+            for (let i = 0; i < ctxt.length; i++) {
+                if (ctxt[i][1])
+                    this.increaseBondVarIdsBy(ctxt[i][1], bondvarIdBase);
+                ctxt[i][2] += bondvarIdBase;
+            }
+            this.state.inferTable.defered.push([na, nb, ctxt]);
         }
         // map infervalues in list map, then merge environment context
         for (const [inf, ninf] of map.entries()) {
