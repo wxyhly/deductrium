@@ -468,6 +468,11 @@ export class AssertionSystem {
         if (nth !== -1 && nth < res.length) return res; // completed, this short circuit is neccesary for later unknown $s 
         if (scope.length) {
             const vars = this.getVarNamesAndIsNots(subAst, {}, null);
+            for (const bv of scope) {
+                const nf = this.nf(bv.name, subAst, null, new Set(vars[bv.name] ?? []));
+                if (nf === U) return false;
+                if (nf === F) return res;
+            }
             for (const [v, vIsNot] of Object.entries(vars)) {
                 for (const bv of scope) {
                     const nf = this.nf(v, bv, [], vIsNot);
