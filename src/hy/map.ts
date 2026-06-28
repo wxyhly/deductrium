@@ -1612,9 +1612,9 @@ export const mapData = `
 :ttZ,2#通过此门需消耗推理素3mg
 :%,1$[[ttnat2Z]]解锁自然数到整数[n]的转换函数nat2Z
 :ttZ,4#Sf:Z->Z,Px:Z,[n]f(succZ x) = predZ(f x)[n] X (f 0Z = 0Z)[n]#t
-:%,5$[[ttpredZ]]解锁自然数前继运算predZ
+:%,5$[[ttpredZ]]解锁整数前继运算predZ
 :ttZ,3#通过此门需消耗推理素3mg
-:%,5$[[ttnegZ]]解锁自然数相反数运算negZ
+:%,5$[[ttnegZ]]解锁整数相反数运算negZ
 :ttindTrue,4#Px:nat,Py:nat,eq (add x y) (add y x)[n]#t
 :%,1$[[ttmul]]解锁乘法函数[n]mul : nat->nat->nat
 :%*,3#Pn:nat,Px:nat,Py:nat,[n]pow n (add x y) = [n]mul (pow n x) (pow n y)[n]#t

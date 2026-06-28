@@ -950,6 +950,7 @@ export class FSGui {
     }
     addToDeductions(name, after) {
         const oldpos = this.deductions.indexOf(name);
+        const ftable = this.scanDeductionFolderScope([name, after]);
         // delete
         if (oldpos !== -1) {
             if (after === name)
