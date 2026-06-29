@@ -510,7 +510,7 @@ export class Assist {
             } else {
                 const useTrans = core.checkConst("trans", []) && (back || core.checkConst("inveq", []));
                 newAst = parser.parse(useTrans ?
-                    `trans $fn ` + (back ? `$eq` : `(inveq $eq)`) : `ind_eq $2 (L${y}:$type.L${m}:${core.state.disableSimpleEq?`eq $2 `+y:`$2=${y}`}. P${m}:` + (back ? `$fn_2, $fn_y` : `$fn_y, $fn_2`) + `) (Lx:_.x) $3 $eq`);
+                    `trans $fn ` + (back ? `$eq` : `(inveq $eq)`) : `ind_eq $2 (L${y}:$type.L${m}:${core.state.disableSimpleEq ? `eq $2 ` + y : `$2=${y}`}. P${m}:` + (back ? `$fn_2, $fn_y` : `$fn_y, $fn_2`) + `) (Lx:_.x) $3 $eq`);
                 Core.replaceByMatch(newAst, matched, /^\$/);
                 try { core.checkType(newAst, goal.context, false); } catch (e) {
                     this.goal.unshift(goal);
@@ -954,6 +954,7 @@ export class Assist {
         const goal = this.goal.shift();
         if (!goal) throw TR("无证明目标，请使用qed命令结束证明");
         try {
+            goal.type = core.markBondVars(goal.type, goal.context);
             if (!core.expandDef(goal.type, goal.context, n, [pos, 1])) {
                 this.goal.unshift(goal);
                 throw TR("未找到任何指定展开的项");
@@ -961,7 +962,7 @@ export class Assist {
             if (core.opaque.find(e => e[0] === n) && core.state.sysDefs["@" + n]) {
                 core.expandDef(goal.type, goal.context, "@" + n, [0, 1])
             }
-            this.whnf(goal.type, goal.context);
+            core.whnf(goal.type, goal.context, true);
             core.checkType(goal.type, goal.context, false);
         } catch (e) {
             this.goal.unshift(goal);

@@ -586,7 +586,8 @@ export class Core {
             // if the same name occur in inner context, it must be renamed, we added it to a array then solve it latter
             const boundedIdx = context.filter((e, subidx) => subidx < idx && e[0] === (idx === Infinity ? ast.name : context[idx][0]));
             for (const [a, b, c] of boundedIdx) {
-                alphaConversionIds.add(c);
+                if (c)
+                    alphaConversionIds.add(c);
             }
             if (isFinite(idx))
                 ast.name = context[idx][0];
@@ -1774,7 +1775,7 @@ export class Core {
         if (ast.type === "var" && !ast.bondVarId && (ast.name === n || (typeof n === "object" && n.has(ast.name))) && !context.find(e => e[0] === ast.name)) {
             const expr = this.state.sysDefs[ast.name] || this.state.userDefs[ast.name];
             if (count[0] === 0 || Math.abs(count[0]) === count[1]) {
-                Core.assign(ast, Core.clone(expr));
+                Core.assign(ast, this.markBondVars(Core.clone(expr), context));
                 count[1]++;
                 return true;
             }
