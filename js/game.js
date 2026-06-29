@@ -479,6 +479,9 @@ export class Game {
                 case "dZ+":
                     this.fsGui.addToDeductions("dZ+");
                     return;
+                case "dPow":
+                    this.fsGui.addToDeductions("dPow");
+                    return;
                 case "dZ*":
                     this.fsGui.addToDeductions("dZ*");
                     return;

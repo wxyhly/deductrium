@@ -641,6 +641,8 @@ export class AssertionSystem {
             }
         }
         else {
+            if (ast.type === "fn" && ast.name.startsWith("#"))
+                return false;
             for (const n of ast.nodes) {
                 const subres = this.getSubAstMatchTimesAndReplace(n, subAst, newAst, nth, scope.slice(0), res, right);
                 // if unknown, don't spread, just ignore it and replace??

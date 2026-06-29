@@ -545,6 +545,7 @@ export class AssertionSystem {
                 }
             }
         } else {
+            if (ast.type === "fn" && ast.name.startsWith("#")) return false;
             for (const n of ast.nodes) {
                 const subres = this.getSubAstMatchTimesAndReplace(n, subAst, newAst, nth, scope.slice(0), res, right);
                 // if unknown, don't spread, just ignore it and replace??
@@ -722,7 +723,7 @@ export class AssertionSystem {
                 // #rp(#rp(#nf(subsub,s), a, b, 0), s, c, 0) === #rp(#nf(subsub,s),a,#rp(b,s,c),0)
                 const [subsub, a, b, snth] = subrpParams;
                 if ((nth === -1 || snth === -1)) {
-                    if (srcName && this.nf(srcName, subsub, [], this.getVarIsNotList(src))===T) {
+                    if (srcName && this.nf(srcName, subsub, [], this.getVarIsNotList(src)) === T) {
                         // if not replace all, move inner nth to outter
                         if (snth !== -1) {
                             ast.nodes[3] = sub.nodes[3];
