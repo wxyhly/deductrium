@@ -916,7 +916,7 @@ export class FormalSystem {
         let name = "$0", i = 0;
         if (deductionIdx) {
             const d = this.deductions[deductionIdx];
-            if(!d) throw TR("无法生成中间步骤推理规则：") + deductionIdx;
+            if (!d) throw TR("无法生成中间步骤推理规则：") + deductionIdx;
             for (const c of d.conditions) astmgr.getVarNames(c, p, /^\$/);
             astmgr.getVarNames(d.conclusion, p, /^\$/);
         }
@@ -1143,6 +1143,7 @@ export class FormalSystem {
             "$$2": exprAst
         }
         astmgr.replaceByMatchTable(deduction, replTable);
+        if (assert.nf(constAst.name, exprAst) !== 1) throw TR("检测到可能的循环定义");
         const R = astmgr.clone(exprAst);
         astmgr.replace(R, varAst, constAst);
         if (assert.nf(constAst.name, R) !== -1) throw TR("定义的常量没在结论中出现");
@@ -1174,6 +1175,14 @@ export class FormalSystem {
             "$$2": varAst,
             "$$3": exprAst
         }
+        const circularDetect = (ast: AST) => {
+            if (ast.type === "fn" && ast.name === fnAst.name && ast.nodes?.length === paramAsts.length) return true;
+            for (let i = 0; i < ast.nodes?.length; i++) {
+                if (circularDetect(ast.nodes[i])) return true;
+            }
+            return false;
+        }
+        if (circularDetect(exprAst)) throw TR("检测到可能的循环定义");
         const wrapVs = (ast: AST) => {
             console.assert(ast.name === "V");
             let first = true;
@@ -1223,6 +1232,14 @@ export class FormalSystem {
             "$$0": fnAst,
             "$$2": exprAst
         }
+        const circularDetect = (ast: AST) => {
+            if (ast.type === "fn" && ast.name === fnAst.name && ast.nodes?.length === paramAsts.length) return true;
+            for (let i = 0; i < ast.nodes?.length; i++) {
+                if (circularDetect(ast.nodes[i])) return true;
+            }
+            return false;
+        }
+        if (circularDetect(exprAst)) throw TR("检测到可能的循环定义");
         const wrapVs = (ast: AST) => {
             console.assert(ast.name === "V");
             let first = true;

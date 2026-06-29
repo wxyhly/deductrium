@@ -675,7 +675,8 @@ class LangMgr {
         "匹配序号参数必须为非负整数": "Matching index parameter must be a non-negative integer",
         "元推理函数中替换函数##rp执行失败": "Excuting replace function ##rp failed in meta-deduction function",
         "无法生成中间步骤推理规则：": "Cannot generate rule in substeps: ",
-        "发现错误的快速元规则名称：": "Malformed rule name found:",
+        "发现错误的快速元规则名称：": "Malformed rule name found: ",
+        "检测到可能的循环定义": "Possible circular definition detected",
         // saveload.ts
         "[创造模式]": "[Creative Mode]",
         "[生存模式]": "[Survival Mode]",

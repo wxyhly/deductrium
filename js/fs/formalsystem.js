@@ -1238,6 +1238,8 @@ export class FormalSystem {
             "$$2": exprAst
         };
         astmgr.replaceByMatchTable(deduction, replTable);
+        if (assert.nf(constAst.name, exprAst) !== 1)
+            throw TR("检测到可能的循环定义");
         const R = astmgr.clone(exprAst);
         astmgr.replace(R, varAst, constAst);
         if (assert.nf(constAst.name, R) !== -1)
@@ -1279,6 +1281,17 @@ export class FormalSystem {
             "$$2": varAst,
             "$$3": exprAst
         };
+        const circularDetect = (ast) => {
+            if (ast.type === "fn" && ast.name === fnAst.name && ast.nodes?.length === paramAsts.length)
+                return true;
+            for (let i = 0; i < ast.nodes?.length; i++) {
+                if (circularDetect(ast.nodes[i]))
+                    return true;
+            }
+            return false;
+        };
+        if (circularDetect(exprAst))
+            throw TR("检测到可能的循环定义");
         const wrapVs = (ast) => {
             console.assert(ast.name === "V");
             let first = true;
@@ -1340,6 +1353,17 @@ export class FormalSystem {
             "$$0": fnAst,
             "$$2": exprAst
         };
+        const circularDetect = (ast) => {
+            if (ast.type === "fn" && ast.name === fnAst.name && ast.nodes?.length === paramAsts.length)
+                return true;
+            for (let i = 0; i < ast.nodes?.length; i++) {
+                if (circularDetect(ast.nodes[i]))
+                    return true;
+            }
+            return false;
+        };
+        if (circularDetect(exprAst))
+            throw TR("检测到可能的循环定义");
         const wrapVs = (ast) => {
             console.assert(ast.name === "V");
             let first = true;
