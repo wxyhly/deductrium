@@ -601,7 +601,13 @@ export class Game {
                     return;
                 case "mct": return this.unlockMetarule("cdt");
                 case "mdt": return this.unlockMetarule("dt");
-                case "mcpt": return this.unlockMetarule("cpt");
+                case "mcpt":
+                    this.unlockMetarule("cdt");
+                    this.unlockMetarule("idt");
+                    return this.unlockMetarule("cpt");
+                case "mprd": return this.unlockMetarule("prd");
+                case "mc": return this.unlockMetarule("c");
+                case "mf": return this.unlockMetarule("f");
                 case "mcmt": return this.unlockMetarule("cmt");
                 case "midt": return this.unlockMetarule("idt");
                 case "mifft": return this.unlockMetarule("ifft");
