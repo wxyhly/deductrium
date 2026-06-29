@@ -47,7 +47,7 @@ export class SavesParser {
     bug260616fixer = new RuleParser;
     ruleparser = new RuleParser;
     fixbug260616(s) {
-        if (s.split(":").length > s.split(",").length) {
+        if (s.split(":").length > s.split(",").length || s.split(":").length < s.split(",").length) {
             try {
                 this.ruleparser.parse(s);
             }

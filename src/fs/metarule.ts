@@ -72,6 +72,9 @@ export class RuleParser {
         if (arr.length === 0) return;
         this.pos = 0;
         const tree = this.nextRule();
+        if (!this.fixbug260616 && this.pos !== this.tokens.length) {
+            throw TR("发现错误的快速元规则名称：" + s);
+        }
         return tree;
     }
     stringify(tree: RuleTree): string {

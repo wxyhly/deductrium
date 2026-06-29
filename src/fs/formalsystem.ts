@@ -916,6 +916,7 @@ export class FormalSystem {
         let name = "$0", i = 0;
         if (deductionIdx) {
             const d = this.deductions[deductionIdx];
+            if(!d) throw TR("无法生成中间步骤推理规则：") + deductionIdx;
             for (const c of d.conditions) astmgr.getVarNames(c, p, /^\$/);
             astmgr.getVarNames(d.conclusion, p, /^\$/);
         }
@@ -1023,6 +1024,7 @@ export class FormalSystem {
             }
             // avoid repeated deductions on the same prop (here includes hyps)
             if (isFinite(offsetCondTable[idx])) return offsetCondTable[idx];
+            if (!sd) throw TR("无法生成中间步骤推理规则：") + sdidx;
             return offsetCondTable[idx] = this.deduct({
                 deductionIdx: this.metaConditionUniversalTheorem(sdidx, ""),
                 replaceValues: sd.conditions.length ? stepReplaceValues : [s, ...stepReplaceValues],
@@ -1088,6 +1090,7 @@ export class FormalSystem {
             }
             // avoid repeated deductions on the same prop (here includes hyps)
             if (isFinite(offsetCondTable[idx])) return offsetCondTable[idx];
+            if (!sd) throw TR("无法生成中间步骤推理规则：") + sdidx;
             return offsetCondTable[idx] = this.deduct({
                 deductionIdx: this.metaConditionUniversalTheorem(sdidx, "元规则生成*"),
                 replaceValues: sd.conditions.length ? stepReplaceValues : [s, ...stepReplaceValues],
