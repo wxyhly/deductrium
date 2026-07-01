@@ -959,7 +959,7 @@ export class Core {
                 // mul a 1 -> add 0 a
                 if (fn === "mul") { Core.assign(ast, wrapApply(wrapApply(wrapVar("add"), wrapVar("0")), list[1])); return true; }
                 // pow a 1 -> mul 1 a
-                if (fn === "pow") { Core.assign(ast, wrapApply(wrapApply(wrapVar("add"), wrapVar("1")), list[1])); return true; }
+                if (fn === "pow") { Core.assign(ast, wrapApply(wrapApply(wrapVar("mul"), wrapVar("1")), list[1])); return true; }
             }
             if (!NatLiteral.is(list[1]) || !NatLiteral.is(list[2])) return false;
             try {

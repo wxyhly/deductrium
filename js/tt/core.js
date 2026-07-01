@@ -1049,7 +1049,7 @@ export class Core {
                 }
                 // pow a 1 -> mul 1 a
                 if (fn === "pow") {
-                    Core.assign(ast, wrapApply(wrapApply(wrapVar("add"), wrapVar("1")), list[1]));
+                    Core.assign(ast, wrapApply(wrapApply(wrapVar("mul"), wrapVar("1")), list[1]));
                     return true;
                 }
             }
