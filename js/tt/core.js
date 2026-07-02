@@ -504,7 +504,7 @@ export class Core {
         // console.log("$", Array.from(this.state.inferTable.list.keys()).filter(e => !this.state.inferTable.solved.has("?" + e)).join(","));
         // reduce final result, fill infer
         try {
-            this.markAndCheckInferedValue(ast, context);
+            this.markAndCheckInferedValue(ast, context, false);
         }
         catch (e) {
             errmsg = e;
@@ -521,26 +521,28 @@ export class Core {
         }
         return ast.type === "whnf" ? ast.nodes[0] : ast.checked;
     }
-    markAndCheckInferedValue(ast, context) {
+    markAndCheckInferedValue(ast, context, replaceInfer) {
         if (typeof ast.origin === "object") {
             const ori = ast.origin;
             delete ast.origin;
             const infered = (ori.name === "_" || ori.name[0] === "?") && ori.type === "var" ? Core.clone(ast, true) : null;
             if (infered) {
-                Core.assign(ast, ori, true);
-                if (infered.type === "var") {
-                    infered.checked = this.checkConst(infered.name, context);
+                if (!replaceInfer) {
+                    Core.assign(ast, ori, true);
+                    if (infered.type === "var") {
+                        infered.checked = this.checkConst(infered.name, context);
+                    }
+                    const err = this.state.errormsg.length;
+                    infered.checked ??= this.check(infered, context, false);
+                    if (this.state.errormsg.length > err) {
+                        delete infered.checked;
+                        this.state.errormsg.pop();
+                    }
+                    this.markAndCheckInferedValue(infered, context, replaceInfer);
+                    if (infered.checked)
+                        this.markAndCheckInferedValue(infered.checked, context, replaceInfer);
+                    ast.checked = { type: ":", nodes: [infered, infered.checked ?? wrapVar("_")], name: "" };
                 }
-                const err = this.state.errormsg.length;
-                infered.checked ??= this.check(infered, context, false);
-                if (this.state.errormsg.length > err) {
-                    delete infered.checked;
-                    this.state.errormsg.pop();
-                }
-                this.markAndCheckInferedValue(infered, context);
-                if (infered.checked)
-                    this.markAndCheckInferedValue(infered.checked, context);
-                ast.checked = { type: ":", nodes: [infered, infered.checked ?? wrapVar("_")], name: "" };
             }
             else {
                 Core.assign(ast, ori, true);
@@ -549,9 +551,9 @@ export class Core {
         }
         else {
             if (ast.nodes?.[0])
-                this.markAndCheckInferedValue(ast.nodes[0], context);
+                this.markAndCheckInferedValue(ast.nodes[0], context, replaceInfer);
             if (ast.nodes?.[1]) {
-                this.markAndCheckInferedValue(ast.nodes[1], (ast.type === "L" || ast.type === "P" || ast.type === "W" || ast.type === "S") ? assignContext([ast.name, ast.nodes[0], ast.bondVarId], context) : context);
+                this.markAndCheckInferedValue(ast.nodes[1], (ast.type === "L" || ast.type === "P" || ast.type === "W" || ast.type === "S") ? assignContext([ast.name, ast.nodes[0], ast.bondVarId], context) : context, replaceInfer);
             }
             if (ast.type === "var" && ast.name[0] === "?" && this.state.inferTable.solved.has(ast.name)) {
                 Core.assign(ast, Core.clone(this.state.inferTable.rel[ast.name], true));
@@ -1808,8 +1810,18 @@ export class Core {
         this.state.bondVarRel = new DisjointSet();
         ast = this.markBondVars(this.desugar(Core.clone(ast), false), []);
         this.state.inferTable = new InferTable(ast); // it must add environment ctxt in infertable
-        this.check(ast, [], false);
-        this.markAndCheckInferedValue(ast, []);
+        if (ast.type === ":") {
+            const context = [];
+            const type = this.check(ast.nodes[0], context, true);
+            const checked = this.check(ast.nodes[1], context, true);
+            const checkedT = this.check(type, context, false);
+            const assertion = this.equal(type, ast.nodes[1], context);
+            ast.checked = ast.nodes[1];
+        }
+        else {
+            this.check(ast, [], false);
+        }
+        this.markAndCheckInferedValue(ast, [], true);
         if (ast.checked)
             this.reduce(ast.checked, [], true);
         // remained : appear in ast type, not solved
