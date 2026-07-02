@@ -790,11 +790,21 @@ export class TTGui {
                             throw defname + TR("由系统保留");
                         this.core.checkType(ast, [], false);
                         const defContent = ast.nodes[1];
+                        let filledAst = this.core.registConstType(defname, defContent);
+                        const clearBondId = (ast) => {
+                            ast.bondVarId = null;
+                            if (ast.nodes) {
+                                for (const n of ast.nodes)
+                                    clearBondId(n);
+                            }
+                            return ast;
+                        };
+                        filledAst = clearBondId(Core.clone(filledAst));
                         if (defContent.type === ":") {
-                            this.userDefinedConsts[currentIdx] = [defname, this.core.desugar(Core.clone(defContent.nodes[0]), true)];
+                            this.userDefinedConsts[currentIdx] = [defname, this.core.desugar(Core.clone(filledAst.nodes[0]), true)];
                         }
                         else {
-                            this.userDefinedConsts[currentIdx] = [defname, this.core.desugar(Core.clone(ast.nodes[1]), true)];
+                            this.userDefinedConsts[currentIdx] = [defname, this.core.desugar(Core.clone(filledAst), true)];
                         }
                         if (this.puzzleDefs.has(defname)) {
                             if (!this.queryDefPuzzle(defname)) {
@@ -802,7 +812,6 @@ export class TTGui {
                                 throw TR("该名称的常量需满足游戏中某个题目的要求");
                             }
                         }
-                        this.core.registConstType(defname, defContent);
                         macro.add(defname);
                     }
                     else {

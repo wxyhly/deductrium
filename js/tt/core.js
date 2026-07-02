@@ -1874,6 +1874,7 @@ export class Core {
                 delete this.state.inferTable.rel[td];
         }
         this.state.defTypes[name] = [ast.type === ":" ? ast.nodes[1] : ast.checked, this.state.inferTable.clone(), this.state.bondVarRel.clone(), this.state.bondVarId];
+        return ast;
     }
     loadConstTypeCache(context, ast, inferTable, bondVarRel, bondVarId) {
         ast = Core.clone(ast);

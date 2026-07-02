@@ -1685,6 +1685,7 @@ export class Core {
             for (const td of todel) delete this.state.inferTable.rel[td];
         }
         this.state.defTypes[name] = [ast.type === ":" ? ast.nodes[1] : ast.checked, this.state.inferTable.clone(), this.state.bondVarRel.clone(), this.state.bondVarId];
+        return ast;
     }
     private loadConstTypeCache(context: Context, ast: AST, inferTable: InferTable, bondVarRel: DisjointSet, bondVarId: number) {
         ast = Core.clone(ast);
