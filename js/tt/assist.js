@@ -1080,7 +1080,7 @@ export class Assist {
         if (!goal)
             throw TR("无证明目标，请使用qed命令结束证明");
         try {
-            goal.type = core.markBondVars(goal.type, goal.context);
+            goal.type = core.markBondVars(core.desugar(goal.type, false), goal.context);
             if (!core.expandDef(goal.type, goal.context, n, [pos, 1])) {
                 this.goal.unshift(goal);
                 throw TR("未找到任何指定展开的项");
@@ -1089,7 +1089,10 @@ export class Assist {
             if (core.opaque.find(e => e[0] === n) && core.state.sysDefs["@" + n]) {
                 core.expandDef(goal.type, goal.context, "@" + n, [0, 1]);
             }
-            core.whnf(goal.type, goal.context, true);
+            core.markAndCheckInferedValue(goal.type, goal.context, false);
+            const alphaConversionIds = new Set;
+            core.reduce(goal.type, goal.context, false, alphaConversionIds);
+            core.doAlphaConversionByIds(goal.type, goal.context, alphaConversionIds);
             core.checkType(goal.type, goal.context, false);
         }
         catch (e) {

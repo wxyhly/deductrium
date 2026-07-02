@@ -758,6 +758,10 @@ export class Core {
             // a: Px:A.B(x)   b:A  -> a(b):B(b)
             if (this.equal(fnType, tfn, context)) {
                 // before beta-reduction, fill infered
+                if (ap.name === "_" && ap.type === "var") {
+                    const n = this.state.inferTable.addNewName(0, assignContext(["_", tap, bondVarId], context));
+                    ap.name = "?" + n;
+                }
                 ast.checked = Core.clone(ap);
                 if (Array.from(InferTable.findInferVals(ap)).filter(e => !this.state.inferTable.solved.has(e)).length) {
                     if (!(ap.type === "var" && ap.name[0] === "?" && !this.state.inferTable.rel[ap.name]))
