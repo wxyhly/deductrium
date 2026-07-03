@@ -729,6 +729,7 @@ export class TTGui {
                         this.core.checkType(ast, [], false);
                     }
                     checkInfer(ast);
+                    if (ast.type === ":=" && ast.nodes[1].type === ":") checkInfer(ast.nodes[1].nodes[1]);
                 } catch (e) {
                     error += e;
                     wrapper.classList.add("error");
