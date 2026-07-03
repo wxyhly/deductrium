@@ -707,6 +707,7 @@ export class Game {
                     document.getElementById("tactic-div").classList.remove("hide");
                     this.ttGui.unlockedTactics.add("expand");
                     this.ttGui.unlockedTactics.add("intro");
+                    this.ttGui.unlockedTactics.add("exact");
                     this.ttGui.unlockedTactics.add("apply");
                     return;
                 case "ttNat":

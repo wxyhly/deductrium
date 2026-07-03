@@ -65,19 +65,19 @@ export class Assist {
             tactics.push("sup");
         }
         else if (type.name === "True") {
-            tactics.push("apply true");
+            tactics.push("exact true");
             return tactics;
         }
         else if (type.name === "Bool") {
-            tactics.push("apply 0b");
-            tactics.push("apply 1b");
+            tactics.push("exact 0b");
+            tactics.push("exact 1b");
         }
         else if (type.name === "nat") {
-            tactics.push("apply 0");
+            tactics.push("exact 0");
             tactics.push("apply succ");
         }
         else if (type.name === "Z") {
-            tactics.push("apply 0Z");
+            tactics.push("exact 0Z");
             tactics.push("apply pos");
             tactics.push("apply neg");
         }
@@ -86,23 +86,23 @@ export class Assist {
             tactics.push("apply 1I");
         }
         else if (type.type === "apply" && type.nodes[0].name === "Option") {
-            tactics.push("apply none");
+            tactics.push("exact none");
             tactics.push("apply some");
         }
         else if (type.type === "apply" && type.nodes[0].name === "List") {
-            tactics.push("apply nil");
+            tactics.push("exact nil");
             tactics.push("apply cons");
         }
         else if (type.type === "apply" && type.nodes[0].name === "Sus") {
             const a = parser.stringify(type.nodes[1]);
-            tactics.push("apply North " + a);
-            tactics.push("apply South " + a);
+            tactics.push("exact North " + a);
+            tactics.push("exact South " + a);
         }
         else if (type.name === "S1") {
-            tactics.push("apply base");
+            tactics.push("exact base");
         }
         else if (type.name === "S2") {
-            tactics.push("apply base2");
+            tactics.push("exact base2");
         }
         else if (type.type === "->") {
             tactics.push("intro " + introVar("h"));
@@ -371,6 +371,30 @@ export class Assist {
                     return true;
                 }
             }
+        }
+    }
+    exact(ast) {
+        if (typeof ast === "string") {
+            ast = parser.parse(ast);
+        }
+        const goal = this.goal.shift();
+        if (!goal)
+            throw TR("无证明目标，请使用qed命令结束证明");
+        let context = goal.context;
+        try {
+            const k = Core.clone(ast);
+            core.checkType({
+                type: ":", name: "", nodes: [
+                    k, Core.clone(goal.type)
+                ]
+            }, context, true);
+            Core.assign(goal.ast, k, true);
+            this.resolveDependGoal(goal.depend);
+            return this;
+        }
+        catch (e) {
+            core.checkType(ast, context, false);
+            throw TR("无法对类型") + parser.stringify(ast.checked) + TR("使用exact策略作用于类型") + parser.stringify(goal.type);
         }
     }
     apply(ast) {
@@ -1100,6 +1124,7 @@ export class Assist {
             throw e;
         }
         this.goal.unshift(goal);
+        this.simpl();
         return this;
     }
     replaceFreeVar(ast, src, dst, freevarInDst = Core.getFreeVars(dst)) {
