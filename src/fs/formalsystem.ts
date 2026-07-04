@@ -770,7 +770,9 @@ export class FormalSystem {
             }
         }
         replaceNames.forEach((replname: string, idx: number) => {
-            assert.match(assert.expand(astmgr.clone(replaceValues[idx]), replaceTypes[replname]), null, /^\$/, replaceTypes[replname], null, null, astAssertions, assertions)
+            const nast = astmgr.clone(replaceValues[idx]);
+            assert.expand(nast, replaceTypes[replname]);
+            assert.match(nast, null, /^\$/, replaceTypes[replname], null, null, astAssertions, assertions)
         });
 
 

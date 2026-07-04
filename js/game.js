@@ -138,10 +138,10 @@ export class Game {
                     return true;
                 }
                 if (tile.text.endsWith("#p")) {
-                    // if with hyps, fail
                     const ast = this.fsGui.cmd.astparser.parse(tile.text.replaceAll("||", "|").replaceAll("\n#p", "").replaceAll("\n", ""));
                     if (this.rewards.includes("copygateD"))
                         this.fsGui.showWaitingAst(ast);
+                    // if with hyps, fail
                     if (!this.fsGui.formalSystem.propositions[0]?.from)
                         return false;
                     return this.fsGui.getProps().findIndex(v => astmgr.equal(v.value, ast)) !== -1;
