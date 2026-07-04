@@ -950,7 +950,6 @@ export class FSGui {
     }
     addToDeductions(name, after) {
         const oldpos = this.deductions.indexOf(name);
-        const ftable = this.scanDeductionFolderScope([name, after]);
         // delete
         if (oldpos !== -1) {
             if (after === name)
@@ -970,6 +969,12 @@ export class FSGui {
             this.deductions.push(name);
         }
         else {
+            const scope = this.scanDeductionFolderScope([after]);
+            for (const s of Object.values(scope)) {
+                for (const [uuid] of s) {
+                    this.setDeductionFolderCount(uuid, c => c + 1);
+                }
+            }
             this.deductions.splice(pos + 1, 0, name);
         }
         this.updateDeductionList();

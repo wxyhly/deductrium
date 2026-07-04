@@ -901,7 +901,6 @@ export class FSGui {
     }
     addToDeductions(name: string, after?: string) {
         const oldpos = this.deductions.indexOf(name);
-        const ftable = this.scanDeductionFolderScope([name,after]);
         // delete
         if (oldpos !== -1) {
             if (after === name) return; // x=S(x), aborted
@@ -909,7 +908,7 @@ export class FSGui {
             this.deductions.splice(oldpos, 1);
         }
         // insert
-        if (!after) { 
+        if (!after) {
             this.deductions.push(name);
             this.updateDeductionList();
             return;
@@ -918,6 +917,12 @@ export class FSGui {
         if (pos === -1) {
             this.deductions.push(name);
         } else {
+            const scope = this.scanDeductionFolderScope([after]);
+            for (const s of Object.values(scope)) {
+                for (const [uuid] of s) {
+                    this.setDeductionFolderCount(uuid, c => c + 1);
+                }
+            }
             this.deductions.splice(pos + 1, 0, name);
         }
         this.updateDeductionList();
