@@ -137,12 +137,14 @@ export class Game {
                 }
                 if (tile.text.endsWith("#p")) {
                     // if with hyps, fail
-                    if (!this.fsGui.formalSystem.propositions[0]?.from) return false;
                     const ast = this.fsGui.cmd.astparser.parse(tile.text.replaceAll("||", "|").replaceAll("\n#p", "").replaceAll("\n", ""));
+                    if (this.rewards.includes("copygateD")) this.fsGui.showWaitingAst(ast);
+                    if (!this.fsGui.formalSystem.propositions[0]?.from) return false;
                     return this.fsGui.getProps().findIndex(v => astmgr.equal(v.value, ast)) !== -1;
                 }
                 if (tile.text.endsWith("#d")) {
                     const ast = this.fsGui.cmd.astparser.parse(tile.text.replaceAll("\n#d", "").replaceAll("\n", ""));
+                    if (this.rewards.includes("copygateD")) this.fsGui.showWaitingAst(ast);
                     return Object.values(this.fsGui.formalSystem.deductions).findIndex(v => astmgr.equal(v.value, ast) && v.from.endsWith("*")) !== -1;
                 }
                 if (tile.text.endsWith("#t")) {
@@ -349,6 +351,7 @@ export class Game {
                     this.fsGui.addToDeductions(".<>rV", ".<>r|");
                     this.fsGui.addToDeductions(".<>rE", ".<>rV");
                     return;
+                case "copygateD": document.getElementById("copygateD-wrapper").classList.remove("hide"); return;
                 case "1st":
                     this.fsGui.addToDeductions("a4", "a3");
                     this.fsGui.addToDeductions("a5", "a4");
@@ -515,7 +518,7 @@ export class Game {
                 case "ttmul": this.ttGui.unlock("nat.mul", true); return;
                 case "ttpow": this.ttGui.unlock("nat.pow", true); return;
                 case "tt!": this.ttGui.unlock("nat.!", true); return;
-                
+
                 case "ttleZ": this.ttGui.unlock("Z.le"); return;
                 case "ttabsZ": this.ttGui.unlock("Z.abs"); return;
                 case "ttcode_S1": this.ttGui.unlock("S1.code"); return;

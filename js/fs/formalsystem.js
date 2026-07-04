@@ -825,7 +825,7 @@ export class FormalSystem {
             }
         }
         replaceNames.forEach((replname, idx) => {
-            assert.match(replaceValues[idx], null, /^\$/, replaceTypes[replname], null, null, astAssertions, assertions);
+            assert.match(assert.expand(astmgr.clone(replaceValues[idx]), replaceTypes[replname]), null, /^\$/, replaceTypes[replname], null, null, astAssertions, assertions);
         });
         if (partialTest)
             return; // just test, no props to add

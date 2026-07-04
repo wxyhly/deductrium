@@ -4,6 +4,7 @@ export const mapData = `
 
 @欢迎来到游戏[n]Deductrium![n]按WASD或[n]拖动画面进行移动
 5$[[zh-en]]Toggle Language:[n]English
+4$[[copygateD]]oma
 1@
 3@这是一个形式系统推理结合[n]双曲空间解谜小游戏[n]游戏作者：Hqak(wxyhly)
     :%,4;5;5;5;0;5@

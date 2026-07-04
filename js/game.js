@@ -139,13 +139,17 @@ export class Game {
                 }
                 if (tile.text.endsWith("#p")) {
                     // if with hyps, fail
+                    const ast = this.fsGui.cmd.astparser.parse(tile.text.replaceAll("||", "|").replaceAll("\n#p", "").replaceAll("\n", ""));
+                    if (this.rewards.includes("copygateD"))
+                        this.fsGui.showWaitingAst(ast);
                     if (!this.fsGui.formalSystem.propositions[0]?.from)
                         return false;
-                    const ast = this.fsGui.cmd.astparser.parse(tile.text.replaceAll("||", "|").replaceAll("\n#p", "").replaceAll("\n", ""));
                     return this.fsGui.getProps().findIndex(v => astmgr.equal(v.value, ast)) !== -1;
                 }
                 if (tile.text.endsWith("#d")) {
                     const ast = this.fsGui.cmd.astparser.parse(tile.text.replaceAll("\n#d", "").replaceAll("\n", ""));
+                    if (this.rewards.includes("copygateD"))
+                        this.fsGui.showWaitingAst(ast);
                     return Object.values(this.fsGui.formalSystem.deductions).findIndex(v => astmgr.equal(v.value, ast) && v.from.endsWith("*")) !== -1;
                 }
                 if (tile.text.endsWith("#t")) {
@@ -427,6 +431,9 @@ export class Game {
                     ].forEach(s => this.fsGui.addToDeductions(s));
                     this.fsGui.addToDeductions(".<>rV", ".<>r|");
                     this.fsGui.addToDeductions(".<>rE", ".<>rV");
+                    return;
+                case "copygateD":
+                    document.getElementById("copygateD-wrapper").classList.remove("hide");
                     return;
                 case "1st":
                     this.fsGui.addToDeductions("a4", "a3");

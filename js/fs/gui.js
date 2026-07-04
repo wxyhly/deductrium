@@ -546,6 +546,10 @@ export class FSGui {
         }
         list.scroll({ top: list.scrollHeight });
     }
+    showWaitingAst(ast) {
+        document.getElementById("copygateD").innerText = "";
+        document.getElementById("copygateD").appendChild(this.ast2HTML("p", ast, false));
+    }
     clearPListMasked() {
         this.propositionList.querySelectorAll("div.p-match-failed").forEach(e => e.classList.remove("p-match-failed"));
     }
