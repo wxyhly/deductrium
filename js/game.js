@@ -812,6 +812,9 @@ export class Game {
                 case "tt!":
                     this.ttGui.unlock("nat.!", true);
                     return;
+                case "LEM":
+                    this.ttGui.unlock("LEM");
+                    return;
                 case "ttleZ":
                     this.ttGui.unlock("Z.le");
                     return;

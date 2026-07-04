@@ -519,6 +519,7 @@ export class Game {
                 case "ttpow": this.ttGui.unlock("nat.pow", true); return;
                 case "tt!": this.ttGui.unlock("nat.!", true); return;
 
+                case "LEM": this.ttGui.unlock("LEM"); return;
                 case "ttleZ": this.ttGui.unlock("Z.le"); return;
                 case "ttabsZ": this.ttGui.unlock("Z.abs"); return;
                 case "ttcode_S1": this.ttGui.unlock("S1.code"); return;
