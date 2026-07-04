@@ -287,9 +287,12 @@ export class FormalSystem {
     }
     replaceTempVar(ast, tempvarTable) {
         if (ast.type === "replvar" && ast.name.match(this.localNameRule)) {
-            ast.name = ast.name === "#" ? "##" : ast.name.replace(/^#([^#].*)$/, "##$1");
+            // ast.name = ast.name === "#" ? "##" : ast.name.replace(/^#([^#].*)$/, "##$1");
             while (tempvarTable.has(ast.name)) {
-                ast.name += "#";
+                if (ast.name === "#")
+                    ast.name = "#0";
+                else
+                    ast.name += "#";
             }
         }
         if (ast.nodes?.length) {
@@ -342,7 +345,7 @@ export class FormalSystem {
                 replaceValues: step.replaceValues.map(v => {
                     const newv = astmgr.clone(v);
                     // replace #0 to ##0, if conflict with substep, rename it as ##0#
-                    this.replaceTempVar(newv, subTempvars);
+                    // this.replaceTempVar(newv, subTempvars);
                     return newv;
                 }),
                 deductionIdx: step.deductionIdx
@@ -884,8 +887,8 @@ export class FormalSystem {
             });
             const replaceValues = substep.replaceValues.map(ast => {
                 const replaced = astmgr.clone(ast);
-                this.recoverTempVar(replaced, tempvars);
-                this.replaceTempVar;
+                this.replaceTempVar(replaced, tempvars);
+                // this.replaceTempVar
                 astmgr.replaceByMatchTable(replaced, matchTable);
                 return replaced;
             });

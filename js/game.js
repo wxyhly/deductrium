@@ -805,6 +805,15 @@ export class Game {
                 case "tt!":
                     this.ttGui.unlock("nat.!", true);
                     return;
+                case "ttleZ":
+                    this.ttGui.unlock("Z.le");
+                    return;
+                case "ttabsZ":
+                    this.ttGui.unlock("Z.abs");
+                    return;
+                case "ttcode_S1":
+                    this.ttGui.unlock("S1.code");
+                    return;
                 case "ttord":
                     this.ttGui.unlock("Ord");
                     this.ttGui.unlock("(Ord)");
@@ -1009,15 +1018,6 @@ export class Game {
                     return;
                 case "ttsup":
                     this.ttGui.unlockedTactics.add("sup");
-                    return;
-                case "ttleZ":
-                    this.ttGui.unlockedTactics.add("Z.le");
-                    return;
-                case "ttabsZ":
-                    this.ttGui.unlockedTactics.add("Z.abs");
-                    return;
-                case "ttcode_S1":
-                    this.ttGui.unlockedTactics.add("S1.code");
                     return;
                 case "ttsimpl":
                     this.ttGui.unlockedTactics.add("simpl");

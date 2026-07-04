@@ -515,6 +515,10 @@ export class Game {
                 case "ttmul": this.ttGui.unlock("nat.mul", true); return;
                 case "ttpow": this.ttGui.unlock("nat.pow", true); return;
                 case "tt!": this.ttGui.unlock("nat.!", true); return;
+                
+                case "ttleZ": this.ttGui.unlock("Z.le"); return;
+                case "ttabsZ": this.ttGui.unlock("Z.abs"); return;
+                case "ttcode_S1": this.ttGui.unlock("S1.code"); return;
                 case "ttord": this.ttGui.unlock("Ord"); this.ttGui.unlock("(Ord)"); this.ttGui.updateAfterUnlock(); return;
                 case "ttap": this.ttGui.disableSimpleEq = false; this.ttGui.unlock("eq.="); this.ttGui.unlock("eq.ap"); this.ttGui.updateAfterUnlock(); return;
                 case "ttap2": this.ttGui.unlock("eq.apd"); this.ttGui.unlock("eq.trans"); this.ttGui.updateAfterUnlock(); return;
@@ -564,9 +568,6 @@ export class Game {
                 case "ttlazy": this.ttGui.enablecopygate = true; return;
                 case "ttacticFnext": this.ttGui.unlockedTactics.add("fnext"); return;
                 case "ttsup": this.ttGui.unlockedTactics.add("sup"); return;
-                case "ttleZ": this.ttGui.unlockedTactics.add("Z.le"); return;
-                case "ttabsZ": this.ttGui.unlockedTactics.add("Z.abs"); return;
-                case "ttcode_S1": this.ttGui.unlockedTactics.add("S1.code"); return;
                 case "ttsimpl":
                     this.ttGui.unlockedTactics.add("simpl"); return;
                 case "ttdestruct":
