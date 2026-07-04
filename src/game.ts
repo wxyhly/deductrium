@@ -519,6 +519,7 @@ export class Game {
                 case "ttleZ": this.ttGui.unlock("Z.le"); return;
                 case "ttabsZ": this.ttGui.unlock("Z.abs"); return;
                 case "ttcode_S1": this.ttGui.unlock("S1.code"); return;
+                case "ttranseq": this.ttGui.unlock("eq.transeq"); return;
                 case "ttord": this.ttGui.unlock("Ord"); this.ttGui.unlock("(Ord)"); this.ttGui.updateAfterUnlock(); return;
                 case "ttap": this.ttGui.disableSimpleEq = false; this.ttGui.unlock("eq.="); this.ttGui.unlock("eq.ap"); this.ttGui.updateAfterUnlock(); return;
                 case "ttap2": this.ttGui.unlock("eq.apd"); this.ttGui.unlock("eq.trans"); this.ttGui.updateAfterUnlock(); return;

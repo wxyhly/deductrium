@@ -814,6 +814,9 @@ export class Game {
                 case "ttcode_S1":
                     this.ttGui.unlock("S1.code");
                     return;
+                case "ttranseq":
+                    this.ttGui.unlock("eq.transeq");
+                    return;
                 case "ttord":
                     this.ttGui.unlock("Ord");
                     this.ttGui.unlock("(Ord)");
