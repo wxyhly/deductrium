@@ -13,6 +13,9 @@ export class HyperGui {
     outside = false;
     touchStartX = 0;
     touchStartY = 0;
+    blur() {
+        this.keyDowns.clear();
+    }
     constructor() {
         window.onresize = () => { this.onresize(); };
         this.onresize();

@@ -385,6 +385,11 @@ class LangMgr {
         "恭喜你，到达了\n第五个梅森素数": "Congratulations, you've reached\nthe fifth Mersenne prime number"
     };
     dataEn = {
+        // game.ts
+        "进入此门将消耗": "Entering this gate will consume ",
+        "推理素，您只有": " deductrium, you only have ",
+        "推理素，确认要继续吗？": " deductrium, confirm to continue?",
+        "注意，退出后重新进入门会重复扣钱！": " Note: exiting and re-entering the gate will consume deductrium again!",
         // tt/assist.ts
         "无证明目标，请使用qed命令结束证明": "No goal. Please enter 'qed' to finish the proof.",
         "无法重复intro相同变量名": "Cannot intro the same variable name",

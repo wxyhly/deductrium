@@ -1,5 +1,6 @@
 import { ASTMgr } from "./fs/astmgr.js";
 import { FSGui } from "./fs/gui.js";
+import { Rotor } from "./hy/algebra.js";
 import { HyperGui } from "./hy/gui.js";
 import { TileBlockType } from "./hy/maploader.js";
 import { calcMaxReachOrd, cmp, printOrd } from "./hy/ordinal.js";
@@ -174,6 +175,15 @@ export class Game {
                             document.querySelector(".restart").classList.remove("hide");
                         }
                         return false;
+                    }
+                    if (this.deductriums < needed * 2) {
+                        this.hyperGui.blur();
+                        if (!confirm(TR("进入此门将消耗") + reg[1] + TR("推理素，您只有") + stringifyDeductriumAmout(this.deductriums) + TR("推理素，确认要继续吗？") + (!this.rewards.includes("delgate") ? TR("注意，退出后重新进入门会重复扣钱！") : "")))
+                            return false;
+                        setTimeout(() => {
+                            this.hyperGui.world.localCamMat = new Rotor();
+                            this.hyperGui.needUpdate = true;
+                        }, 1);
                     }
                     this.consumed += needed;
                     this.addDeductriums(-needed);
