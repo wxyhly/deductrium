@@ -146,7 +146,11 @@ export class FSCmd {
                 if (!list.includes(value))
                     list.unshift(value);
                 const time = new Date().getTime();
+                let resLen = 0;
+                const maxHints = 100;
                 list = list.map(e => {
+                    if (resLen > maxHints)
+                        return [];
                     let d;
                     try {
                         // wait for 150ms, then stop generate more autocomplete items 
@@ -166,6 +170,7 @@ export class FSCmd {
                     const hint = document.createElement("span");
                     hint.className = 'hint';
                     hint.innerText = d ? this.astparser.stringifyTight(d.value) : "";
+                    resLen++;
                     return [[cmd, hint], "d " + e];
                 }).filter(e => e.length);
             }

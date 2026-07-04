@@ -151,8 +151,11 @@ export class FSCmd {
                 }).map(e => pre + e);
                 if (!list.includes(value)) list.unshift(value);
                 const time = new Date().getTime();
+                let resLen = 0;
+                const maxHints = 100;
                 list = list.map(
                     e => {
+                        if (resLen > maxHints) return [];
                         let d: Deduction;
                         try {
                             // wait for 150ms, then stop generate more autocomplete items 
@@ -169,6 +172,7 @@ export class FSCmd {
                         const hint = document.createElement("span");
                         hint.className = 'hint';
                         hint.innerText = d ? this.astparser.stringifyTight(d.value) : "";
+                        resLen++;
                         return [[cmd, hint], "d " + e]
                     }
                 ).filter(e => e.length);
@@ -740,9 +744,9 @@ export class FSCmd {
         try {
             const pos = this.gui.deductions.indexOf(this.cmdBuffer[1]);
             if (pos === -1) throw TR("列表中无此规则");
-            const toRemove:string[] = [this.cmdBuffer[1]];
-            for(const d of this.gui.deductions){
-                if(!this.gui.formalSystem.deductions[d] && !d.startsWith("< f >")){
+            const toRemove: string[] = [this.cmdBuffer[1]];
+            for (const d of this.gui.deductions) {
+                if (!this.gui.formalSystem.deductions[d] && !d.startsWith("< f >")) {
                     toRemove.push(d);
                 }
             }
@@ -750,7 +754,7 @@ export class FSCmd {
                 this.gui.deductions[pos] = "< wait to remove >";
             }
             this.gui.removeDeductionFolderCount(toRemove);
-            this.gui.deductions = this.gui.deductions.filter(d => (this.gui.formalSystem.deductions[d]||d.startsWith("< f >")));
+            this.gui.deductions = this.gui.deductions.filter(d => (this.gui.formalSystem.deductions[d] || d.startsWith("< f >")));
             this.gui.updateDeductionList();
             this.gui.updatePropositionList(true);
             this.clearCmdBuffer();
