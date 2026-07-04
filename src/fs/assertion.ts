@@ -494,6 +494,9 @@ export class AssertionSystem {
             // if (nth === -1 && this.astEq(ast, newAst)) return res;
             return false; // unknown
         }
+        if (subAst.type === "fn" && subAst.name.match(/#v*nf/) && this.astEq(ast, subAst.nodes[0]) !== F) {
+            return false; // unknown
+        }
         // else not equal
         if (!ast.nodes?.length) return res; // end of node, find 0
         const qp = this.getQuantParams(ast);
@@ -858,7 +861,7 @@ export class AssertionSystem {
             // this way (Dict rather that Array) can avoid repeated assertions in ast
             astAssertions[parser.stringifyTight(ast.nodes[0])] = astmgr.clone(ast);
         }
-        if (pattern.type === "replvar" && pattern.name.match(replNameReg)) {
+        if (pattern?.type === "replvar" && pattern.name.match(replNameReg)) {
             result[pattern.name] ??= ast;
             this.getReplVarsType(ast, varTable, isItem);
             if (!this.equalWithAssertion(result[pattern.name], ast, astAssertions)) {
@@ -869,22 +872,22 @@ export class AssertionSystem {
             }
             return;
         }
-        if (pattern.type === "fn" && pattern.name.match(/^#(v*nf|crp)/)) {
+        if (pattern?.type === "fn" && pattern.name.match(/^#(v*nf|crp)/)) {
             this.match(ast, pattern.nodes[0], replNameReg, isItem, result, varTable, astAssertions, patternAssertions);
             // ignore assertions in pattern, but collect them for later check
             patternAssertions.push(astmgr.clone(pattern));
             return;
         }
-        if (ast.type !== pattern.type || ast.name !== pattern.name) {
+        if (pattern && (ast.type !== pattern?.type || ast.name !== pattern?.name)) {
             if ((!!this.getRpParams(pattern)) !== (!!this.getRpParams(ast))) {
                 throw TR(`替换函数#rp导致模式匹配`) + TR(`时无法顺利进行`) + `: \n` + (parser.stringify(pattern)) + " <=?=> " + (parser.stringify(ast));
             }
             throw TR("模式匹配失败");
         }
-        if (ast.nodes?.length !== pattern.nodes?.length) throw TR("模式匹配失败");
+        if (pattern && ast.nodes?.length !== pattern?.nodes?.length) throw TR("模式匹配失败");
         if (ast.nodes?.length) {
             for (let i = 0; i < ast.nodes.length; i++) {
-                this.match(ast.nodes[i], pattern.nodes[i], replNameReg, this.getSubAstType(ast, i, isItem), result, varTable, astAssertions, patternAssertions);
+                this.match(ast.nodes[i], pattern?.nodes?.[i], replNameReg, this.getSubAstType(ast, i, isItem), result, varTable, astAssertions, patternAssertions);
             }
         }
     }

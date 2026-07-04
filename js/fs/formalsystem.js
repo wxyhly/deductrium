@@ -227,6 +227,12 @@ export class FormalSystem {
     }
     addHypothese(m, expandMode) {
         m = astmgr.clone(m);
+        const astAssertions = {};
+        assert.match(m, null, /^\$/, false, null, null, astAssertions, []);
+        // assertions in condition can spread, i.e. fn(a,nf(a))  => fn(nf(a),nf(a))
+        for (const astAss of Object.values(astAssertions)) {
+            astmgr.replace(m, astAss.nodes[0], astAss);
+        }
         assert.checkGrammer(m, "p");
         if (!expandMode && this._hasLocalNames(m))
             throw TR("假设中不能出现以#号开头的局部变量");
@@ -818,6 +824,9 @@ export class FormalSystem {
                 throw errorMsg + TR(`第${conditionIdx + 1}个`) + TR(`条件`) + e;
             }
         }
+        replaceNames.forEach((replname, idx) => {
+            assert.match(replaceValues[idx], null, /^\$/, replaceTypes[replname], null, null, astAssertions, assertions);
+        });
         if (partialTest)
             return; // just test, no props to add
         // assertions in condition can spread, i.e. fn(a,nf(a))  => fn(nf(a),nf(a))
@@ -845,6 +854,7 @@ export class FormalSystem {
         }
         // finally replace conclusion
         let replacedConclusion = astmgr.clone(conclusion);
+        // to prevent #nf inconsist in conclusion, we record replaceVals
         astmgr.replaceByMatchTable(replacedConclusion, matchTable);
         try {
             assert.checkGrammer(replacedConclusion, "p");
