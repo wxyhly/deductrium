@@ -661,6 +661,8 @@ export class AssertionSystem {
     // only according to ast's structure, give its nth child's type
     // this is a helper fn for recursively check sub nodes
     getSubAstType(ast, idx, parentType) {
+        if (ast.type === "meta")
+            return false;
         if (ast.type === "sym") {
             if (ast.name === "{|")
                 return idx <= 1;
@@ -671,6 +673,8 @@ export class AssertionSystem {
             return !logicSyms.includes(ast.name);
         }
         if (ast.type === "fn") {
+            if (ast.name === "#array")
+                return false;
             if (this.verbs.has(ast.name)) {
                 return true;
             }

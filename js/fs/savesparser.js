@@ -1,3 +1,4 @@
+import { AssertionSystem } from "./assertion.js";
 import { ASTParser } from "./astparser.js";
 import { initFormalSystem } from "./initial.js";
 import { RuleParser } from "./metarule.js";
@@ -58,9 +59,13 @@ export class SavesParser {
         }
         return s;
     }
+    assert = new AssertionSystem;
     deserializeDeduction(name, fs, sd) {
         // deserialized data is reliable, no need to regen tempvars
-        fs.addDeduction(name, astparser.parse(sd[0]), sd[1], sd[2]?.map(e => ({
+        // fix bugs for nested #nf funcs 26-7-5
+        const val = astparser.parse(sd[0]);
+        this.assert.expand(val, false);
+        fs.addDeduction(name, val, sd[1], sd[2]?.map(e => ({
             deductionIdx: e[0].includes(">.a1_") ? this.fixbug260330(e[0]) : e[0].includes(":") ? this.fixbug260616(e[0]) : e[0], conditionIdxs: e[1], replaceValues: e[2].map(v => astparser.parse(v))
         })), sd[3] ? new Set(sd[3]) : new Set());
     }

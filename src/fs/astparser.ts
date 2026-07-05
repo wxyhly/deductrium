@@ -1,4 +1,4 @@
-import { AST } from "astmgr.js"
+import { AST } from "./astmgr.js"
 import { TR } from "../lang.js";
 export class ASTParser {
     keywords = ["E!", "⊢M", "<>", "Union", "{}", "Equiv", "<=", ">=", "/|"];
