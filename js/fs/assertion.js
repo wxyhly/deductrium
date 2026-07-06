@@ -581,7 +581,10 @@ export class AssertionSystem {
             // if (nth === -1 && this.astEq(ast, newAst)) return res;
             return false; // unknown
         }
-        if (subAst.type === "fn" && subAst.name.match(/#v*nf/) && this.astEq(ast, subAst.nodes[0]) !== F) {
+        // #rp($1, #nf(...,...),..)
+        const name = this.getVarName(ast);
+        const nameIsNot = this.getVarIsNotList(ast);
+        if (subAst.type === "fn" && subAst.name.match(/#v*nf/) && this.astEq(ast, subAst.nodes[0]) !== F && (name ? this.nf(name, subAst, [], nameIsNot) !== T : true)) {
             return false; // unknown
         }
         // else not equal

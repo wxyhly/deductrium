@@ -747,7 +747,7 @@ export class FormalSystem {
         let matchTable: ReplvarMatchTable = partialTest ? {} : Object.fromEntries(replaceNames.map(
             (replname: string, idx: number) => (
                 assert.getReplVarsType(replaceValues[idx], replacedVarTypeTable, replaceTypes[replname]),
-                [replname, replaceValues[idx]]
+                [replname, astmgr.clone(replaceValues[idx])]
             )
         ));
         // assertions in pattern
@@ -860,9 +860,9 @@ export class FormalSystem {
             } catch (e) {
                 // if one substep is wrong, remove newly added substeps from proplist
                 const substepErrMsg = errorMsg + TR(`子步骤`) + `${substepIdx + 1}(${substep.deductionIdx}` + TR(`)中 `) + e;
-                while (this.propositions.length > startPropositions) {
-                    this.propositions.pop();
-                }
+                // while (this.propositions.length > startPropositions) {
+                //     this.propositions.pop();
+                // }
                 throw substepErrMsg;
             }
             propsOffset.unshift(lastPos - firstPos - 1);

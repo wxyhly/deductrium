@@ -402,6 +402,8 @@ export class FSCmd {
         }
         if (cmdBuffer[1].startsWith("p"))
             cmdBuffer[1] = cmdBuffer[1].slice(1);
+        const fmr = formalSystem.fastmetarules;
+        const fsd = Object.assign({}, formalSystem.deductions);
         try {
             let inlineRule = false;
             if (!formalSystem.propositions[cmdBuffer[1]]) {
@@ -417,8 +419,6 @@ export class FSCmd {
                 }
                 inlineRule = true;
             }
-            const fmr = formalSystem.fastmetarules;
-            const fsd = Object.assign({}, formalSystem.deductions);
             formalSystem.fastmetarules = "cvuqe><:#zZQR";
             if (inlineRule) {
                 formalSystem.expandMacroWithDefaultValue(cmdBuffer[1]);
@@ -433,6 +433,9 @@ export class FSCmd {
         }
         catch (e) {
             this.clearCmdBuffer();
+            formalSystem.fastmetarules = fmr;
+            formalSystem.deductions = fsd;
+            this.gui.updatePropositionList(true);
             hintText.innerText = TR("展开定理出错：") + e;
         }
     }
