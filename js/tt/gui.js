@@ -694,7 +694,10 @@ export class TTGui {
             if (!input.value.trim()) {
                 const current = this.getInhabitatArray().indexOf(input);
                 const [removed] = this.userDefinedConsts.splice(current, 1);
-                wrapper.remove();
+                try {
+                    wrapper.remove();
+                }
+                catch (e) { }
                 if (removed)
                     macro.delete(removed[0]);
                 if (nextInput && (removed || ev["updateDefs"]))
