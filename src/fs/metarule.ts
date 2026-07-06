@@ -254,6 +254,7 @@ export class ConstrainSolver {
     }
     getNfAssertionsOfVarsInAST(ast: AST, isItem: boolean, scope: AST, res: { [name: string]: [AST, boolean] } = {}) {
         if (ast.type === "replvar") {
+            if (!scope) return;// just ignore it, sometimes it can be ok (e.g. #rp($0,$1,$2) match #nf($x,$2))
             res[ast.name] ??= [{ type: "replvar", name: "$ " }, isItem];
             res[ast.name][0] = astmgr.clone({ type: "fn", name: scope.name, nodes: [res[ast.name][0], ...scope.nodes.slice(1)] });
             assert.expand(res[ast.name][0], isItem);
@@ -267,7 +268,10 @@ export class ConstrainSolver {
             this.getNfAssertionsOfVarsInAST(ast.nodes[0], isItem, scope, res);
             return res;
         }
-        ast.nodes.forEach((n, idx) => this.getNfAssertionsOfVarsInAST(n, assert.getSubAstType(ast, idx, isItem), scope, res));
+        if (ast.name === "#rp" && ast.type === "fn") {
+            ast.nodes.forEach((n, idx) => (idx === 0 || idx === 2) ? this.getNfAssertionsOfVarsInAST(n, assert.getSubAstType(ast, idx, isItem), scope, res) : null);
+        } else
+            ast.nodes.forEach((n, idx) => this.getNfAssertionsOfVarsInAST(n, assert.getSubAstType(ast, idx, isItem), scope, res));
         return res;
     }
     addAssertions(mt: ReplvarMatchTable, assertions: [AST, boolean][]) {

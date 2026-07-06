@@ -495,11 +495,11 @@ export class AssertionSystem {
             return false; // unknown
         }
         // #rp($1, #nf(...,...),..)
-        const name =  this.getVarName(ast);
-        const nameIsNot =  this.getVarIsNotList(ast);
-        if (subAst.type === "fn" && subAst.name.match(/#v*nf/) && this.astEq(ast, subAst.nodes[0]) !== F && (name?this.nf(
-            name,subAst,[],nameIsNot
-        )!==T:true)) {
+        const name = this.getVarName(ast);
+        const nameIsNot = this.getVarIsNotList(ast);
+        if (subAst.type === "fn" && subAst.name.match(/#v*nf/) && this.astEq(ast, subAst.nodes[0]) !== F && (name ? this.nf(
+            name, subAst, [], nameIsNot
+        ) !== T : true)) {
 
             return false; // unknown
         }
@@ -543,25 +543,32 @@ export class AssertionSystem {
                     return false;
                 }
             }
-        } else if (right) {
-            for (let n = ast.nodes.length - 1; n >= 0; n--) {
-                const subres = this.getSubAstMatchTimesAndReplace(ast.nodes[n], subAst, newAst, nth, scope.slice(0), res, right);
-                // if unknown, don't spread, just ignore it and replace??
-                if (subres === false) {
-                    // No! this time all are not sure, undo all changes, remain #rp
-                    astmgr.assign(ast, backup);
-                    return false;
-                }
-            }
         } else {
-            if (ast.type === "fn" && ast.name.startsWith("#")) return false;
-            for (const n of ast.nodes) {
-                const subres = this.getSubAstMatchTimesAndReplace(n, subAst, newAst, nth, scope.slice(0), res, right);
-                // if unknown, don't spread, just ignore it and replace??
-                if (subres === false) {
-                    // No! this time all are not sure, undo all changes, remain #rp
-                    astmgr.assign(ast, backup);
-                    return false;
+            if (ast.type === "fn" && ast.name.startsWith("#")) {
+                const subName = this.getVarName(subAst);
+                if (!subName) return false;
+                if (this.nf(subName, ast, [], this.getVarIsNotList(subAst))) return res;
+                return false;
+            }
+            if (right) {
+                for (let n = ast.nodes.length - 1; n >= 0; n--) {
+                    const subres = this.getSubAstMatchTimesAndReplace(ast.nodes[n], subAst, newAst, nth, scope.slice(0), res, right);
+                    // if unknown, don't spread, just ignore it and replace??
+                    if (subres === false) {
+                        // No! this time all are not sure, undo all changes, remain #rp
+                        astmgr.assign(ast, backup);
+                        return false;
+                    }
+                }
+            } else {
+                for (const n of ast.nodes) {
+                    const subres = this.getSubAstMatchTimesAndReplace(n, subAst, newAst, nth, scope.slice(0), res, right);
+                    // if unknown, don't spread, just ignore it and replace??
+                    if (subres === false) {
+                        // No! this time all are not sure, undo all changes, remain #rp
+                        astmgr.assign(ast, backup);
+                        return false;
+                    }
                 }
             }
         }
