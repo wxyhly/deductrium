@@ -629,7 +629,12 @@ export class FSGui {
     updateDeductionList() {
         if (this.skipRendering) return;
         const types = new Set<string>;
-        const ds = this.deductions.map(d => d.startsWith('< f >') ? null : this.formalSystem.deductions[d] || this.formalSystem.generateDeduction(d));
+        const ds = this.deductions.map(d => {
+            try {
+                const k = d.startsWith('< f >') ? null : this.formalSystem.deductions[d] || this.formalSystem.generateDeduction(d);
+                return k;
+            } catch (e) { return null; }
+        });
         for (const d of ds) {
             if (!d) continue;
             types.add(d.from);
