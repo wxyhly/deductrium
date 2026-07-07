@@ -1308,6 +1308,11 @@ export class FormalSystem {
         if (circularDetect(exprAst))
             throw TR("检测到可能的循环定义");
         const wrapVs = (ast) => {
+            const res = {};
+            const allVars = assert.getVarNamesAndIsNots(exprAst, res, /./);
+            if (Object.keys(allVars).find(e => e !== varAst.name && !paramAsts.find(p => p.name === e))) {
+                throw TR("函数的表达式不能有自由变量");
+            }
             console.assert(ast.name === "V");
             let first = true;
             for (const p of paramAsts) {

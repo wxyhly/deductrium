@@ -705,6 +705,7 @@ class LangMgr {
         "无法生成中间步骤推理规则：": "Cannot generate rule in substeps: ",
         "发现错误的快速元规则名称：": "Malformed rule name found: ",
         "检测到可能的循环定义": "Possible circular definition detected",
+        "函数的表达式不能有自由变量": "Free variable cannot appear in function expression",
         // saveload.ts
         "[创造模式]": "[Creative Mode]",
         "[生存模式]": "[Survival Mode]",

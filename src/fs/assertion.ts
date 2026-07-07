@@ -877,7 +877,7 @@ export class AssertionSystem {
             astAssertions[parser.stringifyTight(ast.nodes[0])] = astmgr.clone(ast);
         }
         if (pattern?.type === "replvar" && pattern.name.match(replNameReg)) {
-            result[pattern.name] ??= ast;
+            result[pattern.name] ??= astmgr.clone(ast);
             this.getReplVarsType(ast, varTable, isItem);
             if (!this.equalWithAssertion(result[pattern.name], ast, astAssertions)) {
                 if ((!!this.getRpParams(ast)) !== (!!this.getRpParams(ast))) {

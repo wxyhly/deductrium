@@ -330,7 +330,11 @@ export class Assist {
             this.resolveDependGoal(goal.depend);
             return this;
         } catch (e) {
-            core.checkType(ast, context, false);
+            try {
+                core.checkType(ast, context, false);
+            } catch (e) {
+                throw e;
+            }
             throw TR("无法对类型") + parser.stringify(ast.checked) + TR("使用exact策略作用于类型") + parser.stringify(goal.type);
         }
     }
@@ -368,11 +372,19 @@ export class Assist {
                 if (Assist.disableMultipleApply) throw e;
                 this.apply2(ast); return;
             } catch (e) {
-                core.checkType(ast, context, false);
+                try {
+                    core.checkType(ast, context, false);
+                } catch (e) {
+                    throw e;
+                }
                 throw TR("无法对类型") + parser.stringify(ast.checked) + TR("使用apply策略作用于类型") + parser.stringify(goal.type);
             }
         }
-        core.checkType(ast, context, false);
+        try {
+            core.checkType(ast, context, false);
+        } catch (e) {
+            throw e;
+        }
         // goal.ast is refferd at outter level hole,  we fill the hole first
         Core.assign(goal.ast, {
             type: "apply", name: "", nodes: [ast, {
