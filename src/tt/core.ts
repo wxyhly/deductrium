@@ -213,6 +213,7 @@ type State = {
     disableSimpleFn?: boolean;
     disableSimpleEq?: boolean;
     root: AST;
+    time?: number;
 }
 /** return a cloned Context */
 export function assignContext(added: [string, AST, number], oldContext: Context) {
@@ -384,6 +385,7 @@ export class Core {
         computeRules: {},
         inferTable: null,
         errormsg: [],
+        time: 0
     };
     // cloneState(): State {
     //     return {
@@ -414,6 +416,7 @@ export class Core {
     checkType(ast: AST, context: Context, allowModify: boolean) {
         let errmsg: any;
         this.state.errormsg = [];
+        this.state.time = new Date().getTime();
         this.state.bondVarId = 1;
         this.state.bondVarRel = new DisjointSet();
         this.state.root = ast;
@@ -1353,6 +1356,7 @@ export class Core {
         }
     }
     fillInfered(ast: AST) {
+        if (this.state.time && new Date().getTime() - this.state.time > 60_000) this.error(ast, TR("类型推断错误：疑似发现循环引用"), true);
         const it = this.state.inferTable;
         if (ast.checked) {
             this.fillInfered(ast.checked);
