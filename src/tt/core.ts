@@ -1001,7 +1001,7 @@ export class Core {
         }
         return false;
     }
-    alwaysSkip = new Set(["add", "mul", "pow", "addZ"]);
+    alwaysSkip = new Set(["add", "mul", "pow"]);
     // here we always skip def of add/mul/pow, expansion is triggered when cmp fn === ind_nat xxx
     whnf(ast: AST, context: Context, skipExpand: boolean) {
 
@@ -1495,7 +1495,7 @@ export class Core {
 
             if (this.alwaysSkip.has(a.name) && b.type === "apply") {
                 const n = this.flattenApplyList(b)[0].name;
-                if (n === "ind_nat" || n === "@ind_nat") return this.equal(b, this.markBondVars(Core.clone(this.state.sysDefs[a.name]), context), context);
+                if (n === "ind_nat" || n === "@ind_nat"||n === "ind_Z" || n === "@ind_Z") return this.equal(b, this.markBondVars(Core.clone(this.state.sysDefs[a.name]), context), context);
             }
         }
         if (b.type === "var") {
