@@ -448,8 +448,8 @@ export function initTypeSystem() {
     addRule("@构造", "@sup : Pu:U@,Pv:U@,Pa:Uu,Pb:a->Uv,Px:a,Pf:b x->Wx:a,b x,Wx:a,b x");
     addRule("@构造", "sup := @sup _ _ _");
     addRule("_构造", "sup");
-    addRule("@解构", "@ind_W : Pu:U@,Pv:U@,Pa:Uu,Pb:a->Uv,PC:(Wx:a,b x)->Uv,(Px:a,Pf:b x->Wx:a,b x,(Py:b x,C (f y))->C (@sup u v a b x f))->(Pw:Wx:a,b x,C w)");
-    addRule("@解构", "ind_W := @ind_W _ _ _");
+    addRule("@解构", "@ind_W : Pu:U@,Pv:U@,Pw:U@,Pa:Uu,Pb:a->Uv,PC:(Wx:a,b x)->Uw,(Px:a,Pf:b x->Wx:a,b x,(Py:b x,C (f y))->C (@sup u v a b x f))->(Pk:Wx:a,b x,C k)");
+    addRule("@解构", "ind_W := @ind_W _ _ _ _");
     addRule("_解构", "ind_W");
     addRule("计算", "ind_W ?b ?C ?c (sup ?b ?x ?f) === ?c ?x ?f (Ly:(?b ?x),ind_W ?b ?C ?c (?f y))");
     addRule("@计算", "ind_W _ ?C ?c (sup ?b ?x ?f) === ?c ?x ?f (Ly:(?b ?x),ind_W ?b ?C ?c (?f y))");
