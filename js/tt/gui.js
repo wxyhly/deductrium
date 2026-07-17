@@ -114,6 +114,9 @@ export class TTGui {
                 document.getElementById("tactic-begin").click();
             }
         });
+        document.getElementById('timeSelect').addEventListener('change', function () {
+            Core.timeout = Number(this.value) * 1000;
+        });
         const remove = (all) => {
             if (this.mode.length === 1 || all) {
                 this.mode = null;
@@ -680,6 +683,9 @@ export class TTGui {
         // todo: when remove a ":=", must be updated, so input must record value before edited
         // todo: left btn is to drag order(click: add new line after it), if trim ast str is empty, then remove it aotomatically
         input.onblur = ev => {
+            if (Core.timeoutOccured) {
+                document.getElementById("timeout").classList.remove("hide");
+            }
             if (!ev["updateDefs"])
                 ev["updateDefs"] = input["needUpdate"];
             delete input["needUpdate"];

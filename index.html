@@ -277,6 +277,14 @@
                         <button class="inhabitat-modify" id="add-btn">+</button>
                     </div>
                 </div>
+                <div id="timeout" class="hide"><label>已发生系统判定单条定理超时。可设置默认等待时间：</label>
+                    <select id="timeSelect">
+                        <option value="10">10s</option>
+                        <option value="60">60s</option>
+                        <option value="300">300s</option>
+                        <option value="1e10">∞</option>
+                    </select>
+                </div>
                 <div id="tactic-div" class="hide">
                     <div id="copygate"></div>
                     <label>证明策略：</label><button class="inhabitat-modify hide" id="tactic-clear">x</button><span

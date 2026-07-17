@@ -223,6 +223,8 @@ export function assignContext(added: [string, AST, number], oldContext: Context)
 }
 
 export class Core {
+    static timeout:number = 10_000;
+    static timeoutOccured:boolean;
     static assign(ast: AST, value: AST, moveSemantic?: boolean) {
         const v = moveSemantic ? value : this.clone(value);
         ast.type = v.type;
@@ -1356,7 +1358,10 @@ export class Core {
         }
     }
     fillInfered(ast: AST) {
-        if (this.state.time && new Date().getTime() - this.state.time > 60_000) this.error(ast, TR("类型推断错误：疑似发现循环引用"), true);
+        if (this.state.time && new Date().getTime() - this.state.time > Core.timeout) {
+            Core.timeoutOccured = true;
+            this.error(ast, TR("类型推断超时"), true);
+        }
         const it = this.state.inferTable;
         if (ast.checked) {
             this.fillInfered(ast.checked);

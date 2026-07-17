@@ -482,6 +482,8 @@ class LangMgr {
         "未知的全类层级运算": "Unknown universe type operation",
         "尝试对非全类操作层级": "Attempted to use hierarchy operator for non-universe object",
         "类型推断错误：发现循环引用": "Type inference error: Circular reference detected",
+        "类型推断错误：疑似发现循环引用": "Type inference error: Suspected circular reference detected",
+        "类型推断超时": "Type inference timeout",
         "类型推断错误：": "Type inference error: ",
         "本应约束的变量在类型推断时自由出现：": "Variable that should be bound occurs free during type inference: ",
         "由系统保留": " is reserved by the system",
@@ -817,6 +819,7 @@ class LangMgr {
         "简化显示系统函数": "Display Omitted System Functions",
         "斜体显示项": "Italicize Terms",
         "待证命题：":"Waiting to prove: ",
+        "已发生系统判定单条定理超时。可设置默认等待时间：":"Proposition checking has timed out. You can set the waiting time: ",
         // p
         '注意：创造模式与生存模式不共享进度系统。创造模式下无法体验双曲空间以及序数系统等游戏内容，前往生存模式<a href="?" target="_blank">请点击这里</a>。': "Note: Creative and Survival Mode do not share progress. Hyperbolic space and the ordinal number system cannot be accessed in Creative Mode. To switch to Survival Mode, <a href=\"?\" target=\"_blank\">Click Here</a>.",
         // h3
