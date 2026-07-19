@@ -243,7 +243,7 @@ export class ASTParser {
         return val;
     }
     boundedVar() {
-        if (this.token.match(/^#?#nf$/)) {
+        if (this.token.match(/^#?#v*nf$/)) {
             this.nextSym();
             this.expectSym("(");
             const fnName = this.prevToken(2);

@@ -228,7 +228,7 @@ export class ASTParser {
         return val;
     }
     private boundedVar(): AST {
-        if (this.token.match(/^#?#nf$/)) {
+        if (this.token.match(/^#?#v*nf$/)) {
             this.nextSym();
             this.expectSym("(");
             const fnName = this.prevToken(2);
