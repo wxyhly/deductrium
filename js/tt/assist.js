@@ -597,8 +597,10 @@ export class Assist {
             matched["$type"] = matched[back ? "$3" : "$2"].checked;
             const y = Core.getNewName("y", ctxtSet);
             const m = Core.getNewName("m", ctxtSet);
+            // F(a/b)
             matched["$fn_2"] = Core.clone(fnbody);
             this.replaceFreeVar(matched["$fn_2"], fnparam, matched["$2"]);
+            // F(a/#y)
             matched["$fn_y"] = Core.clone(fnbody);
             this.replaceFreeVar(matched["$fn_y"], fnparam, wrapVar(y));
             let compeq = {};
@@ -608,7 +610,7 @@ export class Assist {
                 Core.match(fnbody, parser.parse(fnparam + " = $2"), /^\$/, compeq = {});
             let newAst;
             const wrapInvOrNot = (ast, wrap) => wrap ? wrapApply(wrapVar("inveq"), ast) : ast;
-            if (compeq["$2"] && (!back || core.checkConst("inveq", [])) && core.checkConst("compeq", [])) {
+            if (compeq["$2"] && !Core.getFreeVars(compeq['$2']).has(fnparam) && (!back || core.checkConst("inveq", [])) && core.checkConst("compeq", [])) {
                 // h:a0=a1, a0=b -> ?:a1=b =>  h * ? 
                 // h:a0=a1, a1=b -> ?:a0=b =>  inv(h) * ? 
                 const newGoalAst = { type: "var", name: "(?#0)" };
@@ -617,7 +619,7 @@ export class Assist {
                 goal.ast.checked = goal.type;
                 goal.ast = goal.ast.nodes[1];
             }
-            else if (compeq["$1"] && (back || core.checkConst("inveq", [])) && core.checkConst("compeq", [])) {
+            else if (compeq["$1"] && !Core.getFreeVars(compeq['$1']).has(fnparam) && (back || core.checkConst("inveq", [])) && core.checkConst("compeq", [])) {
                 // h:b0=b1, a=b0 -> ?:a=b1 =>  ? * inv(h) 
                 // h:b0=b1, a=b1 -> ?:a=b0 =>  ? * h 
                 const newGoalAst = { type: "var", name: "(?#0)" };
