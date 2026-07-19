@@ -1088,7 +1088,6 @@ export class Game {
                     }, 1);
                 case "enablefnext":
                     text = langMgr.lang === "en" ? langMgr.dataEnInCanvas[tile.text] ?? tile.text : tile.text;
-                    this.ttGui.disableAxiom("fnext", "fnext_happly", "happly_fnext");
                     this.ttGui.enableAxiom("fnext", "fnext_happly", "happly_fnext");
                     return setTimeout(() => {
                         tile.text = text;
@@ -1103,7 +1102,6 @@ export class Game {
                     }, 1);
                 case "enableI":
                     text = langMgr.lang === "en" ? langMgr.dataEnInCanvas[tile.text] ?? tile.text : tile.text;
-                    this.ttGui.disableAxiom("fnext", "fnext_happly", "happly_fnext");
                     this.ttGui.enableAxiom("I", "0I", "1I", "ind_I", "rec_I", "segI", "apd_segI", "ap_segI");
                     return setTimeout(() => {
                         tile.text = text;

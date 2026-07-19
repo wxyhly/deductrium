@@ -769,7 +769,13 @@ export class Assist {
             this.goal.unshift(goal);
             throw TR("未知的变量：") + str;
         }
-        this.whnf(type ?? goal.type, type ? goal.context.slice(0, goal.context.findIndex(e => e[0] === str)) : goal.context);
+        try {
+            this.whnf(type ?? goal.type, type ? goal.context.slice(0, goal.context.findIndex(e => e[0] === str)) : goal.context);
+        }
+        catch (e) {
+            this.goal.unshift(goal);
+            throw e;
+        }
         this.goal.unshift(goal);
         return this;
     }

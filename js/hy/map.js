@@ -1338,7 +1338,7 @@ export const mapData = `
 :%,1$[[ttrans2]]解锁二维路径传输[n]trans2
 :ttS2,5#Pa:U,Px:a,Py:a,Pm:x=y,Pn:x=y,[n]Pb:a->U,Pf:Px:a,b x,Pr:m=n,[n](apd f m)=(trans2 b r (f x))*(apd f n)[n]#t
 :%,0$[[ttapd2]]解锁依赖函数[n]作用于二维路径[n]apd2
-:ttS2,4#Pf:S2->U,Pu:f base2,[n]trans2 f surf u = rfl[n]#t
+:ttS2,4#Pf:S2->U, rfl = [n]trans2 (Lx:S2.U) surf (f base2)[n]#t
 :%,3$[[ttindS2]]解锁ind_S2
 
 :ttpo,5#Pa:U, Sus a ~= [n]Pushout a (Lx:a,true) (Lx:a,true)[n]#t

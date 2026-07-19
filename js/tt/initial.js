@@ -335,7 +335,7 @@ export function initTypeSystem() {
     addRule("@计算", "nat2Z (succ ?x) === pos ?x");
     typeName = "Z.abs";
     addRule("定义", "absZ:=ind_Z (Lx:Z,Z) 0Z pos pos");
-    addRule("@计算", "absZ 0Z === 0");
+    addRule("@计算", "absZ 0Z === 0Z");
     addRule("@计算", "absZ (pos ?x) === pos ?x");
     addRule("@计算", "absZ (neg ?x) === pos ?x");
     typeName = "Z.succ";
