@@ -351,17 +351,17 @@ export class Game {
                     }
                     break;
                 case "base5":
-                    this.ordBase = 4;
+                    this.ordBase = Math.min(this.ordBase, 4);
                     this.nextOrd = calcMaxReachOrd(this.maxOrd, this.ordBase, this.rewards.includes("stepw"));
                     this.updateProgressParam();
                     break;
                 case "base4":
-                    this.ordBase = 3;
+                    this.ordBase = Math.min(this.ordBase, 3);
                     this.nextOrd = calcMaxReachOrd(this.maxOrd, this.ordBase, this.rewards.includes("stepw"));
                     this.updateProgressParam();
                     break;
                 case "base3":
-                    this.ordBase = 2;
+                    this.ordBase = Math.min(this.ordBase, 2);
                     this.nextOrd = calcMaxReachOrd(this.maxOrd, this.ordBase, this.rewards.includes("stepw"));
                     this.updateProgressParam();
                     break;
