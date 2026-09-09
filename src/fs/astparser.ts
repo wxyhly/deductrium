@@ -23,8 +23,8 @@ export class ASTParser {
         switch (ast.name) {
             case "~": case "!": return `${ast.name}${this.stringifyTight(nd[0], true)}`;
             case "V": case "E": case "E!": return `(${ast.name}${this.stringifyTight(nd[0])}:${this.stringifyTight(nd[1], true)})`;
-            case "{|": return `{${this.stringifyTight(nd[0])}@${this.stringifyTight(nd[1])}|${this.stringifyTight(nd[2])}}`;
-            case "|}": return `{${this.stringifyTight(nd[2])}|${this.stringifyTight(nd[0])}@${this.stringifyTight(nd[1])}}`;
+            case "{|": return `{${this.stringifyTight(nd[0])}@${this.stringifyTight(nd[1])}|${this.stringifyTight(nd[2], true)}}`;
+            case "|}": return `{${this.stringifyTight(nd[2], true)}|${this.stringifyTight(nd[0])}@${this.stringifyTight(nd[1])}}`;
             default:
                 const sym = ast.name;
                 const c = `${this.stringifyTight(nd[0], true)}${sym}${this.stringifyTight(nd[1], true)}`;
