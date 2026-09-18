@@ -384,6 +384,13 @@ export class AssertionSystem {
             nsc.add(this.getVarName(q[0]) as string);
             return this.getFreeVars(q[1], res, nsc);
         }
+        // n({x@y|z}) <=> n(y) && vn(z,x)
+        if (ast.type === "sym" && (ast.name === "{|" || ast.name === "|}")) {
+            this.getFreeVars(ast.nodes[1], res, scope);
+            const nsc = new Set([...scope]);
+            nsc.add(this.getVarName(ast.nodes[0]) as string);
+            return this.getFreeVars(ast.nodes[2], res, nsc);
+        }
         if (ast.nodes) for (const n of ast.nodes) {
             this.getFreeVars(n, res, scope);
         }
