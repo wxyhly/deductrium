@@ -409,7 +409,7 @@ export function initFormalSystem(creative) {
         "dfQ": ["⊢Vx:(x@ZX(Z\\{+0})>Q(x)={y@ZX(Z\\{+0})|Pr1(x)*Pr2(y)=Pr2(x)*Pr1(y)})", "集合符号定义", null],
         "dQ": ["⊢Q={Q(x)|x@ZX(Z\\{+0})}", "集合符号定义", null],
         "dQ+": ["⊢$x@ZX(Z\\{+0})>($y@ZX(Z\\{+0})>Q($x)+Q($y)=Q((Pr1($x)*Pr2($y)+Pr1($y)*Pr2($x),Pr2($x)*Pr2($y))))", "集合符号定义", null],
-        "dQ-": ["⊢$x@ZX(Z\\{+0})>($y@ZX(Z\\{+0})>Q($x)+Q($y)=Q((Pr1($x)*Pr2($y)-Pr1($y)*Pr2($x),Pr2($x)*Pr2($y))))", "集合符号定义", null],
+        "dQ-": ["⊢$x@ZX(Z\\{+0})>($y@ZX(Z\\{+0})>Q($x)-Q($y)=Q((Pr1($x)*Pr2($y)-Pr1($y)*Pr2($x),Pr2($x)*Pr2($y))))", "集合符号定义", null],
         "dQ*": ["⊢$x@ZX(Z\\{+0})>($y@ZX(Z\\{+0})>Q($x)*Q($y)=Q((Pr1($x)*Pr1($y),Pr2($x)*Pr2($y))))", "集合符号定义", null],
         "dQ/": ["⊢$x@ZX(Z\\{+0})>($y@(Z\\{+0})X(Z\\{+0})>Q($x)/Q($y)=Q((Pr1($x)*Pr2($y),Pr2($x)*Pr1($y))))", "集合符号定义", null],
         "dQ<=": ["⊢$x@ZX(Z\\{+0})>($y@ZX(Z\\{+0})>Pr2($x)*Pr2($y)>=0>(Q($x)<=Q($y)<> Pr1($x)*Pr2($y)<=Pr2($x)*Pr1($y))))", "集合符号定义", null],
