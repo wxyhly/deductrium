@@ -1248,7 +1248,7 @@ export class FormalSystem {
         return d;
     }
     metaNewVerb(replaceValues: [AST, AST, AST[]], from: string) {
-        const [fnAst, exprAst, paramAsts] = replaceValues;
+        const [fnAst, inputExprAst, paramAsts] = replaceValues;
         if (!paramAsts.length) throw null;
         if (fnAst.type !== "replvar") throw TR("$$0只能为纯变量名");
         if (fnAst.name.match(/[A-Z]/)) throw TR(`自定义符号中不能有大写字母`);
@@ -1256,6 +1256,16 @@ export class FormalSystem {
         if (fnAst.name.startsWith("$")) throw TR("以$开头的函数被系统保留");
         const fnCheckRes = this.fns.has(fnAst.name) || this.verbs.has(fnAst.name);
         if (fnCheckRes) throw TR(`匹配条件##newfn($$0)时：$$0已有定义`);
+        const exprAst = astmgr.clone(inputExprAst);
+        assert.checkGrammer(exprAst, "p");
+        assert.expand(exprAst, false);
+        // A predicate definition must not depend on an undeclared parameter.
+        // Otherwise generalizing that hidden variable changes the definition.
+        const freeVars = new Set<string>;
+        assert.getFreeVars(exprAst, freeVars);
+        if (Array.from(freeVars).some(v => !paramAsts.some(p => p.name === v) && !assert.isConst(v))) {
+            throw TR("表达式不能有自由变量");
+        }
         const deduction = astmgr.clone(this.metaRules["prd"].value.nodes[1].nodes[0].nodes[0]);
         const replTable = {
             "$$0": fnAst,
