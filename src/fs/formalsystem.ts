@@ -30,6 +30,7 @@ export class FormalSystem {
     fns = new Set<string>();
     verbs = new Set<string>();
     propositions: Proposition[] = [];
+    private checkingBinders = new Set<Deduction>();
     assert = assert;
     constructor() {
         this.assert.fns = this.fns;
@@ -822,54 +823,67 @@ export class FormalSystem {
 
         let netInlineMode = inlineMode;
         if (typeof netInlineMode === "function") netInlineMode = netInlineMode(step, replacedConclusion);
-        if (!steps?.length || !netInlineMode) {
+        // A macro can bind a parameter in an intermediate formula even when its
+        // conclusion uses the parameter only as a term. Validate such instantiations
+        // by replaying in a scratch proposition list before publishing the result.
+        const checkBinders = !netInlineMode && steps?.length && Object.entries(matchTable).some(([name, value]) => {
+            if (!replaceTypes[name]) return false;
+            const variable = assert.getVarName(value);
+            return !variable || assert.isConst(variable);
+        });
+        if (!steps?.length || (!netInlineMode && !checkBinders)) {
             return this.propositions.push({ value: replacedConclusion, from: step }) - 1;
         }
-
-        // if it is macro and inline, expand substeps 
-
-        let startPropositions = this.propositions.length;
-        let propsOffset = [];
-
-        // find outter tempvars
-        let tempvars = new Set<string>;
-        Object.values(matchTable).forEach(v => this.findLocalNamesInAst(v, this.localNameRule, tempvars));
-
-        for (const [substepIdx, substep] of steps.entries()) {
-            // if condition number is positive, use given macro condition props
-            // if condition number is negative, this implies newly deducted props, which is relative to the end of prop list
-            const replacedConditionIdxs = substep.conditionIdxs.map(idx => {
-                if (idx >= 0) return conditionIdxs[idx];
-                let newIdx = this.propositions.length + idx;
-                for (let i = 0; i < -1 - idx; i++) {
-                    newIdx -= propsOffset[i];
-                }
-                return newIdx;
-            });
-            const replaceValues = substep.replaceValues.map(ast => {
-                const replaced = astmgr.clone(ast);
-                this.replaceTempVar(replaced, tempvars);
-                // this.replaceTempVar
-                astmgr.replaceByMatchTable(replaced, matchTable);
-                return replaced;
-            });
-            let firstPos = this.propositions.length - 1;
-            let lastPos: number;
-            try {
-                lastPos = this.deduct({ deductionIdx: substep.deductionIdx, replaceValues, conditionIdxs: replacedConditionIdxs }, netInlineMode === "deep" ? inlineMode : null);
-            } catch (e) {
-                // if one substep is wrong, remove newly added substeps from proplist
-                const substepErrMsg = errorMsg + TR(`子步骤`) + `${substepIdx + 1}(${substep.deductionIdx}` + TR(`)中 `) + e;
-                // while (this.propositions.length > startPropositions) {
-                //     this.propositions.pop();
-                // }
-                throw substepErrMsg;
-            }
-            propsOffset.unshift(lastPos - firstPos - 1);
-
+        const original = this.propositions;
+        let inputConditions = conditionIdxs;
+        if (checkBinders) {
+            if (this.checkingBinders.has(deduction)) throw errorMsg + TR("检测到可能的循环定义");
+            this.checkingBinders.add(deduction);
+            this.propositions = conditionIdxs.map(idx => original[idx]);
+            inputConditions = conditionIdxs.map((_, idx) => idx);
         }
-        const propLength = this.propositions.length;
-        return propLength - 1;
+        try {
+            let propsOffset = [];
+
+            // find outter tempvars
+            let tempvars = new Set<string>;
+            Object.values(matchTable).forEach(v => this.findLocalNamesInAst(v, this.localNameRule, tempvars));
+
+            for (const [substepIdx, substep] of steps.entries()) {
+                // if condition number is positive, use given macro condition props
+                // if condition number is negative, this implies newly deducted props, which is relative to the end of prop list
+                const replacedConditionIdxs = substep.conditionIdxs.map(idx => {
+                    if (idx >= 0) return inputConditions[idx];
+                    let newIdx = this.propositions.length + idx;
+                    for (let i = 0; i < -1 - idx; i++) {
+                        newIdx -= propsOffset[i];
+                    }
+                    return newIdx;
+                });
+                const replaceValues = substep.replaceValues.map(ast => {
+                    const replaced = astmgr.clone(ast);
+                    this.replaceTempVar(replaced, tempvars);
+                    astmgr.replaceByMatchTable(replaced, matchTable);
+                    return replaced;
+                });
+                let firstPos = this.propositions.length - 1;
+                let lastPos: number;
+                try {
+                    lastPos = this.deduct({ deductionIdx: substep.deductionIdx, replaceValues, conditionIdxs: replacedConditionIdxs }, netInlineMode === "deep" ? inlineMode : null);
+                } catch (e) {
+                    throw errorMsg + TR(`子步骤`) + `${substepIdx + 1}(${substep.deductionIdx}` + TR(`)中 `) + e;
+                }
+                propsOffset.unshift(lastPos - firstPos - 1);
+
+            }
+            if (!checkBinders) return this.propositions.length - 1;
+        } finally {
+            if (checkBinders) {
+                this.propositions = original;
+                this.checkingBinders.delete(deduction);
+            }
+        }
+        return original.push({ value: replacedConclusion, from: step }) - 1;
     }
     expandMacroWithProp(propositionIdx: number) {
         const p = this.propositions[propositionIdx];
