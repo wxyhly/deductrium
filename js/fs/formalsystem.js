@@ -1379,7 +1379,7 @@ export class FormalSystem {
         return d;
     }
     metaNewVerb(replaceValues, from) {
-        const [fnAst, exprAst, paramAsts] = replaceValues;
+        const [fnAst, inputExprAst, paramAsts] = replaceValues;
         if (!paramAsts.length)
             throw null;
         if (fnAst.type !== "replvar")
@@ -1393,6 +1393,16 @@ export class FormalSystem {
         const fnCheckRes = this.fns.has(fnAst.name) || this.verbs.has(fnAst.name);
         if (fnCheckRes)
             throw TR(`匹配条件##newfn($$0)时：$$0已有定义`);
+        const exprAst = astmgr.clone(inputExprAst);
+        assert.checkGrammer(exprAst, "p");
+        assert.expand(exprAst, false);
+        // A predicate definition must not depend on an undeclared parameter.
+        // Otherwise generalizing that hidden variable changes the definition.
+        const freeVars = new Set;
+        assert.getFreeVars(exprAst, freeVars);
+        if (Array.from(freeVars).some(v => !paramAsts.some(p => p.name === v) && !assert.isConst(v))) {
+            throw TR("表达式不能有自由变量");
+        }
         const deduction = astmgr.clone(this.metaRules["prd"].value.nodes[1].nodes[0].nodes[0]);
         const replTable = {
             "$$0": fnAst,
